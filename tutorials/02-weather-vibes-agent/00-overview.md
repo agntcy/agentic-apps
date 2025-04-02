@@ -9,11 +9,12 @@ Our Weather Vibes agent will:
 - Suggest a YouTube video that matches the weather "vibe"
 
 This will demonstrate several key ACP concepts:
-Agent descriptors and capabilities
+- Agent descriptors and capabilities
 Run management
 Tool integration
 Structured inputs and outputs
-Let's build this step by step!
+
+**Let's build this step by step!**
 
 Follow along with this tutorial to build your own Weather Vibes agent.
 

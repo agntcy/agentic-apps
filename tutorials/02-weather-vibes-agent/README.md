@@ -9,6 +9,7 @@ A practical implementation of the Agent Connect Protocol (ACP) using the Simple 
 - **Weather-Matched Media**: Discover YouTube videos that match the current weather "vibe"
 - **ACP Compliance**: Full implementation of the Agent Connect Protocol for standardized communication
 - **State Management**: Maintains search history and favorite locations across sessions
+- **AI Evaluation**: Uses Galileo to monitor, evaluate, and improve agent performance
 
 ## Architecture
 
@@ -35,6 +36,11 @@ The Weather Vibes agent is built using a modular architecture:
 │  │ ACP         │  │     
 │  │ Endpoints   │  │     
 │  └─────────────┘  │     
+│        │          │
+│  ┌─────────────┐  │
+│  │ Galileo     │  │
+│  │ Evaluation  │  │
+│  └─────────────┘  │
 │                   │     
 └───────────────────┘     
 ```
@@ -49,6 +55,7 @@ The Weather Vibes agent is built using a modular architecture:
    - `YouTubeTool`: Finds videos matching the weather mood
 4. **FastAPI Server**: Implements ACP endpoints for agent discovery and execution
 5. **Template System**: Dynamic system prompt generation with Jinja2
+6. **Evaluation System**: Galileo integration for monitoring and improving agent performance
 
 ## Prerequisites
 
@@ -56,6 +63,7 @@ The Weather Vibes agent is built using a modular architecture:
 - OpenAI API key
 - OpenWeatherMap API key ([get one here](https://openweathermap.org/api))
 - YouTube Data API key ([get one here](https://console.cloud.google.com/apis/library/youtube.googleapis.com))
+- Galileo API key ([get one here](https://galileo.ai))
 
 ## Installation
 
@@ -77,6 +85,11 @@ The Weather Vibes agent is built using a modular architecture:
    YOUTUBE_API_KEY=your_youtube_api_key
    SERVER_PORT=8000
    SERVER_HOST=0.0.0.0
+   
+   # Galileo configuration
+   GALILEO_API_KEY=your_galileo_api_key
+   GALILEO_PROJECT=weather_vibes
+   GALILEO_LOG_STREAM=production
    ```
 
 ## Running the Server
@@ -248,6 +261,28 @@ You can extend the Weather Vibes agent by:
 2. Enhancing the descriptor with new capabilities
 3. Modifying the system prompt in `templates/system.j2`
 4. Adding additional ACP features like streaming responses
+5. Creating new experiments with Galileo to test different configurations
+
+## AI Evaluation with Galileo
+
+This project includes Galileo integration to help evaluate and improve the agent's performance:
+
+### Key Benefits
+
+- **Response Quality Tracking**: Monitor the quality of your agent's responses over time
+- **Issue Detection**: Automatically identify problematic responses
+- **Performance Optimization**: Compare different models (GPT-4 vs GPT-3.5) or algorithms
+- **A/B Testing**: Run experiments to find the best configurations
+
+### Running Experiments
+
+To run an experiment comparing different models or configurations:
+
+```bash
+python experiment_example.py
+```
+
+Visit the [Galileo dashboard](https://galileo.ai) to view the results and analyze performance metrics.
 
 ## Troubleshooting
 
@@ -256,6 +291,7 @@ If you encounter issues:
 - **API Key Errors**: Verify your API keys in the `.env` file
 - **Connection Issues**: Check network connectivity to external APIs
 - **Run Processing Errors**: Check the server logs for detailed error messages
+- **Galileo Issues**: Ensure your Galileo API key is valid and the environment variables are set correctly
 
 ## License
 

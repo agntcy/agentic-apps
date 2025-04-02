@@ -7,6 +7,10 @@ from pydantic import BaseModel
 from agent_framework.tools.base import BaseTool
 import requests
 
+# Import Galileo log decorator if using Galileo for evaluation (see step 7)
+# uncomment the below line if you're not using the Galileo wrapped client for evaluations (Step 7)
+# from galileo import log
+
 class WeatherInput(BaseModel):
     """Input schema for the weather tool"""
     location: str
@@ -25,6 +29,8 @@ class WeatherTool(BaseTool):
             raise ValueError("OpenWeatherMap API key not found in environment")
         self.base_url = "http://api.openweathermap.org/data/2.5/weather"
     
+    # Add Galileo log decorator by uncommenting the next line to track weather API calls (Step 7)
+    # @log(as_span_type="tool", name="get_weather")
     async def execute(self, location: str, units: str = "metric") -> Dict[str, Any]:
         """
         Execute the tool to get current weather.
