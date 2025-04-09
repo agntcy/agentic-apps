@@ -7,6 +7,7 @@ members = [
     "agp",
     "network-of-assistants",
     "pdf-assistant",
+    "user-proxy",
 ]
 
 [[package]]
@@ -1565,6 +1566,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/aa/63/e53da845320b757bf
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl", hash = "sha256:1cee9ad369867bfdbbb48b7dd50374c0967a0bb7710050facf0dd6911440e3df", size = 128369 },
 ]
+
+[[package]]
+name = "user-proxy"
+version = "0.1.0"
+source = { editable = "user_proxy" }
+dependencies = [
+    { name = "agp" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "agp", editable = "agp" }]
 
 [[package]]
 name = "wrapt"

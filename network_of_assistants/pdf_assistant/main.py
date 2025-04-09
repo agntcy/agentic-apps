@@ -77,11 +77,11 @@ async def amain(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id):
 
 
 @click.command(context_settings={"auto_envvar_prefix": "ASSISTANT"})
-@click.option("--doc-dir", prompt="directory of documentation to load")
+@click.option("--doc-dir", prompt="directory of documentation to load", required=True)
 @click.option("--llm-type", default="azure")
 @click.option("--llm-endpoint", default=None)
 @click.option("--llm-key", default=None)
-@click.option("--assistant-id")
+@click.option("--assistant-id", required=True)
 def main(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id):
     import asyncio
 

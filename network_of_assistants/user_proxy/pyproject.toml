@@ -1,15 +1,15 @@
 [project]
-name = "agp"
+name = "user-proxy"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
-    "agp-bindings==0.2.1",
+    "agp"
 ]
+
+[tool.uv.sources]
+agp = { workspace = true }
 
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
-
-[tool.pdm.build]
-includes = ["agp/"]
