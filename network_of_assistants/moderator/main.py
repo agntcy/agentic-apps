@@ -1,6 +1,7 @@
 import json
 from agp import AGP
 from agent import ModeratorAgent
+from langchain_core.exceptions import OutputParserException
 
 
 def agents_list_to_string(agents_list):
@@ -31,16 +32,33 @@ async def main():
         chat_history.append(json_message)
 
         if json_message["type"] == "ChatMessage":
-            answer = moderator_agent.invoke(
-                input={
-                    "agents_list": agents_list_string,
-                    "chat_history": chat_history,
-                    "query_message": json_message,
+            try:
+                answer = moderator_agent.invoke(
+                    input={
+                        "agents_list": agents_list_string,
+                        "chat_history": chat_history,
+                        "query_message": json_message,
+                    }
+                )
+                print(f"Sending answer: {answer}")
+                chat_history.append(answer)
+                await agp.publish(msg=str(answer).encode("utf-8"))
+
+            except OutputParserException as e:
+                answer = {
+                    "type": "ChatMessage",
+                    "author": "moderator",
+                    "message": f"Moderator failed: {e}",
                 }
-            )
-            print(f"Sending answer: {answer}")
-            chat_history.append(answer)
-            await agp.publish(msg=str(answer).encode("utf-8"))
+                chat_history.append(answer)
+                await agp.publish(msg=str(answer).encode("utf-8"))
+                answer = {
+                    "type": "RequestToSpeak",
+                    "author": "moderator",
+                    "target": "user-proxy",
+                }
+                chat_history.append(answer)
+                await agp.publish(msg=str(answer).encode("utf-8"))
 
     # Connect to the AGP server and start receiving messages
     await agp.receive(callback=on_message_received)

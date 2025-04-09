@@ -1,6 +1,8 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel
+from langchain_core.output_parsers import JsonOutputParser
 from typing import Optional
 
 SYSTEM_PROMPT = """
@@ -67,6 +69,11 @@ class ModeratorAgent:
             base_url: Optional[str] = None
             api_key: Optional[str] = None
 
+        class ModelAnswer(BaseModel):
+            type: str
+            author: str
+            target: str
+
         model_config = ModelConfig()
 
         llm = ChatOpenAI(
@@ -75,7 +82,9 @@ class ModeratorAgent:
             api_key=model_config.api_key,
         )
 
-        self.chain = PROMPT_TEMPLATE | llm
+        parser = JsonOutputParser(pydantic_object=ModelAnswer)
+
+        self.chain = PROMPT_TEMPLATE | llm | parser
 
     def invoke(self, *args, **kwargs):
         return self.chain.invoke(*args, **kwargs)
