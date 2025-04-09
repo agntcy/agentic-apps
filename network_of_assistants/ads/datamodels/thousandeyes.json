@@ -1,0 +1,16 @@
+{
+  "agent_id": "thousand-eyes-assistant",
+  "name": "Thousand Eyes Assistant",
+  "description": "An assistant agent specialized in Cisco Thousand Eyes products.",
+  "skills": [
+    "network_performance_monitoring",
+    "application_performance_analysis",
+    "internet_outage_detection",
+    "thousand_eyes_dashboard_usage"
+  ],
+  "version": "1.0.0",
+  "tags": ["Thousand Eyes", "Cisco", "Monitoring"],
+  "contact": {
+    "email": "thousand-eyes-assistant@cisco.com"
+  }
+}

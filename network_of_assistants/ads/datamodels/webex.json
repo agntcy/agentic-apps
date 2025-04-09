@@ -1,0 +1,16 @@
+{
+  "agent_id": "webex-assistant",
+  "name": "Webex Assistant",
+  "description": "An assistant agent specialized in Cisco Webex products.",
+  "skills": [
+    "video_conferencing",
+    "meeting_scheduling",
+    "webex_troubleshooting",
+    "collaboration_tools"
+  ],
+  "version": "1.0.0",
+  "tags": ["Webex", "Cisco", "Collaboration"],
+  "contact": {
+    "email": "webex-assistant@cisco.com"
+  }
+}

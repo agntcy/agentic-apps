@@ -1,0 +1,16 @@
+{
+  "agent_id": "splunk-assistant",
+  "name": "Splunk Assistant",
+  "description": "An assistant agent specialized in Splunk integration with Cisco products.",
+  "skills": [
+    "log_analysis",
+    "security_event_monitoring",
+    "splunk_dashboard_usage",
+    "data_visualization"
+  ],
+  "version": "1.0.0",
+  "tags": ["Splunk", "Cisco", "Analytics"],
+  "contact": {
+    "email": "splunk-assistant@cisco.com"
+  }
+}
