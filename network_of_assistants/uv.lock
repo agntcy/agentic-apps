@@ -4,7 +4,6 @@ requires-python = ">=3.13"
 [manifest]
 members = [
     "agp",
-    "examples",
     "network-of-assistants",
     "pdf-assistant",
 ]
@@ -31,17 +30,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/00/cac8d5434a46c72555afb32f799ae25bd9289b4c06e933d94b074c24cb6e/agp_bindings-0.2.0-cp313-cp313-manylinux_2_38_x86_64.whl", hash = "sha256:57fe58744f605245a674d11104da31ec755c29b45e5698fadadba77a1a8a8ac0", size = 5944161 },
     { url = "https://files.pythonhosted.org/packages/b6/d0/ade257e1ee702fbec355fe2432720bcfd001d2cbcbb87d4e6b047fc606ce/agp_bindings-0.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:d3091ff534d6b875585f34a5ac8300562ef3a1469914272df878a3ab37f2a7c7", size = 4578067 },
 ]
-
-[[package]]
-name = "examples"
-version = "0.1.0"
-source = { virtual = "examples" }
-dependencies = [
-    { name = "agp" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "agp", virtual = "agp" }]
 
 [[package]]
 name = "network-of-assistants"

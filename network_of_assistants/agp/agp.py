@@ -29,6 +29,7 @@ class AGP:
         self.agp_endpoint = agp_endpoint
 
     async def init(self):
+        print(self.local_organization, self.local_namespace, self.local_agent)
         self.participant = await agp_bindings.Gateway.new(
             self.local_organization, self.local_namespace, self.local_agent
         )
@@ -64,9 +65,6 @@ class AGP:
 
     async def connect_and_receive(
         self,
-        agp_endpoint: str,
-        local_id: str,
-        shared_space: str,
         callback: Callable[[bytes], None],
     ):
         # define the background task
