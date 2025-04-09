@@ -1,16 +1,29 @@
 {
-  "agent_id": "catalyst-assistant",
-  "name": "Catalyst Assistant",
-  "description": "An assistant agent specialized in Cisco Catalyst products.",
+  "name": "catalyst assistant",
+  "version": "v1.0.0",
+  "extensions": [],
   "skills": [
-    "switch_configuration",
-    "network_security",
-    "catalyst_troubleshooting",
-    "ios_upgrade_management"
+    {
+      "category_uid": "4",
+      "class_name": "Switch Configuration",
+      "class_uid": "20401",
+      "category_name": "Switching"
+    },
+    {
+      "category_uid": "4",
+      "class_name": "Network Security",
+      "class_uid": "20402",
+      "category_name": "Switching"
+    }
   ],
-  "version": "1.0.0",
-  "tags": ["Catalyst", "Cisco", "Switching"],
-  "contact": {
-    "email": "catalyst-assistant@cisco.com"
-  }
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/catalyst-assistant"
+    }
+  ]
 }

@@ -1,16 +1,29 @@
 {
-  "agent_id": "moderator-agent",
-  "name": "Moderator Agent",
-  "description": "A special agent responsible for identifying relevant assistants based on their skills.",
+  "name": "moderator agent",
+  "version": "v1.0.0",
+  "extensions": [],
   "skills": [
-    "skill_matching",
-    "request_routing",
-    "assistant_management",
-    "decision_making"
+    {
+      "category_uid": "6",
+      "class_name": "Skill Matching",
+      "class_uid": "20601",
+      "category_name": "Coordination"
+    },
+    {
+      "category_uid": "6",
+      "class_name": "Request Routing",
+      "class_uid": "20602",
+      "category_name": "Coordination"
+    }
   ],
-  "version": "1.0.0",
-  "tags": ["Moderator", "Coordinator", "Skill Matching"],
-  "contact": {
-    "email": "moderator-agent@cisco.com"
-  }
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/moderator-agent"
+    }
+  ]
 }

@@ -1,16 +1,29 @@
 {
-  "agent_id": "splunk-assistant",
-  "name": "Splunk Assistant",
-  "description": "An assistant agent specialized in Splunk integration with Cisco products.",
+  "name": "splunk assistant",
+  "version": "v1.0.0",
+  "extensions": [],
   "skills": [
-    "log_analysis",
-    "security_event_monitoring",
-    "splunk_dashboard_usage",
-    "data_visualization"
+    {
+      "category_uid": "5",
+      "class_name": "Log Analysis",
+      "class_uid": "20501",
+      "category_name": "Analytics"
+    },
+    {
+      "category_uid": "5",
+      "class_name": "Security Event Monitoring",
+      "class_uid": "20502",
+      "category_name": "Analytics"
+    }
   ],
-  "version": "1.0.0",
-  "tags": ["Splunk", "Cisco", "Analytics"],
-  "contact": {
-    "email": "splunk-assistant@cisco.com"
-  }
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/splunk-assistant"
+    }
+  ]
 }
