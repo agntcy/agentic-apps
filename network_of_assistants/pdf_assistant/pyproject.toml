@@ -10,7 +10,11 @@ dependencies = [
     "llama-index-llms-azure-openai>=0.3.2",
     "llama-index-llms-ollama>=0.5.4",
     "llama-index-llms-openai-like>=0.3.4",
+    "agp",
 ]
+
+[tool.uv.sources]
+agp = { workspace = true }
 
 [build-system]
 requires = ["pdm-backend"]

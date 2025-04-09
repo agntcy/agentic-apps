@@ -1,15 +1,18 @@
 import click
+import json
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import SimpleKeywordTableIndex
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.core.agent.workflow import ReActAgent
 from llama_index.core.tools import QueryEngineTool
-from llama_index.core.agent.workflow import AgentStream, ToolCallResult
 from llama_index.core import SimpleDirectoryReader
+from llama_index.core.llms import ChatMessage
+from llama_index.core.memory import ChatMemoryBuffer
+from agp import AGP
 
 
-async def amain(doc_dir, llm_type, llm_endpoint, llm_key):
+async def amain(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id):
     if llm_type == "azure":
         kwargs = {
             "engine": "gpt-4o-mini",
@@ -43,17 +46,34 @@ async def amain(doc_dir, llm_type, llm_endpoint, llm_key):
     )
     agent = ReActAgent(llm=llm, tools=[qet])
 
-    # TODO(sambetts) Replace this with AGP chat room logic
-    while True:
-        i = input("Question: ")
-        handler = agent.run(user_msg=i)
-        async for ev in handler.stream_events():
-            if isinstance(ev, ToolCallResult):
-                print(f"{ev}")
-            if isinstance(ev, AgentStream):
-                print(f"{ev.delta}", end="", flush=True)
-        response = await handler
-        print(str(response))
+    agp = AGP(
+        agp_endpoint="http://localhost:12345",
+        local_id=assistant_id,
+        shared_space="chat",
+    )
+
+    await agp.init()
+
+    memory = ChatMemoryBuffer.from_defaults(token_limit=40000)
+
+    async def on_message_received(message: bytes):
+        decoded_message = message.decode("utf-8")
+        data = json.loads(decoded_message)
+
+        if data["type"] == "ChatMessage":
+            memory.put(
+                ChatMessage(role="user", content=f"{data['author']}: {data['message']}")
+            )
+
+        elif data["type"] == "RequestToSpeak" and data["target"] == assistant_id:
+            handler = agent.run(usera_msg=decoded_message, memory=memory)
+            response = await handler
+            # Publish a message to the AGP server
+            await agp.publish(msg=str(response).encode("utf-8"))
+
+    # Connect to the AGP server and start receiving messages
+    await agp.receive(callback=on_message_received)
+    await agp.receive_task
 
 
 @click.command(context_settings={"auto_envvar_prefix": "ASSISTANT"})
@@ -61,10 +81,11 @@ async def amain(doc_dir, llm_type, llm_endpoint, llm_key):
 @click.option("--llm-type", default="azure")
 @click.option("--llm-endpoint", default=None)
 @click.option("--llm-key", default=None)
-def main(doc_dir, llm_type, llm_endpoint, llm_key):
+@click.option("--assistant-id")
+def main(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id):
     import asyncio
 
-    asyncio.run(amain(doc_dir, llm_type, llm_endpoint, llm_key))
+    asyncio.run(amain(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id))
 
 
 if __name__ == "__main__":

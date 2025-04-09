@@ -12,7 +12,7 @@ members = [
 [[package]]
 name = "agp"
 version = "0.1.0"
-source = { virtual = "agp" }
+source = { editable = "agp" }
 dependencies = [
     { name = "agp-bindings" },
 ]
@@ -1065,6 +1065,7 @@ name = "pdf-assistant"
 version = "0.1.0"
 source = { editable = "pdf_assistant" }
 dependencies = [
+    { name = "agp" },
     { name = "click" },
     { name = "llama-index" },
     { name = "llama-index-llms-azure-openai" },
@@ -1074,6 +1075,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agp", editable = "agp" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "llama-index", specifier = ">=0.12.29" },
     { name = "llama-index-llms-azure-openai", specifier = ">=0.3.2" },

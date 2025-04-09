@@ -6,3 +6,11 @@ requires-python = ">=3.13"
 dependencies = [
     "agp-bindings==0.2.1",
 ]
+
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+includes = ["agp/"]
