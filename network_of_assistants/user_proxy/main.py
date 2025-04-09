@@ -6,11 +6,13 @@ import json
 # Queue for receiving responses
 response_queue = asyncio.Queue()
 
+
 def command_callback(response):
     decoded_message = response.decode("utf-8")
     data = json.loads(decoded_message)
     print(data.message)
     response_queue.put_nowait(decoded_message)
+
 
 async def main(args):
     agp = AGP(
@@ -32,11 +34,9 @@ async def main(args):
         print("Sending message...")
 
         message = {
-
             "type": "ChatMessage",
-            "author":"user",
+            "author": "user",
             "message": inputMessage,
-
         }
 
         await agp.publish(msg=json.dumps(message).encode("utf-8"))
@@ -45,9 +45,12 @@ async def main(args):
         response = await response_queue.get()
         print(f"Received message: {response}")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start AGP command interface.")
-    parser.add_argument("--endpoint", type=str, default="http://localhost:46357" , help="AGP endpoint URL (e.g., http://localhost:46357)")
+    parser.add_argument(
+        "--endpoint", type=str, default="http://localhost:46357", help="AGP endpoint URL (e.g., http://localhost:46357)"
+    )
     parser.add_argument("--local-id", type=str, default="localid", help="Local ID to identify this instance")
     parser.add_argument("--shared-space", type=str, default="chat", help="Shared space name for communication")
 
