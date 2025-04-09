@@ -56,14 +56,14 @@ class AGP:
             agp_bindings.PyStreamingConfiguration(
                 agp_bindings.PySessionDirection.BIDIRECTIONAL,
                 topic=agp_bindings.PyAgentType(
-                    self.remote_organization, self.remote_namespace, shared_space
+                    self.remote_organization, self.remote_namespace, self.shared_space
                 ),
                 max_retries=5,
                 timeout=datetime.timedelta(seconds=5),
             )
         )
 
-    async def connect_and_receive(
+    async def receive(
         self,
         callback: Callable[[bytes], None],
     ):
@@ -92,5 +92,5 @@ class AGP:
             msg,
             self.remote_organization,
             self.remote_namespace,
-            self.broadcast_topic,
+            self.shared_space,
         )

@@ -4,5 +4,5 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
-    "agp-bindings==0.2.0",
+    "agp-bindings==0.2.1",
 ]
