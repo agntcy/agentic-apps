@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["pdf_assistant", "agp"]
+members = ["pdf_assistant", "agp", "user_proxy"]
 
 [dependency-groups]
 dev = ["ruff<1.0.0,>=0.9.3"]

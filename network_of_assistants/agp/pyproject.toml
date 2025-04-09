@@ -7,10 +7,17 @@ dependencies = [
     "agp-bindings==0.2.1",
 ]
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> ca3fa6a (feat(user_proxy): init user_proxy)
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.build]
+<<<<<<< HEAD
 includes = ["agp/"]
+=======
+includes = ["agp/"]
+>>>>>>> ca3fa6a (feat(user_proxy): init user_proxy)
