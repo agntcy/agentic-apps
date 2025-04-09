@@ -4,4 +4,14 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "click>=8.1.8",
+    "llama-index>=0.12.29",
+    "llama-index-llms-azure-openai>=0.3.2",
+    "llama-index-llms-ollama>=0.5.4",
+    "llama-index-llms-openai-like>=0.3.4",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
