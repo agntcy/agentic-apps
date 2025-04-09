@@ -1,0 +1,16 @@
+{
+  "agent_id": "catalyst-assistant",
+  "name": "Catalyst Assistant",
+  "description": "An assistant agent specialized in Cisco Catalyst products.",
+  "skills": [
+    "switch_configuration",
+    "network_security",
+    "catalyst_troubleshooting",
+    "ios_upgrade_management"
+  ],
+  "version": "1.0.0",
+  "tags": ["Catalyst", "Cisco", "Switching"],
+  "contact": {
+    "email": "catalyst-assistant@cisco.com"
+  }
+}
