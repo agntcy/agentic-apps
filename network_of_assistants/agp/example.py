@@ -1,5 +1,6 @@
 from agp import AGP
 
+
 def on_message_received(message: bytes):
     # Decode the message from bytes to string
     decoded_message = message.decode("utf-8")
