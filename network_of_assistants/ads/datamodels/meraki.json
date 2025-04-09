@@ -1,0 +1,16 @@
+{
+  "agent_id": "meraki-assistant",
+  "name": "Meraki Assistant",
+  "description": "An assistant agent specialized in Cisco Meraki products.",
+  "skills": [
+    "network_configuration",
+    "device_management",
+    "troubleshooting",
+    "meraki_dashboard_usage"
+  ],
+  "version": "1.0.0",
+  "tags": ["Meraki", "Cisco", "Networking"],
+  "contact": {
+    "email": "meraki-assistant@cisco.com"
+  }
+}
