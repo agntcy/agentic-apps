@@ -61,20 +61,23 @@ async def amain(doc_dir, llm_type, llm_endpoint, llm_key, assistant_id):
         data = json.loads(decoded_message)
 
         if data["type"] == "ChatMessage":
+            print(f"{data['author']}: {data['message']}")
             memory.put(
                 ChatMessage(role="user", content=f"{data['author']}: {data['message']}")
             )
 
         elif data["type"] == "RequestToSpeak" and data["target"] == assistant_id:
+            print("Moderator requested me to speak")
             handler = agent.run(user_msg=decoded_message, memory=memory)
             response = await handler
             # Publish a message to the AGP server
             message = {
-                    "type": "ChatMessage",
-                    "author": assistant_id,
-                    "message": str(response),
+                "type": "ChatMessage",
+                "author": assistant_id,
+                "message": str(response),
             }
             message_json = json.dumps(message)
+            print(f"Responding with: {str(response)}")
             await agp.publish(msg=message_json.encode("utf-8"))
 
     # Connect to the AGP server and start receiving messages
