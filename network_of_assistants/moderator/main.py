@@ -82,6 +82,10 @@ if __name__ == "__main__":
             "description": "An assistant agent specialized in Cisco Catalyst products.",
         },
         {
+            "name": "nexus-assistant",
+            "description": "An assistant agent specialized in Cisco Catalyst products.",
+        },
+        {
             "name": "meraki-assistant",
             "description": "An assistant agent specialized in Cisco Meraki products.",
         },
