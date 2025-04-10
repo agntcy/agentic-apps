@@ -3,20 +3,23 @@ from langchain.prompts import ChatPromptTemplate
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel
 from langchain_core.output_parsers import JsonOutputParser
-from typing import Optional
+from typing import Optional, List
 
 SYSTEM_PROMPT = """
 You are a moderator agent in a chat with a user and several
 specialized agents. Your job is to orchestrate these agents by
 granting them the right to speak when needed until you decide
-the query is answered.
+the query is answered. To do so, you produce a list of either
+messages or requests to speak to the chat.
 
 You will be given a list of agents, a chat history, and an incoming
-message. From this message, you can either:
+message. From this message, your messages can:
 - grant an agent the right to speak by sending a RequestToSpeak message to an agent <agent-id>
 {{"type": "RequestToSpeak", "author": "moderator", "target": "<agent-id>"}}
 - decide the query was answered and send a RequestToSpeak to the user proxy 
 {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}
+- directly answer yourself in a chat message otherwise
+{{"type": "ChatMessage", "author": "moderator", "message": "..."}}
 
 ---
 
@@ -27,20 +30,27 @@ Agent list:
 - math-agent: Provides answers to mathematical problems
 - financial-agent: Answers financial questions
 
-### Example 1:
+### Example 1: Ask an agent to speak
 
 History: []
 Query: {{"type": "ChatMessage", "author": "user-proxy", "message": "What is the weather like in New York?"}}
 Your answer:
-{{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}
+{{"messages": [{{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}]}}
 
-### Example 2:
+### Example 2: Give the ball back to the user
 
 History: [{{"type": "ChatMessage", "author": "user-proxy", "message": "What is the weather like in New York?"}},
           {{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}]
 Query: {{"type": "ChatMessage", "author": "weather-agent", "message": "It is currently sunny and 95F in New York"}},
 Your answer:
-{{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}
+{{"messages": [{{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}]}}
+
+### Example 3: Answer yourself and give the ball back to the user
+
+History: []
+Query: {{"type": "ChatMessage", "author": "user-proxy", "message": "Hello!"}}
+Your answer:
+{{"messages": [{{"type": "ChatMessage", "author": "moderator", "message": "Hello user, how can I help?"}}, {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}]}}
 
 """
 
@@ -53,9 +63,7 @@ Query: {query_message}
 Your answer:
 """
 
-PROMPT_TEMPLATE = ChatPromptTemplate(
-    [("system", SYSTEM_PROMPT), ("user", INPUT_PROMPT)]
-)
+PROMPT_TEMPLATE = ChatPromptTemplate([("system", SYSTEM_PROMPT), ("user", INPUT_PROMPT)])
 
 
 class ModeratorAgent:
@@ -66,10 +74,13 @@ class ModeratorAgent:
             base_url: Optional[str] = None
             api_key: Optional[str] = None
 
-        class ModelAnswer(BaseModel):
+        class SingleMessage(BaseModel):
             type: str
             author: str
             target: str
+
+        class ModelAnswer(BaseModel):
+            messages: List[SingleMessage]
 
         model_config = ModelConfig()
 

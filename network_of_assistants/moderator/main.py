@@ -33,17 +33,18 @@ async def main():
 
         if json_message["type"] == "ChatMessage":
             try:
-                answer = moderator_agent.invoke(
+                answers_list = moderator_agent.invoke(
                     input={
                         "agents_list": agents_list_string,
                         "chat_history": chat_history,
                         "query_message": json_message,
                     }
                 )
-                print(f"Sending answer: {answer}")
-                chat_history.append(answer)
-                answer_str = json.dumps(answer)
-                await agp.publish(msg=answer_str.encode("utf-8"))
+                for answer in answers_list["messages"]:
+                    print(f"Sending answer: {answer}")
+                    chat_history.append(answer)
+                    answer_str = json.dumps(answer)
+                    await agp.publish(msg=answer_str.encode("utf-8"))
 
             except OutputParserException as e:
                 print(f"Wrong format from moderator: {e}")
