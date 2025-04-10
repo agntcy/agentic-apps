@@ -21,7 +21,7 @@ message. From this message, your messages can:
 - decide the query was answered and send a RequestToSpeak to the user proxy 
 {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}
 - directly answer yourself in a chat message otherwise
-{{"type": "ChatMessage", "author": "moderator", "target": "user-proxy", "message": "<your-message>"}}
+{{"type": "ChatMessage", "author": "moderator", "message": "<your-message>"}}
 
 ---
 
