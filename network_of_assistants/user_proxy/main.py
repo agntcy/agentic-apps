@@ -10,13 +10,12 @@ async def command_callback(response):
     decoded_message = response.decode("utf-8")
     data = json.loads(decoded_message)
 
-
-    if data.type == "ChatMessage":
-        print('author:', data.author)
-        print('message;', data.message)
-    elif data.type == "RequestToSpeak":
-        print('debug:', data.type, data.author, data.target)
-        if data.targer == 'user':
+    if data["type"] == "ChatMessage":
+        print('author:', data["author"])
+        print('message;', data["message"])
+    elif data["type"] == "RequestToSpeak":
+        print('debug:', data["type"], data["author"], data["target"])
+        if data["target"] == 'user-proxy':
             response_queue.put_nowait(decoded_message)
 
 
@@ -42,7 +41,7 @@ async def main(args):
         message = {
 
             "type": "ChatMessage",
-            "author":"user",
+            "author":"user-proxy",
             "message": inputMessage,
 
         }

@@ -10,9 +10,7 @@ You are a moderator agent in a chat with a user and several
 specialized agents. Your job is to orchestrate these agents by
 granting them the right to speak when needed until you decide
 the query is answered.
-"""
 
-INPUT_PROMPT = """
 You will be given a list of agents, a chat history, and an incoming
 message. From this message, you can either:
 - grant an agent the right to speak by sending a RequestToSpeak message to an agent <agent-id>
@@ -44,15 +42,14 @@ Query: {{"type": "ChatMessage", "author": "weather-agent", "message": "It is cur
 Your answer:
 {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}
 
----
+"""
 
-# REAL QUESTION
-
+INPUT_PROMPT = """
 Agent list:
-{{agents_list}}
+{agents_list}
 
-History: {{chat_history}}
-Query: {{query_message}}
+History: {chat_history}
+Query: {query_message}
 Your answer:
 """
 

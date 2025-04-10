@@ -42,23 +42,28 @@ async def main():
                 )
                 print(f"Sending answer: {answer}")
                 chat_history.append(answer)
-                await agp.publish(msg=str(answer).encode("utf-8"))
+                answer_str = json.dumps(answer)
+                await agp.publish(msg=answer_str.encode("utf-8"))
 
             except OutputParserException as e:
+                print(f"Wrong format from moderator: {e}")
+
                 answer = {
                     "type": "ChatMessage",
                     "author": "moderator",
                     "message": f"Moderator failed: {e}",
                 }
                 chat_history.append(answer)
-                await agp.publish(msg=str(answer).encode("utf-8"))
+                answer_str = json.dumps(answer)
+                await agp.publish(msg=answer_str.encode("utf-8"))
                 answer = {
                     "type": "RequestToSpeak",
                     "author": "moderator",
                     "target": "user-proxy",
                 }
                 chat_history.append(answer)
-                await agp.publish(msg=str(answer).encode("utf-8"))
+                answer_str = json.dumps(answer)
+                await agp.publish(msg=answer_str.encode("utf-8"))
 
     # Connect to the AGP server and start receiving messages
     await agp.receive(callback=on_message_received)
