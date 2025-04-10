@@ -1,5 +1,6 @@
 {
-  "name": "moderator agent",
+  "name": "Moderator Agent",
+  "description": "An agent specialized in multi-agent group chat coordination.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [

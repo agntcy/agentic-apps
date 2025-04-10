@@ -1,5 +1,6 @@
 {
-  "name": "webex assistant",
+  "name": "Webex Assistant",
+  "description": "An assistant agent specialized in Cisco Webex products.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [

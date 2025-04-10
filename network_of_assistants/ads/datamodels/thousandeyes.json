@@ -1,5 +1,6 @@
 {
-  "name": "thousand eyes assistant",
+  "name": "ThousandEyes Assistant",
+  "description": "An assistant agent specialized in Cisco ThousandEyes products.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [

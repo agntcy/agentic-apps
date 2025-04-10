@@ -1,9 +1,9 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
-from typing import Optional, List
+from typing import Optional, List, Literal, Union, Annotated
 
 SYSTEM_PROMPT = """
 You are a moderator agent in a chat with a user and several
@@ -14,12 +14,14 @@ messages or requests to speak to the chat.
 
 You will be given a list of agents, a chat history, and an incoming
 message. From this message, your messages can:
+- invite an agent to the chat (if not already present) with a brief summary of the ask
+{{"type": "InviteToChat", "author": "moderator", "target": "<agent-id>", "summary": "<summary-of-ask>"}}
 - grant an agent the right to speak by sending a RequestToSpeak message to an agent <agent-id>
 {{"type": "RequestToSpeak", "author": "moderator", "target": "<agent-id>"}}
 - decide the query was answered and send a RequestToSpeak to the user proxy 
 {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}
 - directly answer yourself in a chat message otherwise
-{{"type": "ChatMessage", "author": "moderator", "message": "..."}}
+{{"type": "ChatMessage", "author": "moderator", "target": "user-proxy", "message": "<your-message>"}}
 
 ---
 
@@ -30,16 +32,18 @@ Agent list:
 - math-agent: Provides answers to mathematical problems
 - financial-agent: Answers financial questions
 
-### Example 1: Ask an agent to speak
+### Example 1: Invite an agent and ask it to speak
 
 History: []
 Query: {{"type": "ChatMessage", "author": "user-proxy", "message": "What is the weather like in New York?"}}
 Your answer:
-{{"messages": [{{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}]}}
+{{"messages": [{{"type": "InviteToChat", "author": "moderator", "target": "weather-agent", "summary": "The user wants to know the weather in New York."}}, 
+               {{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}]}}
 
 ### Example 2: Give the ball back to the user
 
 History: [{{"type": "ChatMessage", "author": "user-proxy", "message": "What is the weather like in New York?"}},
+          {{"type": "InviteToChat", "author": "moderator", "target": "weather-agent", "summary": "The user wants to know the weather in New York."}},
           {{"type": "RequestToSpeak", "author": "moderator", "target": "weather-agent"}}]
 Query: {{"type": "ChatMessage", "author": "weather-agent", "message": "It is currently sunny and 95F in New York"}},
 Your answer:
@@ -50,7 +54,8 @@ Your answer:
 History: []
 Query: {{"type": "ChatMessage", "author": "user-proxy", "message": "Hello!"}}
 Your answer:
-{{"messages": [{{"type": "ChatMessage", "author": "moderator", "message": "Hello user, how can I help?"}}, {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}]}}
+{{"messages": [{{"type": "ChatMessage", "author": "moderator", "message": "Hello user, how can I help?"}},
+               {{"type": "RequestToSpeak", "author": "moderator", "target": "user-proxy"}}]}}
 
 """
 
@@ -74,13 +79,24 @@ class ModeratorAgent:
             base_url: Optional[str] = None
             api_key: Optional[str] = None
 
-        class SingleMessage(BaseModel):
-            type: str
+        class ChatMessage(BaseModel):
+            type: Literal["ChatMessage"]
+            author: str
+            message: str = ""
+
+        class RequestToSpeak(BaseModel):
+            type: Literal["RequestToSpeak"]
             author: str
             target: str
 
+        class InviteToChat(BaseModel):
+            type: Literal["InviteToChat"]
+            author: str
+            target: str
+            summary: str
+
         class ModelAnswer(BaseModel):
-            messages: List[SingleMessage]
+            messages: List[Annotated[Union[ChatMessage, RequestToSpeak, InviteToChat], Field(discriminator="type")]]
 
         model_config = ModelConfig()
 

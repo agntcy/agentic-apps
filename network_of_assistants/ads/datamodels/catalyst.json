@@ -1,5 +1,6 @@
 {
-  "name": "catalyst assistant",
+  "name": "Catalyst Assistant",
+  "description": "An assistant agent specialized in Cisco Catalyst products.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [

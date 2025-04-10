@@ -1,5 +1,6 @@
 {
-  "name": "splunk assistant",
+  "name": "Splunk Assistant",
+  "description": "An assistant agent specialized in Splunk products.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [

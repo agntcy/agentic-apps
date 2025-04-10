@@ -1,5 +1,6 @@
 {
-  "name": "meraki assistant",
+  "name": "Meraki Assistant",
+  "description": "An assistant agent specialized in Meraki products.",
   "version": "v1.0.0",
   "extensions": [],
   "skills": [
