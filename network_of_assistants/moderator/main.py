@@ -8,7 +8,7 @@ from evaluator import EvaluatorAgent
 
 
 def list_available_agents(agents_dir):
-    available_agents_list = []
+    available_agents = {}
 
     for filename in os.listdir(agents_dir):
         if filename.endswith(".json"):
@@ -16,15 +16,19 @@ def list_available_agents(agents_dir):
             try:
                 with open(file_path, "r") as file:
                     data = json.load(file)
-                    available_agents_list.append(
-                        {"name": data["name"].lower().strip().replace(" ", "-"), "description": data["description"]}
+                    available_agents[data["name"].lower().strip().replace(" ", "-")] = (
+                        data["description"]
                     )
             except (json.JSONDecodeError, FileNotFoundError, OSError) as e:
                 print(f"Error reading {file_path}: {e}")
 
+    return available_agents
+
+
+def agents_to_string(agents):
     output_strings = []
-    for agent in available_agents_list:
-        output_strings.append(f"- {agent['name']}: {agent['description']}")
+    for name, description in agents.items():
+        output_strings.append(f"- {name}: {description}")
     return "\n".join(output_strings)
 
 
@@ -44,6 +48,8 @@ async def main(args):
 
     chat_history = []
 
+    chat_agents = set()
+
     async def on_message_received(message: bytes):
         # Decode the message from bytes to string
         decoded_message = message.decode("utf-8")
@@ -54,14 +60,25 @@ async def main(args):
 
         if json_message["type"] == "ChatMessage":
             try:
+                available_agents = list_available_agents(agents_dir)
+                chat_agents_with_desc = {
+                    name: desc
+                    for name, desc in available_agents.items()
+                    if name in chat_agents
+                }
+
                 answers_list = moderator_agent.invoke(
                     input={
-                        "agents_list": list_available_agents(agents_dir),
+                        "agents_list": agents_to_string(available_agents),
+                        "chat_agent_list": agents_to_string(chat_agents_with_desc),
                         "chat_history": chat_history,
                         "query_message": json_message,
                     }
                 )
                 for answer in answers_list["messages"]:
+                    if answer["type"] == "InviteToChat":
+                        chat_agents.add(answer["target"])
+
                     print(f"Sending answer: {answer}")
                     chat_history.append(answer)
                     answer_str = json.dumps(answer)

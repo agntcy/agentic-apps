@@ -32,6 +32,8 @@ async def command_callback(response):
         print(f"Moderator requested {data['target']} to speak.")
         if data["target"] == "user-proxy":
             request_to_speak_event.set()
+    elif data["type"] == "InviteToChat":
+        print(f"Moderator invited {data['target']} to the chat.")
 
 
 async def main(args):
