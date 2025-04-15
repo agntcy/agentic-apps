@@ -31,74 +31,11 @@ Before running the application, ensure you have the following:
 
 ## Setup Instructions
 
-### 1. Clone the Required Repositories
+### 1. Run the API Bridge Agent and Connect it to SendGrid
 
-Clone the following repositories:
+Clone the [API Bridge Agent repo](https://github.com/agntcy/api-bridge-agnt) and follow these [instructions](https://docs.agntcy.org/pages/syntactic_sdk/api_bridge_agent.html#an-example-with-sendgrid-api) to connect it to Twilio SendGrid.
 
-- [ACP SDK](https://github.com/agntcy/acp-sdk/tree/main)
-- [Workflow Server](https://github.com/agntcy/workflow-srv)
-- [Workflow Server Manager](https://github.com/agntcy/workflow-srv-mgr)
-- [API Bridge Agent](https://github.com/agntcy/api-bridge-agnt)
-
-It is recommended to work within each of the cloned directories after cloning them.
-
-```sh
-# Clone the ACP SDK repository
-git clone https://github.com/agntcy/acp-sdk.git
-cd acp-sdk
-
-# Clone the Workflow Server repository
-git clone https://github.com/agntcy/workflow-srv.git
-cd workflow-srv
-
-# Clone the Workflow Server Manager repository
-git clone https://github.com/agntcy/workflow-srv-mgr.git
-cd workflow-srv-mgr
-
-# Clone the API Bridge Agent repository
-git clone https://github.com/agntcy/api-bridge-agnt.git
-cd api-bridge-agnt
-```
-
-### 2. Build the Workflow Server Manager
-
-Navigate to the `workflow-srv-mgr` directory and build the Workflow Server Manager:
-
-```sh
-cd wfsm
-make build
-```
-
-Add the `wfsm` executable to your system's PATH:
-
-#### For macOS:
-```sh
-cd build
-chmod +x wfsm
-echo 'export PATH=$PATH:/path/to/the/repo/workflow-srv-mgr/wfsm/build' >> ~/.zshrc
-source ~/.zshrc
-```
-
-#### For Linux:
-```sh
-cd build
-chmod +x wfsm
-echo 'export PATH=$PATH:/path/to/the/repo/workflow-srv-mgr/wfsm/build' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### 3. Build the Workflow Server
-
-Navigate to the `workflow-srv` directory and build the Docker image for the Workflow Server:
-
-```sh
-git submodule update --init --recursive
-make docker-build-dev
-```
-
-### 4. Run the API Bridge Agent
-
-Navigate to the `api-bridge-agnt` directory and run the following commands:
+In a nutshell, navigate to the repo and run the following commands:
 
 ```sh
 export OPENAI_API_KEY=***YOUR_OPENAI_API_KEY***
@@ -119,10 +56,21 @@ curl http://localhost:8080/tyk/apis/oas \
   -d@configs/api.sendgrid.com.oas.json
 
 curl http://localhost:8080/tyk/reload/group \
-  --header "x-tyk-authorization: foo"****
+  --header "x-tyk-authorization: foo"
 ```
 
----
+### 2. Download the Agent Workflow Server Manager 
+
+Follow these [instructions](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation) to install the Agent Workflow Server Manager.
+
+At the end of the installation you should be able to run the `wsfm` command.
+
+### 3. Install Python dependencies
+   From the `marketing-campaign` folder:
+
+   ```sh
+   poetry install
+   ```
 
 ## Running the Marketing Campaign Manager
 
@@ -138,19 +86,6 @@ The **ACP client** or **LangGraph** applications handle communication with the M
 
 All commands and scripts should be executed from the `examples/marketing-campaign` directory, where this guide is located.
 
-### Prerequisites for Both Methods
-
-Before running the application, ensure the following prerequisites are met:
-
-1. **Bridge Agent**: The API Bridge Agent must be running as explained in Step 4 of the setup instructions.
-2. **`wfsm` CLI**: The Workflow Server Manager CLI (`wfsm`) must be added to your system's PATH.
-3. **Dependencies**: Install Python dependencies in the `examples/marketing-campaign` directory:
-   ```sh
-   cd examples/marketing-campaign
-   poetry install
-   ```
-
----
 
 ### Method 1: Using the ACP Client
 
@@ -182,7 +117,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
 2. **Start the Workflow Server**:
    Run the following command to deploy the Marketing Campaign workflow server:
    ```sh
-   wfsm deploy -m ./deploy/marketing-campaign.json -e ./deploy/marketing_campaign_example.yaml -b workflowserver:latest
+   wfsm deploy -m ./deploy/marketing-campaign.json -e ./deploy/marketing_campaign_example.yaml 
    ```
 
    If everything is set up correctly, the application will start, and the logs will display:
