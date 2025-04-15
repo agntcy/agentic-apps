@@ -1,0 +1,15 @@
+values:
+  AZURE_OPENAI_API_KEY: your-api-key
+  AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'
+  API_HOST: 0.0.0.0
+  SENDGRID_HOST: http://host.docker.internal:8080
+  SENDGRID_API_KEY: SG.your-api-key
+dependencies:
+  - name: mailcomposer
+    values:
+      AZURE_OPENAI_API_KEY: your-api-key
+      AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'
+  - name: email_reviewer
+    values:
+      AZURE_OPENAI_API_KEY: your-api-key
+      AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'

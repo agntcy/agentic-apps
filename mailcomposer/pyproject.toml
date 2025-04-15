@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "mailcomposer"
+version = "0.1.0"
+description = "Composes an email by collecting details through continuous user interaction until confirmation, then returns the finalized email text."
+authors = ["Giovanni Conte <giconte@cisco.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9.0,<4.0"
+langchain = "^0.3.17"
+langgraph = "^0.3.5"
+langchain-openai = "^0.3.3"
+jinja2 = "^3.1.5"
+python-dotenv = "^1.0.1"
+
+[tool.poetry.group.manifest.dependencies]
+agntcy_acp = "v0.1.0a2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

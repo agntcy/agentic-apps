@@ -1,0 +1,23 @@
+[project]
+name = "email_reviewer"
+version = "0.1.0"
+description = "Agent in charge of reviewing and correcting emails addressed to a specific audience"
+authors = [
+    {name = "Marco Trinelli ", email = "mtrinell@cisco.com"}
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9.0,<4.0"
+dotenv = "^0.9.9"
+llama-index = "^0.12.22"
+llama-index-llms-azure-openai = "^0.3.1"
+
+
+[tool.poetry.group.manifest.dependencies]
+agntcy_acp = "v0.1.0a2"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+

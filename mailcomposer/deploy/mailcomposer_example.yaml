@@ -1,0 +1,3 @@
+values:
+  AZURE_OPENAI_API_KEY: your-api-key
+  AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'

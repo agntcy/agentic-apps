@@ -1,0 +1,10 @@
+{
+    "dependencies": [
+        "langchain_openai",
+        "./mailcomposer"
+    ],
+    "graphs": {
+        "email_composer": "./mailcomposer/mailcomposer.py:graph"
+    },
+    "env": ".env"
+}

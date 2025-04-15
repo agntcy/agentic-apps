@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "ref": {
+      "name": "org.agntcy.mail_reviewer",
+      "version": "0.0.1"
+    },
+    "description": "Review emails"
+  },
+  "specs": {
+    "capabilities": {
+      "threads": false,
+      "interrupts": false,
+      "callbacks": false
+    },
+    "input": {
+      "$defs": {
+        "TargetAudience": {
+          "enum": [
+            "general",
+            "technical",
+            "business",
+            "academic"
+          ],
+          "title": "TargetAudience",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "email": {
+          "description": "The email content to be reviewed and corrected",
+          "title": "Email",
+          "type": "string"
+        },
+        "target_audience": {
+          "$ref": "#/$defs/TargetAudience",
+          "description": "The target audience for the email, affecting the style of review"
+        }
+      },
+      "required": [
+        "email",
+        "target_audience"
+      ],
+      "title": "EmailReviewerInput",
+      "type": "object"
+    },
+    "output": {
+      "properties": {
+        "correct": {
+          "description": "Indicates whether the email is correct and requires no changes",
+          "title": "Correct",
+          "type": "boolean"
+        },
+        "corrected_email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The corrected version of the email, if changes were necessary",
+          "title": "Corrected Email"
+        }
+      },
+      "required": [
+        "correct"
+      ],
+      "title": "EmailReview",
+      "type": "object"
+    },
+    "config": {
+      "title": "ConfigSchema"
+    }
+  },
+  "deployment": {
+    "deployment_options": [
+      {
+        "type": "source_code",
+        "name": "source_code_local",
+        "url": "https://github.com/agntcy/acp-sdk.git//examples/email_reviewer",
+        "framework_config": {
+          "framework_type": "llamaindex",
+          "path": "email_reviewer:email_reviewer_workflow"
+        }
+      }
+    ],
+    "env_vars": [
+      {
+        "desc": "Azure key for the OpenAI service",
+        "name": "AZURE_OPENAI_API_KEY"
+      }
+    ],
+    "dependencies": []
+  }
+}

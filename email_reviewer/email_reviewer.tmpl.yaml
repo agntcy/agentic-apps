@@ -1,0 +1,16 @@
+name: EmailReviewer
+
+control-plane:
+  port: 8000
+
+default-service: email_reviewer
+
+services:
+  email_reviewer:
+    name: Email Reviewer
+    source:
+      type: local
+      name: ${PWD}/email_reviewer
+    path: ${PWD}/email_reviewer:email_reviewer
+    python-dependencies:
+      - llama-index-llms-azure-openai>=0.3.0
