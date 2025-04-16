@@ -9,3 +9,4 @@ SPDX-License-Identifier: Apache-2.0
 
 1. Cisco Systems Inc.
 2. Galileo AI
+3. LlamaIndex
