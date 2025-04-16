@@ -14,3 +14,4 @@ services:
     path: ${PWD}/email_reviewer:email_reviewer
     python-dependencies:
       - llama-index-llms-azure-openai>=0.3.0
+      - llama-index-core>=0.12.30
