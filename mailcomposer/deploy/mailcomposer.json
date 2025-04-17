@@ -170,7 +170,7 @@
       {
         "type": "source_code",
         "name": "source_code_local",
-        "url": "https://github.com/agntcy/acp-sdk.git//examples/mailcomposer",
+        "url": "https://github.com/agntcy/agentic-apps.git//mailcomposer",
         "framework_config": {
           "framework_type": "langgraph",
           "graph": "mailcomposer.mailcomposer:graph"
