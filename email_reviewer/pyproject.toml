@@ -10,7 +10,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.9.0,<4.0"
 dotenv = "^0.9.9"
-llama-index = "^0.12.22"
+llama-index-core = "^0.12.30"
 llama-index-llms-azure-openai = "^0.3.1"
 
 

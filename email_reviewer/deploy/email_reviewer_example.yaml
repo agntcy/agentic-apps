@@ -1,3 +1,8 @@
 values:
-  AZURE_OPENAI_API_KEY: your-api-key
-  AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'
+  AZURE_OPENAI_MODEL: "gpt-4o-mini"
+  AZURE_OPENAI_DEPLOYMENT_NAME: "gpt-4o-mini"
+  AZURE_OPENAI_API_VERSION: "2024-07-01-preview"
+  AZURE_OPENAI_ENDPOINT: "https://<your-resource-name>.openai.azure.com/"
+  AZURE_OPENAI_API_KEY: "sk-..."
+  # OPENAI_API_KEY: "sk-..."
+  # OPENAI_MODEL: "gpt-4o-mini"

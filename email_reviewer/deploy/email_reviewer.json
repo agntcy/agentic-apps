@@ -71,7 +71,9 @@
       "type": "object"
     },
     "config": {
-      "title": "ConfigSchema"
+      "properties": {},
+      "title": "ConfigSchema",
+      "type": "object"
     }
   },
   "deployment": {
@@ -90,6 +92,30 @@
       {
         "desc": "Azure key for the OpenAI service",
         "name": "AZURE_OPENAI_API_KEY"
+      },
+      {
+        "desc": "Azure model for the OpenAI service",
+        "name": "AZURE_OPENAI_MODEL"
+      },
+      {
+        "desc": "Azure deployment name for the OpenAI service",
+        "name": "AZURE_OPENAI_DEPLOYMENT_NAME"
+      },
+      {
+        "desc": "Azure API version for the OpenAI service",
+        "name": "AZURE_OPENAI_API_VERSION"
+      },
+      {
+        "desc": "Azure endpoint for the OpenAI service",
+        "name": "AZURE_OPENAI_ENDPOINT"
+      },
+      {
+        "desc": "OpenAI API key",
+        "name": "OPENAI_API_KEY"
+      },
+      {
+        "desc": "OpenAI model",
+        "name": "OPENAI_MODEL"
       }
     ],
     "dependencies": []
