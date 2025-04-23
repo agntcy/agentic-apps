@@ -1,0 +1,22 @@
+[project]
+name = "api-bridge-agent-mcp-demo"
+version = "0.1.0"
+description = "Demo application of MCP and API Bridge Agent"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1.8",
+    "httpx>=0.28.1",
+    "llama-index>=0.12.32",
+    "pydantic>=2.11.3",
+]
+
+[project.scripts]
+demo = "api_bridge_agent_mcp_demo.main:main"
+
+[tool.ruff]
+line-length = 128
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

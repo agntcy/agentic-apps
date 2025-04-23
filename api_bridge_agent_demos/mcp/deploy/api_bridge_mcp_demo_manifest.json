@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "ref": {
+      "name": "org.agntcy.api_bridge_agent_demo_mcp",
+      "version": "0.0.1"
+    },
+    "description": "Demonstration application using API Bridge Agent and MCP"
+  },
+  "specs": {
+    "capabilities": {
+      "threads": false,
+      "interrupts": false,
+      "callbacks": false
+    },
+    "input": {
+      "properties": {
+        "repository": {
+          "description": "The github repository to analyze",
+          "title": "Github Repository",
+          "type": "string"
+        },
+        "api_bridge_url": {
+          "description": "Base URL of API Bridge Agent",
+          "title": "Base URL of API Bridge Agent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "api_bridge_url"
+      ],
+      "title": "DemoInput",
+      "type": "object"
+    },
+    "output": {
+      "properties": {
+        "demo_result": {
+          "description": "Final result",
+          "title": "Final result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "demo_result"
+      ],
+      "title": "DemoOutput",
+      "type": "object"
+    },
+    "config": {
+    }
+  },
+  "deployment": {
+    "deployment_options": [
+      {
+        "type": "source_code",
+        "name": "source_code_local",
+        "url": "file://.",
+        "framework_config": {
+          "framework_type": "llamaindex",
+          "path": "api_bridge_agent_mcp_demo.main:mcp_example_workflow"
+        }
+      }
+    ],
+    "env_vars": [
+    ],
+    "dependencies": []
+  }
+}
