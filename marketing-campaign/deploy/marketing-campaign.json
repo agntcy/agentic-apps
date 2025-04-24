@@ -22,9 +22,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "query"
-          ],
+          "required": ["query"],
           "title": "APIBridgeInput",
           "type": "object"
         },
@@ -36,9 +34,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "result"
-          ],
+          "required": ["result"],
           "title": "APIBridgeOutput",
           "type": "object"
         },
@@ -47,7 +43,7 @@
             "input": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/mailcomposer__InputSchema"
+                  "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
                 },
                 {
                   "type": "null"
@@ -58,7 +54,7 @@
             "output": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/mailcomposer__OutputSchema"
+                  "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
                 },
                 {
                   "type": "null"
@@ -75,7 +71,7 @@
             "input": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/email_reviewer__InputSchema"
+                  "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
                 },
                 {
                   "type": "null"
@@ -86,7 +82,7 @@
             "output": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/email_reviewer__OutputSchema"
+                  "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
                 },
                 {
                   "type": "null"
@@ -110,10 +106,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "type",
-            "content"
-          ],
+          "required": ["type", "content"],
           "title": "Message",
           "type": "object"
         },
@@ -146,25 +139,16 @@
           "type": "object"
         },
         "TargetAudience": {
-          "enum": [
-            "general",
-            "technical",
-            "business",
-            "academic"
-          ],
+          "enum": ["general", "technical", "business", "academic"],
           "title": "TargetAudience",
           "type": "string"
         },
         "Type": {
-          "enum": [
-            "human",
-            "assistant",
-            "ai"
-          ],
+          "enum": ["human", "assistant", "ai"],
           "title": "Type",
           "type": "string"
         },
-        "email_reviewer__InputSchema": {
+        "marketing_campaign__email_reviewer__InputSchema": {
           "properties": {
             "email": {
               "description": "The email content to be reviewed and corrected",
@@ -176,14 +160,11 @@
               "description": "The target audience for the email, affecting the style of review"
             }
           },
-          "required": [
-            "email",
-            "target_audience"
-          ],
+          "required": ["email", "target_audience"],
           "title": "InputSchema",
           "type": "object"
         },
-        "email_reviewer__OutputSchema": {
+        "marketing_campaign__email_reviewer__OutputSchema": {
           "properties": {
             "correct": {
               "description": "Indicates whether the email is correct and requires no changes",
@@ -204,13 +185,11 @@
               "title": "Corrected Email"
             }
           },
-          "required": [
-            "correct"
-          ],
+          "required": ["correct"],
           "title": "OutputSchema",
           "type": "object"
         },
-        "mailcomposer__InputSchema": {
+        "marketing_campaign__mailcomposer__InputSchema": {
           "properties": {
             "messages": {
               "anyOf": [
@@ -243,7 +222,7 @@
           "title": "InputSchema",
           "type": "object"
         },
-        "mailcomposer__OutputSchema": {
+        "marketing_campaign__mailcomposer__OutputSchema": {
           "properties": {
             "messages": {
               "anyOf": [
@@ -281,12 +260,11 @@
                   "type": "null"
                 }
               ],
+              "default": null,
+              "description": "Final email produced by the mail composer",
               "title": "Final Email"
             }
           },
-          "required": [
-            "final_email"
-          ],
           "title": "OutputSchema",
           "type": "object"
         }
@@ -396,6 +374,32 @@
             }
           ],
           "default": null
+        },
+        "recipient_email_address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Email address of the email recipient",
+          "title": "Recipient Email Address"
+        },
+        "sender_email_address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Email address of the email sender",
+          "title": "Sender Email Address"
         }
       },
       "title": "OverallState",
@@ -411,9 +415,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "query"
-          ],
+          "required": ["query"],
           "title": "APIBridgeInput",
           "type": "object"
         },
@@ -425,9 +427,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "result"
-          ],
+          "required": ["result"],
           "title": "APIBridgeOutput",
           "type": "object"
         },
@@ -436,7 +436,7 @@
             "input": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/mailcomposer__InputSchema"
+                  "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
                 },
                 {
                   "type": "null"
@@ -447,7 +447,7 @@
             "output": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/mailcomposer__OutputSchema"
+                  "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
                 },
                 {
                   "type": "null"
@@ -464,7 +464,7 @@
             "input": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/email_reviewer__InputSchema"
+                  "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
                 },
                 {
                   "type": "null"
@@ -475,7 +475,7 @@
             "output": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/email_reviewer__OutputSchema"
+                  "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
                 },
                 {
                   "type": "null"
@@ -499,10 +499,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "type",
-            "content"
-          ],
+          "required": ["type", "content"],
           "title": "Message",
           "type": "object"
         },
@@ -535,25 +532,16 @@
           "type": "object"
         },
         "TargetAudience": {
-          "enum": [
-            "general",
-            "technical",
-            "business",
-            "academic"
-          ],
+          "enum": ["general", "technical", "business", "academic"],
           "title": "TargetAudience",
           "type": "string"
         },
         "Type": {
-          "enum": [
-            "human",
-            "assistant",
-            "ai"
-          ],
+          "enum": ["human", "assistant", "ai"],
           "title": "Type",
           "type": "string"
         },
-        "email_reviewer__InputSchema": {
+        "marketing_campaign__email_reviewer__InputSchema": {
           "properties": {
             "email": {
               "description": "The email content to be reviewed and corrected",
@@ -565,14 +553,11 @@
               "description": "The target audience for the email, affecting the style of review"
             }
           },
-          "required": [
-            "email",
-            "target_audience"
-          ],
+          "required": ["email", "target_audience"],
           "title": "InputSchema",
           "type": "object"
         },
-        "email_reviewer__OutputSchema": {
+        "marketing_campaign__email_reviewer__OutputSchema": {
           "properties": {
             "correct": {
               "description": "Indicates whether the email is correct and requires no changes",
@@ -593,13 +578,11 @@
               "title": "Corrected Email"
             }
           },
-          "required": [
-            "correct"
-          ],
+          "required": ["correct"],
           "title": "OutputSchema",
           "type": "object"
         },
-        "mailcomposer__InputSchema": {
+        "marketing_campaign__mailcomposer__InputSchema": {
           "properties": {
             "messages": {
               "anyOf": [
@@ -632,7 +615,7 @@
           "title": "InputSchema",
           "type": "object"
         },
-        "mailcomposer__OutputSchema": {
+        "marketing_campaign__mailcomposer__OutputSchema": {
           "properties": {
             "messages": {
               "anyOf": [
@@ -670,12 +653,11 @@
                   "type": "null"
                 }
               ],
+              "default": null,
+              "description": "Final email produced by the mail composer",
               "title": "Final Email"
             }
           },
-          "required": [
-            "final_email"
-          ],
           "title": "OutputSchema",
           "type": "object"
         }
@@ -785,12 +767,45 @@
             }
           ],
           "default": null
+        },
+        "recipient_email_address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Email address of the email recipient",
+          "title": "Recipient Email Address"
+        },
+        "sender_email_address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Email address of the email sender",
+          "title": "Sender Email Address"
         }
       },
       "title": "OverallState",
       "type": "object"
     },
     "config": {
+      "$defs": {
+        "TargetAudience": {
+          "enum": ["general", "technical", "business", "academic"],
+          "title": "TargetAudience",
+          "type": "string"
+        }
+      },
       "properties": {
         "recipient_email_address": {
           "description": "Email address of the email recipient",
@@ -803,9 +818,8 @@
           "type": "string"
         },
         "target_audience": {
-          "description": "Target audience for the marketing campaign",
-          "title": "Target Audience",
-          "type": "string"
+          "$ref": "#/$defs/TargetAudience",
+          "description": "Target audience for the marketing campaign"
         }
       },
       "required": [
@@ -863,3 +877,4 @@
     ]
   }
 }
+

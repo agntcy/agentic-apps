@@ -1,10 +1,8 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import agntcy_acp.langgraph.acp_node
 from agntcy_acp.langgraph.api_bridge import APIBridgeOutput, APIBridgeInput
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-from langchain_core.messages import  AIMessage, HumanMessage
+from typing import List, Optional
 from marketing_campaign import mailcomposer
 from marketing_campaign import email_reviewer
 
@@ -39,3 +37,9 @@ class OverallState(BaseModel):
     email_reviewer_state: Optional[MailReviewerState] = None
     target_audience: Optional[email_reviewer.TargetAudience] = None
     sendgrid_state: Optional[SendGridState] = None
+    recipient_email_address: Optional[str] = Field(
+        None, description="Email address of the email recipient"
+    )
+    sender_email_address: Optional[str] = Field(
+        None, description="Email address of the email sender"
+    )

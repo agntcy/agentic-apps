@@ -1,22 +1,22 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 import os
-import json
 import copy
 
-from agntcy_acp.langgraph.api_bridge import APIBridgeAgentNode, APIBridgeInput
+from agntcy_iomapper import FieldMetadata
+from agntcy_acp.langgraph.api_bridge import APIBridgeAgentNode
 from agntcy_acp.langgraph.io_mapper import add_io_mapped_conditional_edge
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from marketing_campaign import mailcomposer
-from  marketing_campaign import state
+from marketing_campaign import state
 from agntcy_acp.langgraph.acp_node import ACPNode
 from agntcy_acp import ApiClientConfiguration
 from langchain_core.runnables.graph import MermaidDrawMethod
 from langchain_core.runnables import RunnableConfig
 from langchain_openai.chat_models.azure import AzureChatOpenAI
 from marketing_campaign import email_reviewer
-from marketing_campaign.state import SendGridState, MailComposerState
+from marketing_campaign.state import MailComposerState
 
 
 # Fill in client configuration for the remote agent
@@ -27,13 +27,26 @@ MAILCOMPOSER_CLIENT_CONFIG = ApiClientConfiguration.fromEnvPrefix("MAILCOMPOSER_
 EMAIL_REVIEWER_CONFIG = ApiClientConfiguration.fromEnvPrefix("EMAIL_REVIEWER_")
 
 # Set to True to generate a mermaid graph
-GENERATE_MERMAID_GRAPH = os.environ.get("GENERATE_MERMAID_GRAPH", "False").lower() == "true"
+GENERATE_MERMAID_GRAPH = (
+    os.environ.get("GENERATE_MERMAID_GRAPH", "False").lower() == "true"
+)
 
 
-def process_inputs(state: state.OverallState, config: RunnableConfig) -> state.OverallState:
-    cfg = config.get('configurable', {})
+def process_inputs(
+    state: state.OverallState, config: RunnableConfig
+) -> state.OverallState:
+    cfg = config.get("configurable", {})
 
     user_message = state.messages[-1].content
+    if "recipient_email_address" not in cfg or "sender_email_address" not in cfg:
+        raise ValueError(
+            """
+            recipient_email_address and/or sender_email_address not provided. 
+            You can set them as environment variables 
+            RECIPIENT_EMAIL_ADDRESS SENDER_EMAIL_ADDRESS
+            """
+        )
+    state.recipient_email_address = cfg["recipient_email_address"]
 
     if user_message.upper() == "OK":
         state.has_composer_completed = True
@@ -46,47 +59,46 @@ def process_inputs(state: state.OverallState, config: RunnableConfig) -> state.O
     state.mailcomposer_state = MailComposerState(
         input=mailcomposer.InputSchema(
             messages=copy.deepcopy(state.messages),
-            is_completed=state.has_composer_completed
+            is_completed=state.has_composer_completed,
         )
-
     )
     return state
 
-def prepare_output(state: state.OverallState, config:RunnableConfig) -> state.OverallState:
+
+def prepare_output(
+    state: state.OverallState, config: RunnableConfig
+) -> state.OverallState:
     state.messages = copy.deepcopy(
-        state.mailcomposer_state.output.messages if (state.mailcomposer_state
+        state.mailcomposer_state.output.messages
+        if (
+            state.mailcomposer_state
             and state.mailcomposer_state.output
             and state.mailcomposer_state.output.messages
-        ) else []
+        )
+        else []
     )
-    if state.sendgrid_state and state.sendgrid_state.output and state.sendgrid_state.output.result:
-        state.operation_logs.append(f"Email Send Operation: {state.sendgrid_state.output.result}")
+    if (
+        state.sendgrid_state
+        and state.sendgrid_state.output
+        and state.sendgrid_state.output.result
+    ):
+        state.operation_logs.append(
+            f"Email Send Operation: {state.sendgrid_state.output.result}"
+        )
 
     return state
-
 
 
 def check_final_email(state: state.OverallState):
-    return "done" if (state.mailcomposer_state
-                      and state.mailcomposer_state.output
-                      and state.mailcomposer_state.output.final_email
-                      ) else "user"
-
-
-def prepare_sendgrid_input(state: state.OverallState, config: RunnableConfig) -> state.OverallState:
-    cfg = config.get('configurable', {})
-    state.sendgrid_state = SendGridState(
-        input=APIBridgeInput(
-            query=f""
-                  f"Please send an email to {cfg['recipient_email_address']} from {cfg['sender_email_address']}.\n"
-                  f"Content of the email should be the following:\n"
-                  f"{state.email_reviewer_state.output.corrected_email if (state.email_reviewer_state
-                    and state.email_reviewer_state.output
-                    and hasattr(state.email_reviewer_state.output, 'corrected_email')
-                    ) else ''}"
+    return (
+        "done"
+        if (
+            state.mailcomposer_state
+            and state.mailcomposer_state.output
+            and state.mailcomposer_state.output.final_email
         )
+        else "user"
     )
-    return state
 
 
 def build_graph() -> CompiledStateGraph:
@@ -105,7 +117,7 @@ def build_graph() -> CompiledStateGraph:
         input_path="mailcomposer_state.input",
         input_type=mailcomposer.InputSchema,
         output_path="mailcomposer_state.output",
-        output_type=mailcomposer.OutputSchema
+        output_type=mailcomposer.OutputSchema,
     )
 
     acp_email_reviewer = ACPNode(
@@ -115,7 +127,7 @@ def build_graph() -> CompiledStateGraph:
         input_path="email_reviewer_state.input",
         input_type=email_reviewer.InputSchema,
         output_path="email_reviewer_state.output",
-        output_type=email_reviewer.OutputSchema
+        output_type=email_reviewer.OutputSchema,
     )
 
     # Instantiate APIBridge Agent Node
@@ -129,7 +141,7 @@ def build_graph() -> CompiledStateGraph:
         output_path="sendgrid_state.output",
         service_api_key=sendgrid_api_key,
         hostname=SENDGRID_HOST,
-        service_name="sendgrid"
+        service_name="sendgrid",
     )
 
     # Create the state graph
@@ -140,7 +152,6 @@ def build_graph() -> CompiledStateGraph:
     sg.add_node(acp_mailcomposer)
     sg.add_node(acp_email_reviewer)
     sg.add_node(send_email)
-    sg.add_node(prepare_sendgrid_input)
     sg.add_node(prepare_output)
 
     # Add edges
@@ -154,21 +165,35 @@ def build_graph() -> CompiledStateGraph:
         path=check_final_email,
         iomapper_config_map={
             "done": {
-                "end": acp_email_reviewer,
+                "end": send_email,
                 "metadata": {
-                    "input_fields": ["mailcomposer_state.output.final_email", "target_audience"]
-                }
+                    "input_fields": [
+                        "sender_email_address",
+                        "recipient_email_address",
+                        "mailcomposer_state.output.final_email",
+                    ],
+                    "output_fields": [
+                        FieldMetadata(
+                            json_path="sendgrid_state",
+                            description="An object that has A prompt asking to send an email. It specifies the email address of the sender, the email address of the recipient and the content of the email.",
+                            examples=[
+                                "Please send an email from master@info.com to xxx@acme.com: The content of the email should be:\n Dear xxx, I am writing to you the say hello. Best Regards. Alessandro\n",
+                                "Write an email from alessandro@company.com  to the reipient 'someone@company.com' : The content of the email should be:\n Hello someone, How are you? Bye. Frank\n",
+                            ],
+                        )
+                    ],
+                },
             },
             "user": {
-                "end": "prepare_output",
-                "metadata": None
-            }
+                "end": END,
+                "metadata": {
+                    "output_fields": ["messages", "operation_logs"],
+                },
+            },
         },
-        llm=llm
+        llm=llm,
     )
 
-    sg.add_edge(acp_email_reviewer.get_name(), "prepare_sendgrid_input")
-    sg.add_edge("prepare_sendgrid_input", send_email.get_name())
     sg.add_edge(send_email.get_name(), "prepare_output")
     sg.add_edge("prepare_output", END)
 
@@ -176,9 +201,11 @@ def build_graph() -> CompiledStateGraph:
     g.name = "Marketing Campaign Manager"
     if GENERATE_MERMAID_GRAPH:
         with open("___graph.png", "wb") as f:
-            f.write(g.get_graph().draw_mermaid_png(
-                draw_method=MermaidDrawMethod.API,
-            ))
+            f.write(
+                g.get_graph().draw_mermaid_png(
+                    draw_method=MermaidDrawMethod.API,
+                )
+            )
     return g
 
 

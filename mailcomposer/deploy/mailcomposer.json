@@ -26,19 +26,12 @@
               "type": "string"
             }
           },
-          "required": [
-            "type",
-            "content"
-          ],
+          "required": ["type", "content"],
           "title": "Message",
           "type": "object"
         },
         "Type": {
-          "enum": [
-            "human",
-            "assistant",
-            "ai"
-          ],
+          "enum": ["human", "assistant", "ai"],
           "title": "Type",
           "type": "string"
         }
@@ -89,19 +82,12 @@
               "type": "string"
             }
           },
-          "required": [
-            "type",
-            "content"
-          ],
+          "required": ["type", "content"],
           "title": "Message",
           "type": "object"
         },
         "Type": {
-          "enum": [
-            "human",
-            "assistant",
-            "ai"
-          ],
+          "enum": ["human", "assistant", "ai"],
           "title": "Type",
           "type": "string"
         }
@@ -144,7 +130,7 @@
             }
           ],
           "default": null,
-          "description": "Final email produced by the mail composer",
+          "description": "Final email produced by the mail composer, in html format",
           "title": "Final Email"
         }
       },
@@ -158,9 +144,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "test"
-      ],
+      "required": ["test"],
       "title": "ConfigSchema",
       "type": "object"
     }
@@ -190,3 +174,4 @@
     "dependencies": []
   }
 }
+

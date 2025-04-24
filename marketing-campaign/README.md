@@ -220,6 +220,82 @@ Example:
 target_audience = TargetAudience.business
 ```
 
+
+---
+
+### Method 3: Using UI
+
+This method provides an alternative way to interact with the Marketing Campaign application by using a ui build with [Gradio](https://www.gradio.app/).
+
+#### Steps:
+
+1. Adapt the file home.py under examples/marketing_campaign/ui change the paths to Workflow server and Workflow server manager
+
+```python
+PATH_TO_WFS
+PATH_TO_WFSM
+```
+
+Set the email details
+
+```python
+os.environ["RECIPIENT_EMAIL_ADDRESS"] = ""
+os.environ["SENDER_EMAIL_ADDRESS"] = ""
+```
+
+2. **Configure the Agents**:
+   Before starting the workflow server, provide the necessary configurations for the agents. Open the `./deploy/marketing_campaign_example.yaml` file located in the `deploy` folder and update the following values with your configuration:
+
+   ```yaml
+   values:
+     AZURE_OPENAI_API_KEY: your_secret
+     AZURE_OPENAI_ENDPOINT: "the_url.com"
+     API_HOST: 0.0.0.0
+     SENDGRID_HOST: http://host.docker.internal:8080
+     SENDGRID_API_KEY: SG.your-api-key
+   dependencies:
+     - name: mailcomposer
+       values:
+         AZURE_OPENAI_API_KEY: your_secret
+         AZURE_OPENAI_ENDPOINT: "the_url.com"
+     - name: email_reviewer
+       values:
+         AZURE_OPENAI_API_KEY: your_secret
+         AZURE_OPENAI_ENDPOINT: "the_url.com"
+   ```
+
+3. Run the API Bridge Agent
+
+Navigate to the `api-bridge-agnt` directory and run the following commands:
+
+```sh
+export OPENAI_API_KEY=***YOUR_OPENAI_API_KEY***
+
+# Optionally, if you want to use Azure OpenAI, you also need to specify the endpoint with the OPENAI_ENDPOINT environment variable:
+export OPENAI_ENDPOINT="https://YOUR-PROJECT.openai.azure.com"
+
+make start_redis
+make start_tyk
+```
+
+Configure the API Bridge Agent:
+
+```sh
+curl http://localhost:8080/tyk/apis/oas \
+  --header "x-tyk-authorization: foo" \
+  --header 'Content-Type: text/plain' \
+  -d@configs/api.sendgrid.com.oas.json
+
+curl http://localhost:8080/tyk/reload/group \
+  --header "x-tyk-authorization: foo"
+```
+
+4.  **Run Application**:
+    From within examples/marketing-campaign folder run:
+
+```sh
+poetry run python ./src/marketing_campaign/gradio-ui.py
+```
 ---
 
 By following these steps, you can successfully run the Marketing Campaign Manager application using either the ACP client or LangGraph. Both methods allow you to compose, review, and send marketing emails interactively.

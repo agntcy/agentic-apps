@@ -15,12 +15,7 @@
     "input": {
       "$defs": {
         "TargetAudience": {
-          "enum": [
-            "general",
-            "technical",
-            "business",
-            "academic"
-          ],
+          "enum": ["general", "technical", "business", "academic"],
           "title": "TargetAudience",
           "type": "string"
         }
@@ -36,10 +31,7 @@
           "description": "The target audience for the email, affecting the style of review"
         }
       },
-      "required": [
-        "email",
-        "target_audience"
-      ],
+      "required": ["email", "target_audience"],
       "title": "EmailReviewerInput",
       "type": "object"
     },
@@ -62,11 +54,15 @@
           "default": null,
           "description": "The corrected version of the email, if changes were necessary",
           "title": "Corrected Email"
+        },
+        "review_result": {
+          "default": "",
+          "description": "A description containing the email changes",
+          "title": "Review Result",
+          "type": "string"
         }
       },
-      "required": [
-        "correct"
-      ],
+      "required": ["correct"],
       "title": "EmailReview",
       "type": "object"
     },
@@ -108,16 +104,9 @@
       {
         "desc": "Azure endpoint for the OpenAI service",
         "name": "AZURE_OPENAI_ENDPOINT"
-      },
-      {
-        "desc": "OpenAI API key",
-        "name": "OPENAI_API_KEY"
-      },
-      {
-        "desc": "OpenAI model",
-        "name": "OPENAI_MODEL"
       }
     ],
     "dependencies": []
   }
 }
+
