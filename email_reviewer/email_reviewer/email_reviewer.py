@@ -94,7 +94,7 @@ class EmailReviewer(Workflow):
         super().__init__(verbose=verbose, **workflow_kwargs)
 
         # Can use Azure OpenAI or OpenAI based on the environment variables
-        if os.getenv("AZURE_OPENAI_ENDPOINT")
+        if os.getenv("AZURE_OPENAI_ENDPOINT"):
             self.llm = llm or AzureOpenAI(
                 model=os.getenv("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
                 deployment_name=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o-mini"),
