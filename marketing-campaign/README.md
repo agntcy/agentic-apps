@@ -59,7 +59,7 @@ curl http://localhost:8080/tyk/reload/group \
   --header "x-tyk-authorization: foo"
 ```
 
-### 2. Download the Agent Workflow Server Manager 
+### 2. Download the Agent Workflow Server Manager
 
 Follow these [instructions](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation) to install the Agent Workflow Server Manager.
 
@@ -117,7 +117,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
 2. **Start the Workflow Server**:
    Run the following command to deploy the Marketing Campaign workflow server:
    ```sh
-   wfsm deploy -m ./deploy/marketing-campaign.json -e ./deploy/marketing_campaign_example.yaml 
+   wfsm deploy -m ./deploy/marketing-campaign.json -e ./deploy/marketing_campaign_example.yaml
    ```
 
    If everything is set up correctly, the application will start, and the logs will display:
@@ -229,12 +229,7 @@ This method provides an alternative way to interact with the Marketing Campaign 
 
 #### Steps:
 
-1. Adapt the file home.py under examples/marketing_campaign/ui change the paths to Workflow server and Workflow server manager
-
-```python
-PATH_TO_WFS
-PATH_TO_WFSM
-```
+1. Adapt the `src/marketing_campaign/gradio_ui.py` file.
 
 Set the email details
 
@@ -294,7 +289,7 @@ curl http://localhost:8080/tyk/reload/group \
     From within examples/marketing-campaign folder run:
 
 ```sh
-poetry run python ./src/marketing_campaign/gradio-ui.py
+poetry run ui
 ```
 ---
 

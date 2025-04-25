@@ -17,6 +17,8 @@ langchain = "^0.3.20"
 agntcy-acp = "1.1.2"
 gradio = "^5.23.1"
 
+[project.scripts]
+ui = "marketing_campaign.gradio_ui:main"
 
 [tool.poetry]
 packages = [{include = "marketing_campaign", from = "src"}]
