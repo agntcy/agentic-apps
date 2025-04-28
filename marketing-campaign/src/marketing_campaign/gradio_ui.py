@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 import urllib.request
 from urllib.parse import urlparse
 
@@ -195,6 +194,8 @@ async def chat_with_bot(api_client, message, history):
 
     overall_state = outputState
 
+    return outputState.messages[-1].content
+
 
 async def gradio_ui():
     path = os.path.abspath(os.getcwd())
@@ -218,8 +219,9 @@ async def gradio_ui():
     async with api_client:
         async def response(message, chat_history):
             chat_history.append({"role": "user", "content": message})
-            await chat_with_bot(api_client, message=message, history=chat_history)
-            yield chat_history
+            answer = await chat_with_bot(api_client, message=message, history=chat_history)
+            yield answer
+
 
         demo = gr.ChatInterface(response, title="LangGraph Chat", type="messages")
 

@@ -47,6 +47,7 @@ def process_inputs(
             """
         )
     state.recipient_email_address = cfg["recipient_email_address"]
+    state.sender_email_address = cfg["sender_email_address"]
 
     if user_message.upper() == "OK":
         state.has_composer_completed = True
