@@ -38,7 +38,11 @@ The email must be compelling and adhere to our marketing standards.
 
 If you need more details to complete the email, please ask me.
 Once you have all the necessary information, please create the email body. The email must be engaging and persuasive. The subject that cannot exceed 5 words (no bold).
-Mark the beginning (one before the subject) and the end of the email with the separator {{separator}} (the second at the end).
+The email should be in the following format
+{{separator}}
+subject
+body
+{{separator}}
 DO NOT FORGET TO ADD THE SEPARATOR BEFORE THE SUBECT AND AFTER THE EMAIL BODY!
 SHOULD NEVER HAPPPEN TO HAVE THE SEPARATOR AFTER THE SUBJECT AND BEFORE THE EMAIL BODY! NEVER AFTER THE SUBJECT!
 """,
