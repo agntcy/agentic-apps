@@ -27,8 +27,18 @@ class AgentState(BaseModel):
     messages: Annotated[Optional[list[Message]], operator.add] = []
     is_completed: Optional[bool] = None
 
+class StatelessAgentState(BaseModel):
+    messages: Optional[list[Message]] = []
+    is_completed: Optional[bool] = None
+
 
 class OutputState(AgentState):
+    final_email: Optional[str] = Field(
+        default=None,
+        description="Final email produced by the mail composer, in html format"
+    )
+
+class StatelessOutputState(StatelessAgentState):
     final_email: Optional[str] = Field(
         default=None,
         description="Final email produced by the mail composer, in html format"

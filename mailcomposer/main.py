@@ -1,15 +1,16 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import json
-
+import os
 from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(dotenv_path=find_dotenv(usecwd=True))
-from mailcomposer.mailcomposer import graph, AgentState
+from mailcomposer.mailcomposer import graph
 from mailcomposer.state import Message, OutputState, Type as MsgType
 
-
 def main():
+    load_dotenv(dotenv_path=find_dotenv(usecwd=True))
+
+    is_stateless = os.getenv("STATELESS", "false").lower() == "true"
+
     output = OutputState(messages=[], final_email=None)
     is_completed = False
     while True:
@@ -20,7 +21,10 @@ def main():
             break
         message = input("YOU [Type OK when you are happy with the email proposed] >>> ")
 
-        nextinput = [Message(content=message, type=MsgType.human)]
+        if is_stateless:
+            nextinput = output.messages + [Message(content=message, type=MsgType.human)]
+        else:
+            nextinput = [Message(content=message, type=MsgType.human)]
 
         if message == "OK":
             is_completed = True
@@ -34,5 +38,5 @@ def main():
     print("Final email is:")
     print(output.final_email)
 
-
-main()
+if __name__ == "__main__":
+    main()
