@@ -35,13 +35,18 @@ Edit the file to add the DuckDuckGo MCP server:
 }
 ```
 
-Start API Bridge Agent, configure it with MCP, in initialize the MCP servers:
+Start API Bridge Agent, configure it with MCP, with Github API support, and initialize the MCP servers:
 
 ```shell
 curl http://localhost:8080/tyk/apis/oas \
   --header 'x-tyk-authorization: foo' \
   --header 'Content-Type: text/plain' \
   -d@configs/mcp.oas.json
+
+curl http://localhost:8080/tyk/apis/oas \
+  --header "x-tyk-authorization: foo" \
+  --header 'Content-Type: text/plain' \
+  -d@configs/api.github.com.gist.deref.oas.json
 
 curl http://localhost:8080/tyk/reload/group --header 'x-tyk-authorization: foo'
 
@@ -60,7 +65,7 @@ Options:
   --help                 Show this message and exit.
 ```
 
-Check for pages that are related to the 'agntcy/acp-spec' Github repository:
+Check for pages that are related to the `agntcy/acp-spec` Github repository:
 
 ```shell
 uv run demo --repository 'agntcy/acp-spec' --api-bridge-url 'http://localhost:8080'
@@ -98,7 +103,7 @@ similar output to the following:
 
 From the previous step, extract the ACP listening address, agent ID and API key,
 and use them to call the application.
-Note that because API Bridge Agent is running on the Host, the url needs to be
+Note that because API Bridge Agent is running on the Host, the URL needs to be
 `http://host.docker.internal:8080`.
 
 ```
