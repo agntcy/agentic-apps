@@ -19,7 +19,7 @@ azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 if not azure_endpoint:
     raise ValueError("AZURE_OPENAI_ENDPOINT must be set as an environment variable.")
 
-is_stateless = os.getenv("STATELESS", "false").lower() == "true"
+is_stateless = os.getenv("STATELESS", "true").lower() == "true"
 
 llm = AzureChatOpenAI(
     api_key=SecretStr(api_key),

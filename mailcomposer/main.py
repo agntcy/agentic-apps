@@ -9,7 +9,7 @@ from mailcomposer.state import Message, OutputState, Type as MsgType
 def main():
     load_dotenv(dotenv_path=find_dotenv(usecwd=True))
 
-    is_stateless = os.getenv("STATELESS", "false").lower() == "true"
+    is_stateless = os.getenv("STATELESS", "true").lower() == "true"
 
     output = OutputState(messages=[], final_email=None)
     is_completed = False
