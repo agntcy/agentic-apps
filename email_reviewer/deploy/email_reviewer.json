@@ -77,7 +77,7 @@
       {
         "type": "source_code",
         "name": "source_code_local",
-        "url": "https://github.com/agntcy/agentic-apps.git//email_reviewer",
+        "url": "./../",
         "framework_config": {
           "framework_type": "llamaindex",
           "path": "email_reviewer:email_reviewer_workflow"

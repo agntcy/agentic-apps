@@ -836,7 +836,7 @@
       {
         "type": "source_code",
         "name": "source_code_local",
-        "url": "file://.",
+        "url": "file://./../",
         "framework_config": {
           "framework_type": "langgraph",
           "graph": "marketing_campaign.app:graph"
@@ -863,7 +863,7 @@
         "ref": {
           "name": "org.agntcy.mailcomposer",
           "version": "0.0.1",
-          "url": "../mailcomposer/deploy/mailcomposer.json"
+          "url": "../../mailcomposer/deploy/mailcomposer.json"
         }
       },
       {
@@ -871,7 +871,7 @@
         "ref": {
           "name": "org.agntcy.email_reviewer",
           "version": "0.0.1",
-          "url": "../email_reviewer/deploy/email_reviewer.json"
+          "url": "../../email_reviewer/deploy/email_reviewer.json"
         }
       }
     ]
