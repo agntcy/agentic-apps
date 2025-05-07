@@ -6,8 +6,9 @@ from langgraph.graph import StateGraph, START, END
 from langchain_openai import AzureChatOpenAI
 from pydantic import SecretStr
 from langchain.prompts import PromptTemplate
+from langgraph.checkpoint.memory import InMemorySaver
+from .state import OutputState, AgentState, StatelessAgentState, StatelessOutputState, Message, Type as MsgType
 
-from .state import OutputState, AgentState, Message, Type as MsgType
 
 # Initialize the Azure OpenAI model
 api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -17,6 +18,8 @@ if not api_key:
 azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 if not azure_endpoint:
     raise ValueError("AZURE_OPENAI_ENDPOINT must be set as an environment variable.")
+
+is_stateless = os.getenv("STATELESS", "true").lower() == "true"
 
 llm = AzureChatOpenAI(
     api_key=SecretStr(api_key),
@@ -90,7 +93,7 @@ def convert_messages(messages:list)->list[BaseMessage]:
 
 
 # Define mail_agent function
-def email_agent(state: AgentState) -> OutputState | AgentState:
+def email_agent(state: AgentState | StatelessAgentState) -> OutputState | AgentState | StatelessOutputState | StatelessAgentState :
     """This agent is a skilled writer for a marketing company, creating formal and professional emails for publicity campaigns.
     It interacts with users to gather the necessary details.
     Once the user approves by sending "is_completed": true, the agent outputs the finalized email in "final_email"."""
@@ -104,20 +107,32 @@ def email_agent(state: AgentState) -> OutputState | AgentState:
             final_email=final_mail)
         return output_state
 
-    # Generate the email
-    llm_messages = [
-        Message(type=MsgType.human, content= MARKETING_EMAIL_PROMPT_TEMPLATE.format(separator=SEPARATOR)),
-    ] + (state.messages or [])
+    # Append messages from state to initial prompt
+    messages = [Message(type=MsgType.human, content=MARKETING_EMAIL_PROMPT_TEMPLATE.format(separator=SEPARATOR))] + state.messages
+    
+    # Call the LLM
+    ai_message = Message(type=MsgType.ai, content=str(llm.invoke(convert_messages(messages)).content))
+    
+    if is_stateless:
+        return {"messages" : state.messages + [ai_message]}
+    else:
+        return {"messages" : [ai_message]}
 
-    state.messages = (state.messages or []) + [Message(type=MsgType.ai, content=str(llm.invoke(convert_messages(llm_messages)).content))]
-    return state
 
-# Create the graph and add the agent node
-graph_builder = StateGraph(AgentState, output=OutputState)
+if is_stateless:
+    graph_builder = StateGraph(StatelessAgentState, output=StatelessOutputState)
+else:
+    graph_builder = StateGraph(AgentState, output=OutputState)
+
 graph_builder.add_node("email_agent", email_agent)
 
 graph_builder.add_edge(START, "email_agent")
 graph_builder.add_edge("email_agent", END)
 
-# Compile the graph
-graph = graph_builder.compile()
+if is_stateless:
+    print("mailcomposer - running in stateless mode")
+    graph = graph_builder.compile()
+else:
+    print("mailcomposer - running in stateful mode")
+    checkpointer = InMemorySaver()
+    graph = graph_builder.compile(checkpointer=checkpointer)

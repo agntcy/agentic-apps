@@ -1,11 +1,10 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
-from typing import Optional
+from typing import Optional, Annotated
 
 from pydantic import BaseModel, Field
-
-
+import operator
 class Type(Enum):
     human = 'human'
     assistant = 'assistant'
@@ -25,11 +24,21 @@ class ConfigSchema(BaseModel):
 
 
 class AgentState(BaseModel):
-    messages: Optional[list[Message]] = None
+    messages: Annotated[Optional[list[Message]], operator.add] = []
+    is_completed: Optional[bool] = None
+
+class StatelessAgentState(BaseModel):
+    messages: Optional[list[Message]] = []
     is_completed: Optional[bool] = None
 
 
 class OutputState(AgentState):
+    final_email: Optional[str] = Field(
+        default=None,
+        description="Final email produced by the mail composer, in html format"
+    )
+
+class StatelessOutputState(StatelessAgentState):
     final_email: Optional[str] = Field(
         default=None,
         description="Final email produced by the mail composer, in html format"

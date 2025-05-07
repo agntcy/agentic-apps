@@ -1,19 +1,19 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import json
-
+import os
 from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(dotenv_path=find_dotenv(usecwd=True))
-from mailcomposer.mailcomposer import graph, AgentState, OutputState
-from mailcomposer.state import Message, Type as MsgType
+from mailcomposer.mailcomposer import graph
+from mailcomposer.state import Message, OutputState, Type as MsgType
 
 def main():
-    output = OutputState(
-        messages=[],
-        final_email=None
-    )
-    while(True) :
+    load_dotenv(dotenv_path=find_dotenv(usecwd=True))
+
+    is_stateless = os.getenv("STATELESS", "true").lower() == "true"
+
+    output = OutputState(messages=[], final_email=None)
+    is_completed = False
+    while True:
         if output.messages and len(output.messages) > 0:
             m = output.messages[-1]
             print(f"[Assistant] \t\t>>> {m.content}")
@@ -21,15 +21,22 @@ def main():
             break
         message = input("YOU [Type OK when you are happy with the email proposed] >>> ")
 
-        nextinput = AgentState(
-            messages = (output.messages or []) + [Message(content=message, type=MsgType.human)]
-        )
+        if is_stateless:
+            nextinput = output.messages + [Message(content=message, type=MsgType.human)]
+        else:
+            nextinput = [Message(content=message, type=MsgType.human)]
+
         if message == "OK":
-            nextinput.is_completed = True
-        out = graph.invoke(nextinput, {"configurable": {"thread_id": "foo"}})
+            is_completed = True
+        
+        out = graph.invoke(
+            {"messages": nextinput, "is_completed": is_completed},
+            {"configurable": {"thread_id": "foo"}},
+        )
         output: OutputState = OutputState.model_validate(out)
 
     print("Final email is:")
     print(output.final_email)
 
-main()
+if __name__ == "__main__":
+    main()
