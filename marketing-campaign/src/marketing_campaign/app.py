@@ -5,7 +5,10 @@ import copy
 
 from agntcy_iomapper import FieldMetadata
 from agntcy_acp.langgraph.api_bridge import APIBridgeAgentNode
-from agntcy_acp.langgraph.io_mapper import add_io_mapped_conditional_edge
+from agntcy_acp.langgraph.io_mapper import (
+    add_io_mapped_conditional_edge,
+    add_io_mapped_edge,
+)
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from marketing_campaign import mailcomposer
@@ -17,6 +20,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_openai.chat_models.azure import AzureChatOpenAI
 from marketing_campaign import email_reviewer
 from marketing_campaign.state import MailComposerState
+from langgraph.checkpoint.memory import MemorySaver
 
 
 # Fill in client configuration for the remote agent
@@ -158,7 +162,6 @@ def build_graph() -> CompiledStateGraph:
     # Add edges
     sg.add_edge(START, "process_inputs")
     sg.add_edge("process_inputs", acp_mailcomposer.get_name())
-
     ## Add conditional edge between mailcomposer and either send_email or END, adding io_mappers between them
     add_io_mapped_conditional_edge(
         sg,
@@ -166,31 +169,41 @@ def build_graph() -> CompiledStateGraph:
         path=check_final_email,
         iomapper_config_map={
             "done": {
-                "end": send_email,
+                "end": acp_email_reviewer,
                 "metadata": {
                     "input_fields": [
-                        "sender_email_address",
-                        "recipient_email_address",
                         "mailcomposer_state.output.final_email",
-                    ],
-                    "output_fields": [
-                        FieldMetadata(
-                            json_path="sendgrid_state",
-                            description="An object that has A prompt asking to send an email. It specifies the email address of the sender, the email address of the recipient and the content of the email.",
-                            examples=[
-                                "Please send an email from master@info.com to xxx@acme.com: The content of the email should be:\n Dear xxx, I am writing to you the say hello. Best Regards. Alessandro\n",
-                                "Write an email from alessandro@company.com  to the reipient 'someone@company.com' : The content of the email should be:\n Hello someone, How are you? Bye. Frank\n",
-                            ],
-                        )
-                    ],
+                        "target_audience",
+                    ]
                 },
             },
-            "user": {
-                "end": END,
-                "metadata": {
-                    "output_fields": ["messages", "operation_logs"],
-                },
-            },
+            "user": {"end": "prepare_output", "metadata": None},
+        },
+        llm=llm,
+    )
+
+    ## Add conditional edge between mail reviewer and either send_email or END, adding io_mappers between them
+
+    add_io_mapped_edge(
+        sg,
+        start=acp_email_reviewer,
+        end=send_email,
+        iomapper_config={
+            "input_fields": [
+                "sender_email_address",
+                "recipient_email_address",
+                "mailcomposer_state.output.final_email",
+            ],
+            "output_fields": [
+                FieldMetadata(
+                    json_path="sendgrid_state",
+                    description="An object that has A prompt asking to send an email. It specifies the email address of the sender, the email address of the recipient and the content of the email.",
+                    examples=[
+                        "Please send an email from master@info.com to xxx@acme.com: The content of the email should be:\n Dear xxx, I am writing to you the say hello. Best Regards. Alessandro\n",
+                        "Write an email from alessandro@company.com  to the reipient 'someone@company.com' : The content of the email should be:\n Hello someone, How are you? Bye. Frank\n",
+                    ],
+                )
+            ],
         },
         llm=llm,
     )
@@ -198,7 +211,8 @@ def build_graph() -> CompiledStateGraph:
     sg.add_edge(send_email.get_name(), "prepare_output")
     sg.add_edge("prepare_output", END)
 
-    g = sg.compile()
+    memory = MemorySaver()
+    g = sg.compile(checkpointer=memory)
     g.name = "Marketing Campaign Manager"
     if GENERATE_MERMAID_GRAPH:
         with open("___graph.png", "wb") as f:
