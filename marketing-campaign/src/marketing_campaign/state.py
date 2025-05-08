@@ -10,6 +10,7 @@ class ConfigModel(BaseModel):
     recipient_email_address: str = Field(..., description="Email address of the email recipient")
     sender_email_address: str = Field(..., description="Email address of the email sender")
     target_audience: email_reviewer.TargetAudience = Field(..., description="Target audience for the marketing campaign")
+    thread_id: str = Field(default="some_testing_id")
 
 class MailComposerState(BaseModel):
     input: Optional[mailcomposer.InputSchema] = None

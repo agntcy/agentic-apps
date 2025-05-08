@@ -22,7 +22,6 @@ from marketing_campaign import email_reviewer
 from marketing_campaign.state import MailComposerState
 from langgraph.checkpoint.memory import MemorySaver
 
-
 # Fill in client configuration for the remote agent
 MAILCOMPOSER_AGENT_ID = os.environ.get("MAILCOMPOSER_ID", "")
 EMAIL_REVIEWER_AGENT_ID = os.environ.get("EMAIL_REVIEWER_ID", "")
@@ -196,11 +195,11 @@ def build_graph() -> CompiledStateGraph:
             ],
             "output_fields": [
                 FieldMetadata(
-                    json_path="sendgrid_state",
-                    description="An object that has A prompt asking to send an email. It specifies the email address of the sender, the email address of the recipient and the content of the email.",
+                    json_path="sendgrid_state.input",
+                    description="An object with a key called query that represents A prompt asking to send an email. It specifies the email address of the sender, the email address of the recipient and the content of the email.",
                     examples=[
-                        "Please send an email from master@info.com to xxx@acme.com: The content of the email should be:\n Dear xxx, I am writing to you the say hello. Best Regards. Alessandro\n",
-                        "Write an email from alessandro@company.com  to the reipient 'someone@company.com' : The content of the email should be:\n Hello someone, How are you? Bye. Frank\n",
+                        "{query: Please send an email from master@info.com to xxx@acme.com: The content of the email should be:\n Dear xxx, I am writing to you the say hello. Best Regards. Alessandro}",
+                        "{query: Write an email from alessandro@company.com  to the reipient 'someone@company.com' : The content of the email should be:\n Hello someone, How are you? Bye. Frank}",
                     ],
                 )
             ],
