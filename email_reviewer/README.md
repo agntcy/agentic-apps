@@ -38,19 +38,30 @@ python email_reviewer/email_reviewer.py
 
 ## Running the Email Agent using Agent Workflow Server
 
-* Copy and adapt `.env` into `deploy/email_reviewer_example.yaml` and set the environment variables
-* Make sure that the workflow server manager cli (`wfsm`) is added to your path
-* Start the workflow server
+* Download the Agent Workflow Server Manager by following these [instructions](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation).
+* Edit the file `deploy/email_reviewer_example.yaml`:
+    ```yaml
+        config:
+            org.agntcy.mail_reviewer:
+                port: 52393
+                apiKey: 799cccc7-49e4-420a-b0a8-e4de949ae673
+                id: 45fb3f84-c0d7-41fb-bae3-363ca8f8092a
+                envVars:
+                    AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+                    AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
     ```
-    cd deploy;
-    wfsm deploy -m ./email_reviewer.json -e ../.env
+* Start the workflow server through the worflow server manager.
     ```
-* Once you start the server, note down the port number, agent ID, and API key, and store them as environment variables
+    wfsm deploy -m ./deploy/email_reviewer.json -c ./deploy/email_reviewer_example.yaml --dryRun=false
     ```
-    export AGENT_ID=<agent_id>
-    export API_KEY=<api_key>
-    export WORKFLOW_SERVER_PORT=<port_number>
+    
+* Export the following environment variables
     ```
+    export AGENT_ID=45fb3f84-c0d7-41fb-bae3-363ca8f8092a
+    export API_KEY=799cccc7-49e4-420a-b0a8-e4de949ae673
+    export WORKFLOW_SERVER_PORT=52393
+    ```
+
 * Then, make a request in another terminal and wait for the response
     ```
     curl -s -H 'content-type: application/json' -H "x-api-key: ${API_KEY}" -d "{\"agent_id\": \"${AGENT_ID}\", \"input\": { \"email\": \"Dear Team,\n\nI am writng to inform you that the server will be down for maintenance on Saturday, 25th December 2022 from 8:00 AM to 12:00 PM. During this time, the server won't not be accessible.\n\nWe apologize for any inconvenience this may cause and appreciate your understandings.\n\nBest regards,\nJohn Doe\", \"target_audience\": \"technical\" }, \"config\": {} }" http://127.0.0.1:${WORKFLOW_SERVER_PORT}/runs/wait

@@ -165,8 +165,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
    export MARKETING_CAMPAIGN_API_KEY='{"x-api-key": "12737451-d333-41c2-b3dd-12f15fa59b38"}'
    ```
    Export environment variables specific to the marketing campaign manager app.
-   
-   # Configuration of the application
+  
    ```sh
    export RECIPIENT_EMAIL_ADDRESS="recipient@example.com"
    export SENDER_EMAIL_ADDRESS="sender@example.com" # Sender email address as configured in Sendgrid
@@ -205,7 +204,6 @@ This script is primarily intended for development and debugging purposes, allowi
    export MAILCOMPOSER_HOST="http://localhost:52384"
    export MAILCOMPOSER_ID="76363e34-d684-4cab-b2b7-2721c772e42f"
    export MAILCOMPOSER_API_KEY='{"x-api-key": "a9ee3d6a-6950-4252-b2f0-ad70ce57d603"}'
-
    export EMAIL_REVIEWER_HOST="http://localhost:52393"
    export EMAIL_REVIEWER_ID="45fb3f84-c0d7-41fb-bae3-363ca8f8092a"
    export EMAIL_REVIEWER_API_KEY='{"x-api-key": "799cccc7-49e4-420a-b0a8-e4de949ae673"}'
@@ -219,8 +217,6 @@ This script is primarily intended for development and debugging purposes, allowi
    export SENDGRID_API_KEY=SG.your_secret
    export AZURE_OPENAI_API_KEY=your_secret
    export AZURE_OPENAI_ENDPOINT='https://[YOUR ENDPOINT].openai.azure.com'
-
-   # Configuration of the application
    export RECIPIENT_EMAIL_ADDRESS="recipient@example.com"
    export SENDER_EMAIL_ADDRESS="sender@example.com" # Sender email address as configured in Sendgrid
    ```

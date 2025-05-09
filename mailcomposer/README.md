@@ -11,7 +11,7 @@ Before running the application, ensure you have the following:
 - **Python 3.9 or higher**
 - **Poetry**
 
-## Running the Email Agent directly
+## Running the Mail Composer Agent directly
 * Install dependencies
     ```
     poetry install
@@ -26,23 +26,23 @@ Before running the application, ensure you have the following:
     poetry run python main.py 
     ```
 
-## Running the Email Agent using Agent Workflow Server
+## Running the Mail Composer using Agent Workflow Server
 
-* Create an environment variable file with the following data:
-    ```commandline
-    echo "
-    AZURE_OPENAI_MODEL=gpt-4o-mini
-    AZURE_OPENAI_API_KEY=***YOUR_OPENAI_API_KEY***
-    AZURE_OPENAI_ENDPOINT=***YOUR_OPENAI_ENDPOINT***
-    OPENAI_API_VERSION=2024-07-01-preview 
-    API_HOST=0.0.0.0
-    " > deploy/.mailcomposer.env
+* Download the Agent Workflow Server Manager by following these [instructions](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation).
+* Edit the file `deploy/mailcomposer_example.yaml`:
+    ```yaml
+        config:
+            org.agntcy.mailcomposer:
+                port: 52384
+                apiKey: a9ee3d6a-6950-4252-b2f0-ad70ce57d603
+                id: 76363e34-d684-4cab-b2b7-2721c772e42f
+                envVars:
+                    AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+                    AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
     ```
-* Make sure that the workflow server manager cli (`wfsm`) is added to your path
-* Start the workflow server
+* Start the workflow server through the worflow server manager.
     ```
-    cd deploy;
-    wfsm deploy -m ./mailcomposer.json -e .mailcomposer.env
+    wfsm deploy -m ./deploy/mailcomposer.json -c ./deploy/mailcomposer_example.yaml --dryRun=false
     ```
 
 
