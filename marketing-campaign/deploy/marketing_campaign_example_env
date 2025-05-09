@@ -1,0 +1,12 @@
+AZURE_OPENAI_API_KEY: your-api-key
+AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'
+API_HOST: 0.0.0.0
+
+ORG_AGNTCY_MARKETING_CAMPAIGN_SENDGRID_HOST=http://host.docker.internal:8080
+ORG_AGNTCY_MARKETING_CAMPAIGN_SENDGRID_API_KEY=SG.your-api-key
+
+ORG_AGNTCY_MAILCOMPOSER_OPENAI_API_KEY=your-api-key
+ORG_AGNTCY_MAILCOMPOSER_AZURE_OPENAI_ENDPOINT='https://your-project-agents.openai.azure.com'
+
+ORG_AGNTCY_EMAIL_REVIEWER_AZURE_OPENAI_API_KEY=your-api-key
+ORG_AGNTCY_EMAIL_REVIEWER_AZURE_OPENAI_ENDPOINT='https://your-project-agents.openai.azure.com'
