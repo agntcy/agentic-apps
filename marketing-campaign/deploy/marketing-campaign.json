@@ -1,880 +1,945 @@
 {
-  "metadata": {
-    "ref": {
-      "name": "org.agntcy.marketing-campaign",
-      "version": "0.0.1"
-    },
-    "description": "Offer a chat interface to compose an email for a marketing campaign. Final output is the email that could be used for the campaign"
-  },
-  "specs": {
-    "capabilities": {
-      "threads": false,
-      "interrupts": false,
-      "callbacks": false
-    },
-    "input": {
-      "$defs": {
-        "APIBridgeInput": {
-          "properties": {
-            "query": {
-              "description": "Query for the API bridge agent in natural language",
-              "title": "Query",
-              "type": "string"
-            }
-          },
-          "required": ["query"],
-          "title": "APIBridgeInput",
-          "type": "object"
-        },
-        "APIBridgeOutput": {
-          "properties": {
-            "result": {
-              "description": "API response from API bridge agent",
-              "title": "Result",
-              "type": "string"
-            }
-          },
-          "required": ["result"],
-          "title": "APIBridgeOutput",
-          "type": "object"
-        },
-        "MailComposerState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "MailComposerState",
-          "type": "object"
-        },
-        "MailReviewerState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "MailReviewerState",
-          "type": "object"
-        },
-        "Message": {
-          "properties": {
-            "type": {
-              "$ref": "#/$defs/Type",
-              "description": "indicates the originator of the message, a human or an assistant"
-            },
-            "content": {
-              "description": "the content of the message",
-              "title": "Content",
-              "type": "string"
-            }
-          },
-          "required": ["type", "content"],
-          "title": "Message",
-          "type": "object"
-        },
-        "SendGridState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/APIBridgeInput"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/APIBridgeOutput"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "SendGridState",
-          "type": "object"
-        },
-        "TargetAudience": {
-          "enum": ["general", "technical", "business", "academic"],
-          "title": "TargetAudience",
-          "type": "string"
-        },
-        "Type": {
-          "enum": ["human", "assistant", "ai"],
-          "title": "Type",
-          "type": "string"
-        },
-        "marketing_campaign__email_reviewer__InputSchema": {
-          "properties": {
-            "email": {
-              "description": "The email content to be reviewed and corrected",
-              "title": "Email",
-              "type": "string"
-            },
-            "target_audience": {
-              "$ref": "#/$defs/TargetAudience",
-              "description": "The target audience for the email, affecting the style of review"
-            }
-          },
-          "required": ["email", "target_audience"],
-          "title": "InputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__email_reviewer__OutputSchema": {
-          "properties": {
-            "correct": {
-              "description": "Indicates whether the email is correct and requires no changes",
-              "title": "Correct",
-              "type": "boolean"
-            },
-            "corrected_email": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "The corrected version of the email, if changes were necessary",
-              "title": "Corrected Email"
-            }
-          },
-          "required": ["correct"],
-          "title": "OutputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__mailcomposer__InputSchema": {
-          "properties": {
-            "messages": {
-              "anyOf": [
-                {
-                  "items": {
-                    "$ref": "#/$defs/Message"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Messages"
-            },
-            "is_completed": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Is Completed"
-            }
-          },
-          "title": "InputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__mailcomposer__OutputSchema": {
-          "properties": {
-            "messages": {
-              "anyOf": [
-                {
-                  "items": {
-                    "$ref": "#/$defs/Message"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Messages"
-            },
-            "is_completed": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Is Completed"
-            },
-            "final_email": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Final email produced by the mail composer",
-              "title": "Final Email"
-            }
-          },
-          "title": "OutputSchema",
-          "type": "object"
-        }
-      },
-      "properties": {
-        "messages": {
-          "default": [],
-          "description": "Chat messages",
-          "items": {
-            "$ref": "#/$defs/Message"
-          },
-          "title": "Messages",
-          "type": "array"
-        },
-        "operation_logs": {
-          "default": [],
-          "description": "An array containing all the operations performed and their result. Each operation is appended to this array with a timestamp.",
-          "examples": [
-            [
-              "Mar 15 18:10:39 Operation performed: email sent Result: OK",
-              "Mar 19 18:13:39 Operation X failed"
-            ]
-          ],
-          "items": {
-            "type": "string"
-          },
-          "title": "Operation Logs",
-          "type": "array"
-        },
-        "has_composer_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Flag indicating if the mail composer has succesfully completed its task",
-          "title": "Has Composer Completed"
-        },
-        "has_reviewer_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Has Reviewer Completed"
-        },
-        "has_sender_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Has Sender Completed"
-        },
-        "mailcomposer_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MailComposerState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "email_reviewer_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MailReviewerState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "target_audience": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TargetAudience"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "sendgrid_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SendGridState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "recipient_email_address": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Email address of the email recipient",
-          "title": "Recipient Email Address"
-        },
-        "sender_email_address": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Email address of the email sender",
-          "title": "Sender Email Address"
-        }
-      },
-      "title": "OverallState",
-      "type": "object"
-    },
-    "output": {
-      "$defs": {
-        "APIBridgeInput": {
-          "properties": {
-            "query": {
-              "description": "Query for the API bridge agent in natural language",
-              "title": "Query",
-              "type": "string"
-            }
-          },
-          "required": ["query"],
-          "title": "APIBridgeInput",
-          "type": "object"
-        },
-        "APIBridgeOutput": {
-          "properties": {
-            "result": {
-              "description": "API response from API bridge agent",
-              "title": "Result",
-              "type": "string"
-            }
-          },
-          "required": ["result"],
-          "title": "APIBridgeOutput",
-          "type": "object"
-        },
-        "MailComposerState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "MailComposerState",
-          "type": "object"
-        },
-        "MailReviewerState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "MailReviewerState",
-          "type": "object"
-        },
-        "Message": {
-          "properties": {
-            "type": {
-              "$ref": "#/$defs/Type",
-              "description": "indicates the originator of the message, a human or an assistant"
-            },
-            "content": {
-              "description": "the content of the message",
-              "title": "Content",
-              "type": "string"
-            }
-          },
-          "required": ["type", "content"],
-          "title": "Message",
-          "type": "object"
-        },
-        "SendGridState": {
-          "properties": {
-            "input": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/APIBridgeInput"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "output": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/APIBridgeOutput"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "SendGridState",
-          "type": "object"
-        },
-        "TargetAudience": {
-          "enum": ["general", "technical", "business", "academic"],
-          "title": "TargetAudience",
-          "type": "string"
-        },
-        "Type": {
-          "enum": ["human", "assistant", "ai"],
-          "title": "Type",
-          "type": "string"
-        },
-        "marketing_campaign__email_reviewer__InputSchema": {
-          "properties": {
-            "email": {
-              "description": "The email content to be reviewed and corrected",
-              "title": "Email",
-              "type": "string"
-            },
-            "target_audience": {
-              "$ref": "#/$defs/TargetAudience",
-              "description": "The target audience for the email, affecting the style of review"
-            }
-          },
-          "required": ["email", "target_audience"],
-          "title": "InputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__email_reviewer__OutputSchema": {
-          "properties": {
-            "correct": {
-              "description": "Indicates whether the email is correct and requires no changes",
-              "title": "Correct",
-              "type": "boolean"
-            },
-            "corrected_email": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "The corrected version of the email, if changes were necessary",
-              "title": "Corrected Email"
-            }
-          },
-          "required": ["correct"],
-          "title": "OutputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__mailcomposer__InputSchema": {
-          "properties": {
-            "messages": {
-              "anyOf": [
-                {
-                  "items": {
-                    "$ref": "#/$defs/Message"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Messages"
-            },
-            "is_completed": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Is Completed"
-            }
-          },
-          "title": "InputSchema",
-          "type": "object"
-        },
-        "marketing_campaign__mailcomposer__OutputSchema": {
-          "properties": {
-            "messages": {
-              "anyOf": [
-                {
-                  "items": {
-                    "$ref": "#/$defs/Message"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Messages"
-            },
-            "is_completed": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Is Completed"
-            },
-            "final_email": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Final email produced by the mail composer",
-              "title": "Final Email"
-            }
-          },
-          "title": "OutputSchema",
-          "type": "object"
-        }
-      },
-      "properties": {
-        "messages": {
-          "default": [],
-          "description": "Chat messages",
-          "items": {
-            "$ref": "#/$defs/Message"
-          },
-          "title": "Messages",
-          "type": "array"
-        },
-        "operation_logs": {
-          "default": [],
-          "description": "An array containing all the operations performed and their result. Each operation is appended to this array with a timestamp.",
-          "examples": [
-            [
-              "Mar 15 18:10:39 Operation performed: email sent Result: OK",
-              "Mar 19 18:13:39 Operation X failed"
-            ]
-          ],
-          "items": {
-            "type": "string"
-          },
-          "title": "Operation Logs",
-          "type": "array"
-        },
-        "has_composer_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Flag indicating if the mail composer has succesfully completed its task",
-          "title": "Has Composer Completed"
-        },
-        "has_reviewer_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Has Reviewer Completed"
-        },
-        "has_sender_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Has Sender Completed"
-        },
-        "mailcomposer_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MailComposerState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "email_reviewer_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MailReviewerState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "target_audience": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TargetAudience"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "sendgrid_state": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SendGridState"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "recipient_email_address": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Email address of the email recipient",
-          "title": "Recipient Email Address"
-        },
-        "sender_email_address": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Email address of the email sender",
-          "title": "Sender Email Address"
-        }
-      },
-      "title": "OverallState",
-      "type": "object"
-    },
-    "config": {
-      "$defs": {
-        "TargetAudience": {
-          "enum": ["general", "technical", "business", "academic"],
-          "title": "TargetAudience",
-          "type": "string"
-        }
-      },
-      "properties": {
-        "recipient_email_address": {
-          "description": "Email address of the email recipient",
-          "title": "Recipient Email Address",
-          "type": "string"
-        },
-        "sender_email_address": {
-          "description": "Email address of the email sender",
-          "title": "Sender Email Address",
-          "type": "string"
-        },
-        "target_audience": {
-          "$ref": "#/$defs/TargetAudience",
-          "description": "Target audience for the marketing campaign"
-        }
-      },
-      "required": [
-        "recipient_email_address",
-        "sender_email_address",
-        "target_audience"
-      ],
-      "title": "ConfigModel",
-      "type": "object"
-    }
-  },
-  "deployment": {
-    "deployment_options": [
-      {
-        "type": "source_code",
-        "name": "source_code_local",
-        "url": "file://./../",
-        "framework_config": {
-          "framework_type": "langgraph",
-          "graph": "marketing_campaign.app:graph"
-        }
-      }
+    "authors": [
+        "Cisco Systems"
     ],
-    "env_vars": [
-      {
-        "desc": "Azure key for the OpenAI service",
-        "name": "AZURE_OPENAI_API_KEY"
-      },
-      {
-        "desc": "Azure endpoint for the OpenAI service",
-        "name": "AZURE_OPENAI_ENDPOINT"
-      },
-      {
-        "desc": "Sendgrid API key",
-        "name": "SENDGRID_API_KEY"
-      }
+    "extensions": [
+        {
+            "name": "oasf.agntcy.org/feature/runtime/manifest",
+            "data": {
+                "specs": {
+                    "capabilities": {
+                        "threads": false,
+                        "interrupts": false,
+                        "callbacks": false
+                    },
+                    "input": {
+                        "$defs": {
+                            "APIBridgeInput": {
+                                "properties": {
+                                    "query": {
+                                        "description": "Query for the API bridge agent in natural language",
+                                        "title": "Query",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "query"
+                                ],
+                                "title": "APIBridgeInput",
+                                "type": "object"
+                            },
+                            "APIBridgeOutput": {
+                                "properties": {
+                                    "result": {
+                                        "description": "API response from API bridge agent",
+                                        "title": "Result",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "result"
+                                ],
+                                "title": "APIBridgeOutput",
+                                "type": "object"
+                            },
+                            "MailComposerState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "MailComposerState",
+                                "type": "object"
+                            },
+                            "MailReviewerState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "MailReviewerState",
+                                "type": "object"
+                            },
+                            "Message": {
+                                "properties": {
+                                    "type": {
+                                        "$ref": "#/$defs/Type",
+                                        "description": "indicates the originator of the message, a human or an assistant"
+                                    },
+                                    "content": {
+                                        "description": "the content of the message",
+                                        "title": "Content",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "content"
+                                ],
+                                "title": "Message",
+                                "type": "object"
+                            },
+                            "SendGridState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/APIBridgeInput"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/APIBridgeOutput"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "SendGridState",
+                                "type": "object"
+                            },
+                            "TargetAudience": {
+                                "enum": [
+                                    "general",
+                                    "technical",
+                                    "business",
+                                    "academic"
+                                ],
+                                "title": "TargetAudience",
+                                "type": "string"
+                            },
+                            "Type": {
+                                "enum": [
+                                    "human",
+                                    "assistant",
+                                    "ai"
+                                ],
+                                "title": "Type",
+                                "type": "string"
+                            },
+                            "marketing_campaign__email_reviewer__InputSchema": {
+                                "properties": {
+                                    "email": {
+                                        "description": "The email content to be reviewed and corrected",
+                                        "title": "Email",
+                                        "type": "string"
+                                    },
+                                    "target_audience": {
+                                        "$ref": "#/$defs/TargetAudience",
+                                        "description": "The target audience for the email, affecting the style of review"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "target_audience"
+                                ],
+                                "title": "InputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__email_reviewer__OutputSchema": {
+                                "properties": {
+                                    "correct": {
+                                        "description": "Indicates whether the email is correct and requires no changes",
+                                        "title": "Correct",
+                                        "type": "boolean"
+                                    },
+                                    "corrected_email": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "description": "The corrected version of the email, if changes were necessary",
+                                        "title": "Corrected Email"
+                                    }
+                                },
+                                "required": [
+                                    "correct"
+                                ],
+                                "title": "OutputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__mailcomposer__InputSchema": {
+                                "properties": {
+                                    "messages": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "$ref": "#/$defs/Message"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Messages"
+                                    },
+                                    "is_completed": {
+                                        "anyOf": [
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Is Completed"
+                                    }
+                                },
+                                "title": "InputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__mailcomposer__OutputSchema": {
+                                "properties": {
+                                    "messages": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "$ref": "#/$defs/Message"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Messages"
+                                    },
+                                    "is_completed": {
+                                        "anyOf": [
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Is Completed"
+                                    },
+                                    "final_email": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "description": "Final email produced by the mail composer",
+                                        "title": "Final Email"
+                                    }
+                                },
+                                "title": "OutputSchema",
+                                "type": "object"
+                            }
+                        },
+                        "properties": {
+                            "messages": {
+                                "default": [],
+                                "description": "Chat messages",
+                                "items": {
+                                    "$ref": "#/$defs/Message"
+                                },
+                                "title": "Messages",
+                                "type": "array"
+                            },
+                            "operation_logs": {
+                                "default": [],
+                                "description": "An array containing all the operations performed and their result. Each operation is appended to this array with a timestamp.",
+                                "examples": [
+                                    [
+                                        "Mar 15 18:10:39 Operation performed: email sent Result: OK",
+                                        "Mar 19 18:13:39 Operation X failed"
+                                    ]
+                                ],
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "Operation Logs",
+                                "type": "array"
+                            },
+                            "has_composer_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Flag indicating if the mail composer has succesfully completed its task",
+                                "title": "Has Composer Completed"
+                            },
+                            "has_reviewer_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "title": "Has Reviewer Completed"
+                            },
+                            "has_sender_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "title": "Has Sender Completed"
+                            },
+                            "mailcomposer_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/MailComposerState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "email_reviewer_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/MailReviewerState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "target_audience": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/TargetAudience"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "sendgrid_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/SendGridState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "recipient_email_address": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Email address of the email recipient",
+                                "title": "Recipient Email Address"
+                            },
+                            "sender_email_address": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Email address of the email sender",
+                                "title": "Sender Email Address"
+                            }
+                        },
+                        "title": "OverallState",
+                        "type": "object"
+                    },
+                    "output": {
+                        "$defs": {
+                            "APIBridgeInput": {
+                                "properties": {
+                                    "query": {
+                                        "description": "Query for the API bridge agent in natural language",
+                                        "title": "Query",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "query"
+                                ],
+                                "title": "APIBridgeInput",
+                                "type": "object"
+                            },
+                            "APIBridgeOutput": {
+                                "properties": {
+                                    "result": {
+                                        "description": "API response from API bridge agent",
+                                        "title": "Result",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "result"
+                                ],
+                                "title": "APIBridgeOutput",
+                                "type": "object"
+                            },
+                            "MailComposerState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__mailcomposer__InputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__mailcomposer__OutputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "MailComposerState",
+                                "type": "object"
+                            },
+                            "MailReviewerState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__email_reviewer__InputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/marketing_campaign__email_reviewer__OutputSchema"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "MailReviewerState",
+                                "type": "object"
+                            },
+                            "Message": {
+                                "properties": {
+                                    "type": {
+                                        "$ref": "#/$defs/Type",
+                                        "description": "indicates the originator of the message, a human or an assistant"
+                                    },
+                                    "content": {
+                                        "description": "the content of the message",
+                                        "title": "Content",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "content"
+                                ],
+                                "title": "Message",
+                                "type": "object"
+                            },
+                            "SendGridState": {
+                                "properties": {
+                                    "input": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/APIBridgeInput"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "output": {
+                                        "anyOf": [
+                                            {
+                                                "$ref": "#/$defs/APIBridgeOutput"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    }
+                                },
+                                "title": "SendGridState",
+                                "type": "object"
+                            },
+                            "TargetAudience": {
+                                "enum": [
+                                    "general",
+                                    "technical",
+                                    "business",
+                                    "academic"
+                                ],
+                                "title": "TargetAudience",
+                                "type": "string"
+                            },
+                            "Type": {
+                                "enum": [
+                                    "human",
+                                    "assistant",
+                                    "ai"
+                                ],
+                                "title": "Type",
+                                "type": "string"
+                            },
+                            "marketing_campaign__email_reviewer__InputSchema": {
+                                "properties": {
+                                    "email": {
+                                        "description": "The email content to be reviewed and corrected",
+                                        "title": "Email",
+                                        "type": "string"
+                                    },
+                                    "target_audience": {
+                                        "$ref": "#/$defs/TargetAudience",
+                                        "description": "The target audience for the email, affecting the style of review"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "target_audience"
+                                ],
+                                "title": "InputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__email_reviewer__OutputSchema": {
+                                "properties": {
+                                    "correct": {
+                                        "description": "Indicates whether the email is correct and requires no changes",
+                                        "title": "Correct",
+                                        "type": "boolean"
+                                    },
+                                    "corrected_email": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "description": "The corrected version of the email, if changes were necessary",
+                                        "title": "Corrected Email"
+                                    }
+                                },
+                                "required": [
+                                    "correct"
+                                ],
+                                "title": "OutputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__mailcomposer__InputSchema": {
+                                "properties": {
+                                    "messages": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "$ref": "#/$defs/Message"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Messages"
+                                    },
+                                    "is_completed": {
+                                        "anyOf": [
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Is Completed"
+                                    }
+                                },
+                                "title": "InputSchema",
+                                "type": "object"
+                            },
+                            "marketing_campaign__mailcomposer__OutputSchema": {
+                                "properties": {
+                                    "messages": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "$ref": "#/$defs/Message"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Messages"
+                                    },
+                                    "is_completed": {
+                                        "anyOf": [
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "title": "Is Completed"
+                                    },
+                                    "final_email": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null,
+                                        "description": "Final email produced by the mail composer",
+                                        "title": "Final Email"
+                                    }
+                                },
+                                "title": "OutputSchema",
+                                "type": "object"
+                            }
+                        },
+                        "properties": {
+                            "messages": {
+                                "default": [],
+                                "description": "Chat messages",
+                                "items": {
+                                    "$ref": "#/$defs/Message"
+                                },
+                                "title": "Messages",
+                                "type": "array"
+                            },
+                            "operation_logs": {
+                                "default": [],
+                                "description": "An array containing all the operations performed and their result. Each operation is appended to this array with a timestamp.",
+                                "examples": [
+                                    [
+                                        "Mar 15 18:10:39 Operation performed: email sent Result: OK",
+                                        "Mar 19 18:13:39 Operation X failed"
+                                    ]
+                                ],
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "Operation Logs",
+                                "type": "array"
+                            },
+                            "has_composer_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Flag indicating if the mail composer has succesfully completed its task",
+                                "title": "Has Composer Completed"
+                            },
+                            "has_reviewer_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "title": "Has Reviewer Completed"
+                            },
+                            "has_sender_completed": {
+                                "anyOf": [
+                                    {
+                                        "type": "boolean"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "title": "Has Sender Completed"
+                            },
+                            "mailcomposer_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/MailComposerState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "email_reviewer_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/MailReviewerState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "target_audience": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/TargetAudience"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "sendgrid_state": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/SendGridState"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "recipient_email_address": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Email address of the email recipient",
+                                "title": "Recipient Email Address"
+                            },
+                            "sender_email_address": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Email address of the email sender",
+                                "title": "Sender Email Address"
+                            }
+                        },
+                        "title": "OverallState",
+                        "type": "object"
+                    },
+                    "config": {
+                        "$defs": {
+                            "TargetAudience": {
+                                "enum": [
+                                    "general",
+                                    "technical",
+                                    "business",
+                                    "academic"
+                                ],
+                                "title": "TargetAudience",
+                                "type": "string"
+                            }
+                        },
+                        "properties": {
+                            "recipient_email_address": {
+                                "description": "Email address of the email recipient",
+                                "title": "Recipient Email Address",
+                                "type": "string"
+                            },
+                            "sender_email_address": {
+                                "description": "Email address of the email sender",
+                                "title": "Sender Email Address",
+                                "type": "string"
+                            },
+                            "target_audience": {
+                                "$ref": "#/$defs/TargetAudience",
+                                "description": "Target audience for the marketing campaign"
+                            }
+                        },
+                        "required": [
+                            "recipient_email_address",
+                            "sender_email_address",
+                            "target_audience"
+                        ],
+                        "title": "ConfigModel",
+                        "type": "object"
+                    }
+                },
+                "deployment": {
+                    "deployment_options": [
+                        {
+                            "type": "source_code",
+                            "name": "source_code_local",
+                            "url": "file://./../",
+                            "framework_config": {
+                                "framework_type": "langgraph",
+                                "graph": "marketing_campaign.app:graph"
+                            }
+                        }
+                    ],
+                    "env_vars": [
+                        {
+                            "desc": "Azure key for the OpenAI service",
+                            "name": "AZURE_OPENAI_API_KEY"
+                        },
+                        {
+                            "desc": "Azure endpoint for the OpenAI service",
+                            "name": "AZURE_OPENAI_ENDPOINT"
+                        },
+                        {
+                            "desc": "Sendgrid API key",
+                            "name": "SENDGRID_API_KEY"
+                        }
+                    ],
+                    "agent_deps": [
+                        {
+                            "name": "mailcomposer",
+                            "ref": {
+                                "name": "org.agntcy.mailcomposer",
+                                "version": "0.0.1",
+                                "url": "../../mailcomposer/deploy/mailcomposer.json"
+                            }
+                        },
+                        {
+                            "name": "email_reviewer",
+                            "ref": {
+                                "name": "org.agntcy.email_reviewer",
+                                "version": "0.0.1",
+                                "url": "../../email_reviewer/deploy/email_reviewer.json"
+                            }
+                        }
+                    ]
+                }
+            },
+            "version": "v0.2.2"
+        }
     ],
-    "dependencies": [
-      {
-        "name": "mailcomposer",
-        "ref": {
-          "name": "org.agntcy.mailcomposer",
-          "version": "0.0.1",
-          "url": "../../mailcomposer/deploy/mailcomposer.json"
+    "locators": [
+        {
+            "source": {
+                "url": "github.com/agntcy/agentic-apps.git//marketing-campaign"
+            },
+            "type": "package-source-code"
         }
-      },
-      {
-        "name": "email_reviewer",
-        "ref": {
-          "name": "org.agntcy.email_reviewer",
-          "version": "0.0.1",
-          "url": "../../email_reviewer/deploy/email_reviewer.json"
+    ],
+    "name": "org.agntcy.marketing-campaign",
+    "skills": [
+        {
+            "class_uid": "10201"
         }
-      }
-    ]
-  }
+    ],
+    "version": "0.0.1"
 }
-
