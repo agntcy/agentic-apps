@@ -19,12 +19,15 @@ async def main():
     while True:
         usermsg = input("YOU [Type OK when you are happy with the email proposed] >>> ")
         inputState.messages.append(mailcomposer.Message(content=usermsg, type=mailcomposer.Type.human))
-        output = await graph.ainvoke(inputState, RunnableConfig(
-            configurable=ConfigModel(
+        configurable=ConfigModel(
                 recipient_email_address=os.environ["RECIPIENT_EMAIL_ADDRESS"],
                 sender_email_address=os.environ["SENDER_EMAIL_ADDRESS"],
                 target_audience=TargetAudience.academic
             ).model_dump()
+        
+        configurable["thread_id"] = "thread_id"
+        output = await graph.ainvoke(inputState, RunnableConfig(
+            configurable=configurable
         )
 )
 

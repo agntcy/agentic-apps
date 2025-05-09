@@ -33,9 +33,7 @@ Before running the application, ensure you have the following:
 
 ### 1. Run the API Bridge Agent and Connect it to SendGrid
 
-Clone the [API Bridge Agent repo](https://github.com/agntcy/api-bridge-agnt) and follow these [instructions](https://docs.agntcy.org/pages/syntactic_sdk/api_bridge_agent.html#an-example-with-sendgrid-api) to connect it to Twilio SendGrid.
-
-In a nutshell, navigate to the repo and run the following commands:
+Clone the [API Bridge Agent repo](https://github.com/agntcy/api-bridge-agnt), navigate to the repo and run the following commands:
 
 ```sh
 export OPENAI_API_KEY=***YOUR_OPENAI_API_KEY***
@@ -47,7 +45,7 @@ make start_redis
 make start_tyk
 ```
 
-Configure the API Bridge Agent:
+In a different shell, configure the API Bridge Agent with SendGrid API:
 
 ```sh
 curl http://localhost:8080/tyk/apis/oas \
@@ -63,7 +61,12 @@ curl http://localhost:8080/tyk/reload/group \
 
 Follow these [instructions](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation) to install the Agent Workflow Server Manager.
 
-At the end of the installation you should be able to run the `wsfm` command.
+At the end of the installation you should be able to run the `wsfm` command:
+
+```sh
+ $ wfsm --version
+wfsm version v0.2.0
+```
 
 ### 3. Install Python dependencies
    From the `marketing-campaign` folder:
@@ -94,55 +97,77 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
 #### Steps:
 
 1. **Configure the Agents**:
-   Before starting the workflow server, provide the necessary configurations for the agents. Open the `./deploy/marketing_campaign_example.yaml` file located in the `deploy` folder and update the following values with your configuration:
+   Before starting the workflow server, provide the necessary configurations for the agents. Open the `./deploy/marketing_campaign_example.yaml` file located in the `deploy` folder and update the environment variables with your values. 
 
    ```yaml
-   values:
-     AZURE_OPENAI_API_KEY: your_secret
-     AZURE_OPENAI_ENDPOINT: "the_url.com"
-     API_HOST: 0.0.0.0
-     SENDGRID_HOST: http://host.docker.internal:8080
-     SENDGRID_API_KEY: SG.your-api-key
-   dependencies:
-     - name: mailcomposer
-       values:
-         AZURE_OPENAI_API_KEY: your_secret
-         AZURE_OPENAI_ENDPOINT: "the_url.com"
-     - name: email_reviewer
-       values:
-         AZURE_OPENAI_API_KEY: your_secret
-         AZURE_OPENAI_ENDPOINT: "the_url.com"
+    config:
+        email_reviewer:
+            port: 0
+            apiKey: 799cccc7-49e4-420a-b0a8-e4de949ae673
+            id: 45fb3f84-c0d7-41fb-bae3-363ca8f8092a
+            envVars:
+              AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+              AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
+        mailcomposer:
+            port: 0
+            apiKey: a9ee3d6a-6950-4252-b2f0-ad70ce57d603
+            id: 76363e34-d684-4cab-b2b7-2721c772e42f
+            envVars:
+              AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+              AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
+        org.agntcy.marketing-campaign:
+            port: 65222
+            apiKey: 12737451-d333-41c2-b3dd-12f15fa59b38
+            id: d6306461-ea6c-432f-b6a6-c4feaa81c19b
+            envVars:
+              AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+              AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
+              SENDGRID_HOST: http://host.docker.internal:8080
+              SENDGRID_API_KEY: [YOUR SENDGRID_API_KEY]
    ```
+
+    Note that `apiKey` and `id` can be edited as well or removed. In the latter case, they are generated automatically by the workflow server manager. Within the scope of this guide, for simiplicity, we recommend not to modify them.
 
 2. **Start the Workflow Server**:
    Run the following command to deploy the Marketing Campaign workflow server:
    ```sh
-   wfsm deploy -m ./deploy/marketing-campaign.json -e ./deploy/marketing_campaign_example.yaml
+   wfsm deploy -m ./deploy/marketing-campaign.json -c ./deploy/marketing_campaign_example.yaml --dryRun=false
    ```
 
-   If everything is set up correctly, the application will start, and the logs will display:
-   - **Agent ID**
-   - **API Key**
-   - **Host**
-
-   Example log output:
-   ```plaintext
-   2025-03-28T12:31:04+01:00 INF ---------------------------------------------------------------------
-   2025-03-28T12:31:04+01:00 INF ACP agent deployment name: org.agntcy.marketing-campaign
-   2025-03-28T12:31:04+01:00 INF ACP agent running in container: org.agntcy.marketing-campaign, listening for ACP request on: http://127.0.0.1:62609
-   2025-03-28T12:31:04+01:00 INF Agent ID: eae32ada-aaf8-408c-bf0c-7654455ce6e3
-   2025-03-28T12:31:04+01:00 INF API Key: 08817517-7000-48e9-94d8-01d22cf7d20a
-   2025-03-28T12:31:04+01:00 INF ---------------------------------------------------------------------
-   ```
+  If everything goes well, last lines of the log should look similar to the following
+  ```sh
+    email_reviewer-1                 | 2025-05-09T14:23:26.006785000+02:00INFO:     agent_workflow_server.agents.load Loaded Agent from /opt/agent-workflow-server/.venv/lib/python3.12/site-packages/email_reviewer/__init__.py 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006798000+02:00INFO:     agent_workflow_server.agents.load Agent Type: LlamaIndexAgent 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006813000+02:00INFO:     agent_workflow_server.agents.load Registered Agent: '45fb3f84-c0d7-41fb-bae3-363ca8f8092a' 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006825000+02:00INFO:     agent_workflow_server.services.queue Starting 5 workers 
+    org.agntcy.marketing-campaign-1  | 2025-05-09T14:23:26.006763000+02:00INFO:     Application startup complete.
+    org.agntcy.marketing-campaign-1  | 2025-05-09T14:23:26.006846000+02:00INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+    email_reviewer-1                 | 2025-05-09T14:23:26.006832000+02:00INFO:     Started server process [7]
+    email_reviewer-1                 | 2025-05-09T14:23:26.006862000+02:00INFO:     Waiting for application startup.
+    email_reviewer-1                 | 2025-05-09T14:23:26.006868000+02:00INFO:     Application startup complete.
+    email_reviewer-1                 | 2025-05-09T14:23:26.006874000+02:00INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+    email_reviewer-1                 | 2025-05-09T14:23:26.006879000+02:00INFO:     agent_workflow_server.agents.load Loaded Agent Manifest from /opt/spec/manifest.json 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006885000+02:00INFO:     agent_workflow_server.agents.load Loaded Agent from /opt/agent-workflow-server/.venv/lib/python3.12/site-packages/email_reviewer/__init__.py 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006890000+02:00INFO:     agent_workflow_server.agents.load Agent Type: LlamaIndexAgent 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006895000+02:00INFO:     agent_workflow_server.agents.load Registered Agent: '45fb3f84-c0d7-41fb-bae3-363ca8f8092a' 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006900000+02:00INFO:     agent_workflow_server.services.queue Starting 5 workers 
+    email_reviewer-1                 | 2025-05-09T14:23:26.006906000+02:00INFO:     Started server process [7]
+    email_reviewer-1                 | 2025-05-09T14:23:26.006921000+02:00INFO:     Waiting for application startup.
+    email_reviewer-1                 | 2025-05-09T14:23:26.006931000+02:00INFO:     Application startup complete.
+    email_reviewer-1                 | 2025-05-09T14:23:26.006938000+02:00INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+  ```
 
 3. **Export Environment Variables**:
-   Use the information from the logs to set the following environment variables:
+   In a different shell, export the environment variables describing how to interact with the marketing-campaign manager. Note that these values correspond to those provided as configuration above.
    ```sh
-   export MARKETING_CAMPAIGN_HOST="http://localhost:62609"
-   export MARKETING_CAMPAIGN_ID="eae32ada-aaf8-408c-bf0c-7654455ce6e3"
-   export MARKETING_CAMPAIGN_API_KEY='{"x-api-key": "08817517-7000-48e9-94d8-01d22cf7d20a"}'
-
+   export MARKETING_CAMPAIGN_HOST="http://localhost:65222"
+   export MARKETING_CAMPAIGN_ID="d6306461-ea6c-432f-b6a6-c4feaa81c19b"
+   export MARKETING_CAMPAIGN_API_KEY='{"x-api-key": "12737451-d333-41c2-b3dd-12f15fa59b38"}'
+   ```
+   Export environment variables specific to the marketing campaign manager app.
+   
    # Configuration of the application
+   ```sh
    export RECIPIENT_EMAIL_ADDRESS="recipient@example.com"
    export SENDER_EMAIL_ADDRESS="sender@example.com" # Sender email address as configured in Sendgrid
    ```
@@ -165,32 +190,35 @@ This script is primarily intended for development and debugging purposes, allowi
 #### Steps:
 
 1. **Start Workflow Servers for Dependencies**:
-   Manually start the workflow servers for the **MailComposer** and **EmailReviewer** agents in separate terminals:
+   Manually start the workflow servers for the **MailComposer** and **EmailReviewer** agents in separate terminals. Before doing that, edit `../mailcomposer/deploy/mailcomposer_example.yaml` and `../email_reviewer/deploy/email_reviewer_example.yaml` with your data.
+
    ```sh
-   wfsm deploy -m ../mailcomposer/deploy/mailcomposer.json -e ../mailcomposer/deploy/mailcomposer_example.yaml -b workflowserver:latest
+   wfsm deploy -m ../mailcomposer/deploy/mailcomposer.json -c ../mailcomposer/deploy/mailcomposer_example.yaml --dryRun=false
    ```
    ```sh
-   wfsm deploy -m ../email_reviewer/deploy/email_reviewer.json -e ../email_reviewer/deploy/email_reviewer_example.yaml -b workflowserver:latest
+   wfsm deploy -m ../email_reviewer/deploy/email_reviewer.json -c ../email_reviewer/deploy/email_reviewer_example.yaml  --dryRun=false
    ```
 
-   The logs will display the **Agent ID**, **API Key**, and **Host** for each agent. Use this information to set the following environment variables:
-   ```sh
-   export MAILCOMPOSER_HOST="http://localhost:<port>"
-   export MAILCOMPOSER_ID="<mailcomposer-agent-id>"
-   export MAILCOMPOSER_API_KEY='{"x-api-key": "<mailcomposer-api-key>"}'
+   In a different shell, export the environment variables describing how to interact with the mailcomposer and email reviewer. Note that these values correspond to those provided as configuration above.
 
-   export EMAIL_REVIEWER_HOST="http://localhost:<port>"
-   export EMAIL_REVIEWER_ID="<email-reviewer-agent-id>"
-   export EMAIL_REVIEWER_API_KEY='{"x-api-key": "<email-reviewer-api-key>"}'
+   ```sh
+   export MAILCOMPOSER_HOST="http://localhost:52384"
+   export MAILCOMPOSER_ID="76363e34-d684-4cab-b2b7-2721c772e42f"
+   export MAILCOMPOSER_API_KEY='{"x-api-key": "a9ee3d6a-6950-4252-b2f0-ad70ce57d603"}'
+
+   export EMAIL_REVIEWER_HOST="http://localhost:52393"
+   export EMAIL_REVIEWER_ID="45fb3f84-c0d7-41fb-bae3-363ca8f8092a"
+   export EMAIL_REVIEWER_API_KEY='{"x-api-key": "799cccc7-49e4-420a-b0a8-e4de949ae673"}'
    ```
 
 2. **Export Additional Environment Variables**:
    Set the following environment variables:
    ```sh
    export API_HOST=0.0.0.0
+   export SENDGRID_HOST=http://localhost:8080
    export SENDGRID_API_KEY=SG.your_secret
    export AZURE_OPENAI_API_KEY=your_secret
-   export AZURE_OPENAI_ENDPOINT="the_url.com"
+   export AZURE_OPENAI_ENDPOINT='https://[YOUR ENDPOINT].openai.azure.com'
 
    # Configuration of the application
    export RECIPIENT_EMAIL_ADDRESS="recipient@example.com"
@@ -205,92 +233,4 @@ This script is primarily intended for development and debugging purposes, allowi
 
    Interact by invoking the langgraph application to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
 
----
 
-### Additional Configuration
-
-In both scripts [main_acp_client.py](./src/marketing_campaign/main_acp_client.py) and [main_langgraph.py](./src/marketing_campaign/main_langgraph.py), you can customize the target audience for the campaign by modifying the `target_audience` parameter `target_audience=TargetAudience.academic`. Available options are:
-- `general`
-- `technical`
-- `business`
-- `academic`
-
-Example:
-```python
-target_audience = TargetAudience.business
-```
-
-
----
-
-### Method 3: Using UI
-
-This method provides an alternative way to interact with the Marketing Campaign application by using a ui build with [Gradio](https://www.gradio.app/).
-
-#### Steps:
-
-1. Adapt the `src/marketing_campaign/gradio_ui.py` file.
-
-Set the email details
-
-```python
-os.environ["RECIPIENT_EMAIL_ADDRESS"] = ""
-os.environ["SENDER_EMAIL_ADDRESS"] = ""
-```
-
-2. **Configure the Agents**:
-   Before starting the workflow server, provide the necessary configurations for the agents. Open the `./deploy/marketing_campaign_example.yaml` file located in the `deploy` folder and update the following values with your configuration:
-
-   ```yaml
-   values:
-     AZURE_OPENAI_API_KEY: your_secret
-     AZURE_OPENAI_ENDPOINT: "the_url.com"
-     API_HOST: 0.0.0.0
-     SENDGRID_HOST: http://host.docker.internal:8080
-     SENDGRID_API_KEY: SG.your-api-key
-   dependencies:
-     - name: mailcomposer
-       values:
-         AZURE_OPENAI_API_KEY: your_secret
-         AZURE_OPENAI_ENDPOINT: "the_url.com"
-     - name: email_reviewer
-       values:
-         AZURE_OPENAI_API_KEY: your_secret
-         AZURE_OPENAI_ENDPOINT: "the_url.com"
-   ```
-
-3. Run the API Bridge Agent
-
-Navigate to the `api-bridge-agnt` directory and run the following commands:
-
-```sh
-export OPENAI_API_KEY=***YOUR_OPENAI_API_KEY***
-
-# Optionally, if you want to use Azure OpenAI, you also need to specify the endpoint with the OPENAI_ENDPOINT environment variable:
-export OPENAI_ENDPOINT="https://YOUR-PROJECT.openai.azure.com"
-
-make start_redis
-make start_tyk
-```
-
-Configure the API Bridge Agent:
-
-```sh
-curl http://localhost:8080/tyk/apis/oas \
-  --header "x-tyk-authorization: foo" \
-  --header 'Content-Type: text/plain' \
-  -d@configs/api.sendgrid.com.oas.json
-
-curl http://localhost:8080/tyk/reload/group \
-  --header "x-tyk-authorization: foo"
-```
-
-4.  **Run Application**:
-    From within examples/marketing-campaign folder run:
-
-```sh
-poetry run ui
-```
----
-
-By following these steps, you can successfully run the Marketing Campaign Manager application using either the ACP client or LangGraph. Both methods allow you to compose, review, and send marketing emails interactively.

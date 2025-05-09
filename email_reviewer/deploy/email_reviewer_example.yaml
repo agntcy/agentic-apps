@@ -1,8 +1,8 @@
-values:
-  AZURE_OPENAI_MODEL: "gpt-4o-mini"
-  AZURE_OPENAI_DEPLOYMENT_NAME: "gpt-4o-mini"
-  AZURE_OPENAI_API_VERSION: "2024-07-01-preview"
-  AZURE_OPENAI_ENDPOINT: "https://<your-resource-name>.openai.azure.com/"
-  AZURE_OPENAI_API_KEY: "sk-..."
-  # OPENAI_API_KEY: "sk-..."
-  # OPENAI_MODEL: "gpt-4o-mini"
+config:
+    org.agntcy.mail_reviewer:
+        port: 52393
+        apiKey: 799cccc7-49e4-420a-b0a8-e4de949ae673
+        id: 45fb3f84-c0d7-41fb-bae3-363ca8f8092a
+        envVars:
+          AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+          AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com

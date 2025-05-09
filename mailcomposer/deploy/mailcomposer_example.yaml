@@ -1,3 +1,8 @@
-values:
-  AZURE_OPENAI_API_KEY: your-api-key
-  AZURE_OPENAI_ENDPOINT: 'https://your-project-agents.openai.azure.com'
+config:
+    org.agntcy.mailcomposer:
+        port: 52384
+        apiKey: a9ee3d6a-6950-4252-b2f0-ad70ce57d603
+        id: 76363e34-d684-4cab-b2b7-2721c772e42f
+        envVars:
+          AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
+          AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
