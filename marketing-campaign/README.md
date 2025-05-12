@@ -1,22 +1,27 @@
 # Marketing Campaign Manager
 
-The **Marketing Campaign Manager** is a demonstration AI application developed with LangGraph. It assists in composing and sending emails for marketing campaigns by interacting with multiple AI agents. This guide will walk you through the steps to set up and run the example application locally.
+The **Marketing Campaign Manager** is a demonstration AI application developed with LangGraph. It is meant to provide a working example of a Multi Agent Software that leverages many of the AGNTCY components.
 
-## Features
+It offers a chat based interface to collect user requirements for an email marketing campaign. Once all requirements are collected, it leverages two remote agents: the [Email Composer Agent](../mailcomposer/) to compose the email, and the [Email Reviewer Agent](../email_reviewer/) to review the composed email and adapt it to the intended audience. Finally, the resulting email is sent to the configured recipient using [Twilio SendGrid](https://www.twilio.com/en-us/sendgrid/email-api) service via its REST API.
 
-* It gathers necessary campaign details from the user through a chat.
-* Compose an email leveraging the [Email Composer Agent](../mailcomposer/) as a remote ACP agent.
-* It leverages the [IO Mapper Agent](https://github.com/agntcy/iomapper-agnt) to adapt Email Composer Agent output to Email Reviewer Agent.
-* Reviews the email leveraging the [Email Reviewer Agent](../email_reviewer/) as a remote ACP agent.
-* Send the email to the configured recipient through Twilio sendgrid leveraging the [API Bridge Agent](https://github.com/agntcy/api-bridge-agnt)
+The following diagram represents the graph implemented by the marketing campaign manager LangGraph application:
 
----
+![LangGraph Graph](./img/graph.png)
+
+Notable facts are:
+* `mailcomposer` is implemented as an ACP Node from the [ACP SDK](https://github.com/agntcy/acp-sdk), which actually invokes a remote instance of the [Email Composer Agent](../mailcomposer/) through ACP.
+* `email_reviewer` is also implemented as an ACP Node, which actually invokes a remote instance of the [Email Reviewer Agent](../email_reviewer/).
+* `sendgrid` is a regular LangGraph node which invokes an instance of [API Bridge Agent](https://github.com/agntcy/api-bridge-agnt), which in turn invokes the Twilio SendGrid API.
+* Between the pairs `mailcomposer`/`email_reviewer` and `email_reviewer`/`sendgrid`, an [IO Mapper Agent](https://github.com/agntcy/iomapper-agnt) node is used to make sure that output of each node is adapted to serve as input of the following node.
+
+The following diagram represents a simplified architecture of the app including remote agents and APIs:
+
+![App Architecture](./img/arch.png)
 
 ## Prerequisites
 
-Before running the application, ensure you have the following:
+Before running the application, ensure the following requirements are satisfied:
 
-### Tools and Dependencies
 - [Python 3.9 or higher](https://www.python.org/downloads/)
 - [Poetry](https://python-poetry.org/docs/#installation)
 - [Golang](https://go.dev/doc/install)
@@ -27,7 +32,6 @@ Before running the application, ensure you have the following:
 - [Docker Compose](https://docs.docker.com/compose/)
 - [Azure OpenAI API Key](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/quickstart)
 
----
 
 ## Setup Instructions
 
@@ -78,21 +82,13 @@ wfsm version v0.2.0
 ## Running the Marketing Campaign Manager
 
 The Marketing Campaign Manager application can be run in two ways:
-1. Using the **ACP client**.
-2. Using **LangGraph** directly.
-
-Both methods allow users to interactively create a marketing campaign by providing input through a chat interface. The **MailComposer agent** generates email drafts, while the **EmailReviewer agent** reviews and refines the drafts.
-
-An [IO Mapper Agent](https://github.com/agntcy/iomapper-agnt) is used in the application to automatically transform the output of the MailComposer to match the input of the EmailReviewer.
-
-The **ACP client** or **LangGraph** applications handle communication with the Marketing Campaign application, which orchestrates interactions with the dependent agents.
-
-All commands and scripts should be executed from the `examples/marketing-campaign` directory, where this guide is located.
+1. Using the [Agent Workflow Server Manager](https://github.com/agntcy/workflow-srv-mgr) to start the whole app, including remote agents, and expose it through ACP. In this case, the interaction with the application happens through ACP via an [ACP client](./marketing-campaign/main_acp_client.py)
+2. Using [Agent Workflow Server Manager](https://github.com/agntcy/workflow-srv-mgr) to start only the remote agents, while the app is started and invoked directly through a [Python script](./marketing-campaign/main_langgraph.py). 
 
 
-### Method 1: Using the ACP Client
+### Method 1: Marketing Campaign Manager as ACP Server
 
-This method demonstrates how to communicate with the Marketing Campaign application using the **ACP (Agent Connect Protocol) client**. The workflow server for the Marketing Campaign application must be started manually. Once running, it will automatically launch the workflow servers for its dependencies, **MailComposer** and **EmailReviewer**, as defined in the deployment configuration of the [marketing-campaign manifest](./deploy/marketing-campaign.json).
+This method demonstrates how to start the application, and its dependencies (the remote agents) through the Agent Workflow Server Manager by using the [app manifest](./deploy/marketing-campaign.json) and then invoke it through ACP.
 
 #### Steps:
 
@@ -126,7 +122,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
               SENDGRID_API_KEY: [YOUR SENDGRID_API_KEY]
    ```
 
-    Note that `apiKey` and `id` can be edited as well or removed. In the latter case, they are generated automatically by the workflow server manager. Within the scope of this guide, for simiplicity, we recommend not to modify them.
+    Note that `apiKey` and `id` can be edited as well or removed. In the latter case, they are generated automatically by the workflow server manager. Within the scope of this guide, for simiplicity, **we recommend not to modify them**.
 
 2. **Start the Workflow Server**:
    Run the following command to deploy the Marketing Campaign workflow server:
@@ -158,7 +154,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
   ```
 
 3. **Export Environment Variables**:
-   In a different shell, export the environment variables describing how to interact with the marketing-campaign manager. Note that these values correspond to those provided as configuration above.
+   In a different shell, export the environment variables describing how to interact with the app. Note that these values correspond to those provided as configuration above.
    ```sh
    export MARKETING_CAMPAIGN_HOST="http://localhost:65222"
    export MARKETING_CAMPAIGN_ID="d6306461-ea6c-432f-b6a6-c4feaa81c19b"
@@ -168,7 +164,7 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
   
    ```sh
    export RECIPIENT_EMAIL_ADDRESS="recipient@example.com"
-   export SENDER_EMAIL_ADDRESS="sender@example.com" # Sender email address as configured in Sendgrid
+   export SENDER_EMAIL_ADDRESS="sender@example.com" # Sender email address as configured in SendGrid
    ```
 
 4. **Run the Application**:
@@ -177,19 +173,19 @@ This method demonstrates how to communicate with the Marketing Campaign applicat
    poetry run python src/marketing_campaign/main_acp_client.py
    ```
 
-   Interact with the application via ACP Client to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
----
+   Interact with the application to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
 
-### Method 2: Using LangGraph
 
-This method provides an alternative way to interact with the Marketing Campaign application by directly invoking the **LangGraph graph** of the Marketing Campaign. Unlike the ACP client-based approach, this method bypasses the multi-agent software orchestration and requires manual handling of the agent dependencies.
+### Method 2: Marketing Campaign Manager as Python script 
 
-This script is primarily intended for development and debugging purposes, allowing developers to test and refine the LangGraph logic.
+This method provides an alternative way to start and invoke the Marketing Campaign application by directly invoking the **LangGraph graph** of the Marketing Campaign through a Python script. 
+
+This method requires to start the remote agents independently and is primarily intended for development and debugging purposes, allowing developers to test and refine the LangGraph logic.
 
 #### Steps:
 
 1. **Start Workflow Servers for Dependencies**:
-   Manually start the workflow servers for the **MailComposer** and **EmailReviewer** agents in separate terminals. Before doing that, edit `../mailcomposer/deploy/mailcomposer_example.yaml` and `../email_reviewer/deploy/email_reviewer_example.yaml` with your data.
+   Manually start the workflow servers for the **MailComposer** and **EmailReviewer** agents in separate terminals. Before doing that, edit `../mailcomposer/deploy/mailcomposer_example.yaml` and `../email_reviewer/deploy/email_reviewer_example.yaml` with your configuration.
 
    ```sh
    wfsm deploy -m ../mailcomposer/deploy/mailcomposer.json -c ../mailcomposer/deploy/mailcomposer_example.yaml --dryRun=false
@@ -222,11 +218,11 @@ This script is primarily intended for development and debugging purposes, allowi
    ```
 
 3. **Run the Application**:
-   Start the Marketing Campaign Manager application using LangGraph:
+   Start the Marketing Campaign Manager application using the Python script:
    ```sh
    poetry run python src/marketing_campaign/main_langgraph.py
    ```
 
-   Interact by invoking the langgraph application to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
+   Interact with the application to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
 
 
