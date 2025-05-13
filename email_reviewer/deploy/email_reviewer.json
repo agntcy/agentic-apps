@@ -1,112 +1,140 @@
 {
-  "metadata": {
-    "ref": {
-      "name": "org.agntcy.mail_reviewer",
-      "version": "0.0.1"
-    },
-    "description": "Review emails"
-  },
-  "specs": {
-    "capabilities": {
-      "threads": false,
-      "interrupts": false,
-      "callbacks": false
-    },
-    "input": {
-      "$defs": {
-        "TargetAudience": {
-          "enum": ["general", "technical", "business", "academic"],
-          "title": "TargetAudience",
-          "type": "string"
-        }
-      },
-      "properties": {
-        "email": {
-          "description": "The email content to be reviewed and corrected",
-          "title": "Email",
-          "type": "string"
-        },
-        "target_audience": {
-          "$ref": "#/$defs/TargetAudience",
-          "description": "The target audience for the email, affecting the style of review"
-        }
-      },
-      "required": ["email", "target_audience"],
-      "title": "EmailReviewerInput",
-      "type": "object"
-    },
-    "output": {
-      "properties": {
-        "correct": {
-          "description": "Indicates whether the email is correct and requires no changes",
-          "title": "Correct",
-          "type": "boolean"
-        },
-        "corrected_email": {
-          "anyOf": [
-            {
-              "type": "string"
+  "authors": [
+    "Cisco Systems"
+  ],
+  "extensions": [
+    {
+      "name": "oasf.agntcy.org/feature/runtime/manifest",
+      "data": {
+        "specs": {
+          "capabilities": {
+            "threads": false,
+            "interrupts": false,
+            "callbacks": false
+          },
+          "input": {
+            "$defs": {
+              "TargetAudience": {
+                "enum": [
+                  "general",
+                  "technical",
+                  "business",
+                  "academic"
+                ],
+                "title": "TargetAudience",
+                "type": "string"
+              }
             },
+            "properties": {
+              "email": {
+                "description": "The email content to be reviewed and corrected",
+                "title": "Email",
+                "type": "string"
+              },
+              "target_audience": {
+                "$ref": "#/$defs/TargetAudience",
+                "description": "The target audience for the email, affecting the style of review"
+              }
+            },
+            "required": [
+              "email",
+              "target_audience"
+            ],
+            "title": "EmailReviewerInput",
+            "type": "object"
+          },
+          "output": {
+            "properties": {
+              "correct": {
+                "description": "Indicates whether the email is correct and requires no changes",
+                "title": "Correct",
+                "type": "boolean"
+              },
+              "corrected_email": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "The corrected version of the email, if changes were necessary",
+                "title": "Corrected Email"
+              },
+              "review_result": {
+                "default": "",
+                "description": "A description containing the email changes",
+                "title": "Review Result",
+                "type": "string"
+              }
+            },
+            "required": [
+              "correct"
+            ],
+            "title": "EmailReview",
+            "type": "object"
+          },
+          "config": {
+            "properties": {},
+            "title": "ConfigSchema",
+            "type": "object"
+          }
+        },
+        "deployment": {
+          "deployment_options": [
             {
-              "type": "null"
+              "type": "source_code",
+              "name": "src",
+              "url": "github.com/agntcy/agentic-apps.git//email_reviewer",
+              "framework_config": {
+                "framework_type": "llamaindex",
+                "path": "email_reviewer:email_reviewer_workflow"
+              }
             }
           ],
-          "default": null,
-          "description": "The corrected version of the email, if changes were necessary",
-          "title": "Corrected Email"
-        },
-        "review_result": {
-          "default": "",
-          "description": "A description containing the email changes",
-          "title": "Review Result",
-          "type": "string"
+          "env_vars": [
+            {
+              "desc": "Azure key for the OpenAI service",
+              "name": "AZURE_OPENAI_API_KEY"
+            },
+            {
+              "desc": "Azure model for the OpenAI service",
+              "name": "AZURE_OPENAI_MODEL"
+            },
+            {
+              "desc": "Azure deployment name for the OpenAI service",
+              "name": "AZURE_OPENAI_DEPLOYMENT_NAME"
+            },
+            {
+              "desc": "Azure API version for the OpenAI service",
+              "name": "AZURE_OPENAI_API_VERSION"
+            },
+            {
+              "desc": "Azure endpoint for the OpenAI service",
+              "name": "AZURE_OPENAI_ENDPOINT"
+            }
+          ],
+          "agent_deps": []
         }
       },
-      "required": ["correct"],
-      "title": "EmailReview",
-      "type": "object"
-    },
-    "config": {
-      "properties": {},
-      "title": "ConfigSchema",
-      "type": "object"
+      "version": "v0.2.2"
     }
-  },
-  "deployment": {
-    "deployment_options": [
-      {
-        "type": "source_code",
-        "name": "source_code_local",
-        "url": "./../",
-        "framework_config": {
-          "framework_type": "llamaindex",
-          "path": "email_reviewer:email_reviewer_workflow"
-        }
-      }
-    ],
-    "env_vars": [
-      {
-        "desc": "Azure key for the OpenAI service",
-        "name": "AZURE_OPENAI_API_KEY"
+  ],
+  "locators": [
+    {
+      "source": {
+        "url": "github.com/agntcy/agentic-apps.git//email_reviewer"
       },
-      {
-        "desc": "Azure model for the OpenAI service",
-        "name": "AZURE_OPENAI_MODEL"
-      },
-      {
-        "desc": "Azure deployment name for the OpenAI service",
-        "name": "AZURE_OPENAI_DEPLOYMENT_NAME"
-      },
-      {
-        "desc": "Azure API version for the OpenAI service",
-        "name": "AZURE_OPENAI_API_VERSION"
-      },
-      {
-        "desc": "Azure endpoint for the OpenAI service",
-        "name": "AZURE_OPENAI_ENDPOINT"
-      }
-    ],
-    "dependencies": []
-  }
+      "type": "package-source-code"
+    }
+  ],
+  "name": "org.agntcy.mail_reviewer",
+  "skills": [
+    {
+      "class_uid": "10201"
+    }
+  ],
+  "version": "0.0.1"
 }
-
