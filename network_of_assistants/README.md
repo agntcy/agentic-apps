@@ -4,7 +4,7 @@
 
 Each Cisco product has its own specialized agent assistant. It is complex to create
 a single assistant that can answer questions on different products. Each question
-coming from the users needs to be routed to right agen, and some questions might
+coming from the users needs to be routed to right agent, and some questions might
 require knowledge/collaboration of multiple assistants.
 
 ## Solution
