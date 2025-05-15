@@ -168,12 +168,21 @@ This method demonstrates how to start the application, and its dependencies (the
    ```
 
 4. **Run the Application**:
-   Start the Marketing Campaign Manager application using the ACP client:
+
+   #### Start the Marketing Campaign Manager application using the ACP client and send prompts via CLI: ###
    ```sh
    poetry run python src/marketing_campaign/main_acp_client.py
    ```
+   #### Start the Marketing Campaign Manager application and send prompts via a UI: ####
+   ```sh
+   poetry run ui
+   ```
 
    Interact with the application to compose and review emails. Once approved, the email will be sent to the recipient via SendGrid.
+   
+   ```sh
+   Write me an email about AI marketing, be creative
+   ```
 
 
 ### Method 2: Marketing Campaign Manager as Python script 
