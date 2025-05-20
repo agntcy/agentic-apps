@@ -8,9 +8,12 @@ services:
     networks:
       - app_network
     environment:
-      - MODEL_BASE_URL
-      - MODEL_API_KEY
+      - AZURE_OPENAI_ENDPOINT=https://phoenix-project-agents.openai.azure.com
+      - AZURE_OPENAI_API_KEY
+      - AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
+      - AZURE_OPENAI_API_VERSION=2024-08-01-preview
       - AGP_ENDPOINT=http://agp:46357
+      - MODERATOR_AGENTS_DIR=/ads/datamodels
 
   user_proxy:
     build:
@@ -30,10 +33,12 @@ services:
     networks:
       - app_network
     environment:
-      - ASSISTANT_LLM_ENDPOINT
+      - ASSISTANT_LLM_ENDPOINT=https://phoenix-project-agents.openai.azure.com
       - ASSISTANT_LLM_KEY
       - ASSISTANT_LLM_TYPE=azure
       - AGP_ENDPOINT=http://agp:46357
+      - ASSISTANT_DOC_DIR=/docs/nexus
+      - ASSISTANT_ASSISTANT_ID=nexus-assistant
 
   agp:
     image: ghcr.io/agntcy/agp/gw:0.3.11
