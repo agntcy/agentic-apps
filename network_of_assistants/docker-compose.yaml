@@ -9,7 +9,7 @@ services:
       - app_network
     environment:
       - AZURE_OPENAI_ENDPOINT=https://jarvis-dev-east-us-2.openai.azure.com
-      - AZURE_OPENAI_API_KEY=d7e6fe7336624051ab4c47d12ee05b47
+      - AZURE_OPENAI_API_KEY=
       - AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
       - AZURE_OPENAI_API_VERSION=2024-08-01-preview
       - AGP_ENDPOINT=http://agp:46357
@@ -34,7 +34,7 @@ services:
       - app_network
     environment:
       - ASSISTANT_LLM_ENDPOINT=https://jarvis-dev-east-us-2.openai.azure.com
-      - ASSISTANT_LLM_KEY=d7e6fe7336624051ab4c47d12ee05b47
+      - ASSISTANT_LLM_KEY=
       - ASSISTANT_LLM_TYPE=azure
       - ASSISTANT_ASSISTANT_ID=nexus-assistant
       - ASSISTANT_DOC_DIR=/nexus
