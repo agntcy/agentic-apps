@@ -8,7 +8,7 @@ services:
     networks:
       - app_network
     environment:
-      - AZURE_OPENAI_ENDPOINT=https://phoenix-project-agents.openai.azure.com
+      - AZURE_OPENAI_ENDPOINT
       - AZURE_OPENAI_API_KEY
       - AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
       - AZURE_OPENAI_API_VERSION=2024-08-01-preview
@@ -33,7 +33,7 @@ services:
     networks:
       - app_network
     environment:
-      - ASSISTANT_LLM_ENDPOINT=https://phoenix-project-agents.openai.azure.com
+      - ASSISTANT_LLM_ENDPOINT=
       - ASSISTANT_LLM_KEY
       - ASSISTANT_LLM_TYPE=azure
       - AGP_ENDPOINT=http://agp:46357
