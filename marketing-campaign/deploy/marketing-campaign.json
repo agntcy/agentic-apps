@@ -6,7 +6,7 @@
         {
             "name": "oasf.agntcy.org/feature/runtime/manifest",
             "data": {
-                "specs": {
+                "acp": {
                     "capabilities": {
                         "threads": false,
                         "interrupts": false,
@@ -938,7 +938,7 @@
     "name": "org.agntcy.marketing-campaign",
     "skills": [
         {
-            "class_uid": "10201"
+            "class_uid": 10201
         }
     ],
     "version": "0.0.1"
