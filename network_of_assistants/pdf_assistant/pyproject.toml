@@ -11,10 +11,19 @@ dependencies = [
     "llama-index-llms-ollama>=0.5.4",
     "llama-index-llms-openai-like>=0.3.4",
     "agp",
+    "poirot-sdk==0.1.12"
 ]
 
 [tool.uv.sources]
 agp = { workspace = true }
+poirot-sdk = [
+  { index = "cisco-internal" },
+]
+
+[[tool.uv.index]]
+name = "cisco-internal"
+url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple"
+explicit = true
 
 [build-system]
 requires = ["pdm-backend"]

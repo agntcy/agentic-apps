@@ -1,0 +1,30 @@
+{
+  "name": "Nexus Assistant",
+  "description": "An assistant agent specialized in Cisco Nexus products.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "4",
+      "class_name": "Switch Configuration",
+      "class_uid": "20401",
+      "category_name": "Switching"
+    },
+    {
+      "category_uid": "4",
+      "class_name": "Network Security",
+      "class_uid": "20402",
+      "category_name": "Switching"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/nexus-assistant"
+    }
+  ]
+}

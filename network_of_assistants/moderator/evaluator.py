@@ -1,9 +1,12 @@
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
+import os
 from langchain.prompts import ChatPromptTemplate
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel
 from langchain_core.output_parsers import JsonOutputParser
 from typing import Optional, List
+
+from poirot.sdk.decorators import agent, workflow
 
 SYSTEM_PROMPT = """
 You are observing: a moderator agent in a chat with a user and several
@@ -72,14 +75,14 @@ Your final rating:
 
 PROMPT_TEMPLATE = ChatPromptTemplate([("system", SYSTEM_PROMPT), ("user", INPUT_PROMPT)])
 
-
+@agent(name="evaluator-agent")
 class EvaluatorAgent:
     def __init__(self):
-        class ModelConfig(BaseSettings):
-            model_config = SettingsConfigDict(env_prefix="MODEL_")
-            name: str = "gpt-4o"
-            base_url: Optional[str] = None
-            api_key: Optional[str] = None
+        # class ModelConfig(BaseSettings):
+        #     model_config = SettingsConfigDict(env_prefix="MODEL_")
+        #     name: str = "gpt-4o"
+        #     base_url: Optional[str] = None
+        #     api_key: Optional[str] = None
 
         class SingleMessage(BaseModel):
             type: str
@@ -89,15 +92,20 @@ class EvaluatorAgent:
         class ModelAnswer(BaseModel):
             messages: List[SingleMessage]
 
-        model_config = ModelConfig()
+        # model_config = ModelConfig()
 
-        llm = ChatOpenAI(
-            model=model_config.name,
-            base_url=model_config.base_url,
-            api_key=model_config.api_key,
+        llm = AzureChatOpenAI(
+            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+            # other params...
         )
 
         self.chain = PROMPT_TEMPLATE | llm
 
+    @workflow(name="evaluator-agent-chatbot")
     def invoke(self, *args, **kwargs):
         return self.chain.invoke(*args, **kwargs)

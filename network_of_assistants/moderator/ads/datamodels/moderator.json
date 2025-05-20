@@ -1,0 +1,30 @@
+{
+  "name": "Moderator Agent",
+  "description": "An agent specialized in multi-agent group chat coordination.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "6",
+      "class_name": "Skill Matching",
+      "class_uid": "20601",
+      "category_name": "Coordination"
+    },
+    {
+      "category_uid": "6",
+      "class_name": "Request Routing",
+      "class_uid": "20602",
+      "category_name": "Coordination"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/moderator-agent"
+    }
+  ]
+}

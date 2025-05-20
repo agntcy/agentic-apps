@@ -6,6 +6,10 @@ from agent import ModeratorAgent
 from langchain_core.exceptions import OutputParserException
 from evaluator import EvaluatorAgent
 
+from poirot.sdk.decorators import agent, graph
+from poirot.sdk import Poirot
+
+Poirot.init("moderator-agent", api_endpoint=os.getenv("OTLP_HTTP_ENDPOINT", "http://host.docker.internal:4318"))
 
 def list_available_agents(agents_dir):
     available_agents = {}
@@ -31,20 +35,38 @@ def agents_to_string(agents):
         output_strings.append(f"- {name}: {description}")
     return "\n".join(output_strings)
 
+class SupervisorAgent:
+    def __init__(self):
+        self.evaluator_agent, self.moderator_agent = None, None
+        self.agp = AGP(
+            agp_endpoint=os.getenv("AGP_ENDPOINT", "http://localhost:12345"),
+            local_id="moderator",
+            shared_space="chat",
+        )
+
+    @graph(name="moderator_evaluator_workflow")
+    def get_agents(self):
+        # Initialize the agents
+        self.evaluator_agent = EvaluatorAgent()
+        self.moderator_agent = ModeratorAgent()
+        
+        # Still return the individual agents as a dictionary
+        return {
+            "evaluator": self.evaluator_agent, 
+            "moderator": self.moderator_agent        
+        }
 
 async def main(args):
-    # Instantiate the AGP class
-    agp = AGP(
-        agp_endpoint=os.getenv("AGP_ENDPOINT", "http://localhost:12345"),
-        local_id="moderator",
-        shared_space="chat",
-    )
-    await agp.init()
+   
+    supervisor_agent = SupervisorAgent()
+
+    await supervisor_agent.agp.init()
+    
+    agents = supervisor_agent.get_agents()
+    evaluator_agent = agents["evaluator"]
+    moderator_agent = agents["moderator"]
 
     agents_dir = args.agents_dir
-
-    moderator_agent = ModeratorAgent()
-    evaluator_agent = EvaluatorAgent()
 
     chat_history = []
 
@@ -97,7 +119,7 @@ async def main(args):
                         else:
                             print(f"The evaluator judges that moderator chose the best-fitting agent.")
 
-                    await agp.publish(msg=answer_str.encode("utf-8"))
+                    await supervisor_agent.agp.publish(msg=answer_str.encode("utf-8"))
 
             except OutputParserException as e:
                 print(f"Wrong format from moderator: {e}")
@@ -109,7 +131,7 @@ async def main(args):
                 }
                 chat_history.append(answer)
                 answer_str = json.dumps(answer)
-                await agp.publish(msg=answer_str.encode("utf-8"))
+                await supervisor_agent.agp.publish(msg=answer_str.encode("utf-8"))
                 answer = {
                     "type": "RequestToSpeak",
                     "author": "moderator",
@@ -117,11 +139,11 @@ async def main(args):
                 }
                 chat_history.append(answer)
                 answer_str = json.dumps(answer)
-                await agp.publish(msg=answer_str.encode("utf-8"))
+                await supervisor_agent.agp.publish(msg=answer_str.encode("utf-8"))
 
     # Connect to the AGP server and start receiving messages
-    await agp.receive(callback=on_message_received)
-    await agp.receive_task
+    await supervisor_agent.agp.receive(callback=on_message_received)
+    await supervisor_agent.agp.receive_task
 
 
 def run():
@@ -131,13 +153,13 @@ def run():
     parser.add_argument(
         "--endpoint",
         type=str,
-        default="http://localhost:12345",
+        default=os.environ.get("MODERATOR_AGP_ENDPOINT", "http://localhost:12345"),
         help="AGP endpoint URL (e.g., http://localhost:12345)",
     )
     parser.add_argument(
         "--agents-dir",
         type=str,
-        default="../ads/datamodels",
+        default=os.environ.get("MODERATOR_AGENTS_DIR", "../ads/datamodels"),
         help="Directory of available agent specs",
     )
     args = parser.parse_args()

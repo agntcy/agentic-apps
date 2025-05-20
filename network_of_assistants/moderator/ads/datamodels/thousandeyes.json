@@ -1,0 +1,30 @@
+{
+  "name": "ThousandEyes Assistant",
+  "description": "An assistant agent specialized in Cisco ThousandEyes products.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "3",
+      "class_name": "Network Performance Monitoring",
+      "class_uid": "20301",
+      "category_name": "Monitoring"
+    },
+    {
+      "category_uid": "3",
+      "class_name": "Application Performance Analysis",
+      "class_uid": "20302",
+      "category_name": "Monitoring"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/thousand-eyes-assistant"
+    }
+  ]
+}

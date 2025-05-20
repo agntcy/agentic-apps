@@ -8,11 +8,20 @@ dependencies = [
     "agp",
     "langchain>=0.3.23",
     "langchain-openai>=0.3.12",
+    "poirot-sdk==0.1.12",
     "pydantic-settings>=2.8.1",
 ]
 
 [tool.uv.sources]
 agp = { workspace = true }
+poirot-sdk = [
+  { index = "cisco-internal" },
+]
+
+[[tool.uv.index]]
+name = "cisco-internal"
+url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple"
+explicit = true
 
 [build-system]
 requires = ["pdm-backend"]

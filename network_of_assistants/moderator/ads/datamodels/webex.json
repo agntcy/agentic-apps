@@ -1,0 +1,30 @@
+{
+  "name": "Webex Assistant",
+  "description": "An assistant agent specialized in Cisco Webex products.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "2",
+      "class_name": "Video Conferencing",
+      "class_uid": "20201",
+      "category_name": "Collaboration"
+    },
+    {
+      "category_uid": "2",
+      "class_name": "Meeting Scheduling",
+      "class_uid": "20202",
+      "category_name": "Collaboration"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/webex-assistant"
+    }
+  ]
+}

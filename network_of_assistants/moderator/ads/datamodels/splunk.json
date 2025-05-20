@@ -1,0 +1,30 @@
+{
+  "name": "Splunk Assistant",
+  "description": "An assistant agent specialized in Splunk products.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "5",
+      "class_name": "Log Analysis",
+      "class_uid": "20501",
+      "category_name": "Analytics"
+    },
+    {
+      "category_uid": "5",
+      "class_name": "Security Event Monitoring",
+      "class_uid": "20502",
+      "category_name": "Analytics"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/splunk-assistant"
+    }
+  ]
+}

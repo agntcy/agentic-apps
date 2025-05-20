@@ -1,0 +1,30 @@
+{
+  "name": "Meraki Assistant",
+  "description": "An assistant agent specialized in Meraki products.",
+  "version": "v1.0.0",
+  "extensions": [],
+  "skills": [
+    {
+      "category_uid": "1",
+      "class_name": "Network Configuration",
+      "class_uid": "20101",
+      "category_name": "Networking"
+    },
+    {
+      "category_uid": "1",
+      "class_name": "Device Management",
+      "class_uid": "20102",
+      "category_name": "Networking"
+    }
+  ],
+  "authors": [
+    "Cisco Systems"
+  ],
+  "locators": [
+    {
+      "size": 1495080680,
+      "type": "source-code",
+      "url": "https://github.com/cisco/meraki-assistant"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ FROM python:3.13-bookworm AS builder
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.26 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.6.13 /uv /bin/uv
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
@@ -15,10 +15,13 @@ ENV UV_LINK_MODE=copy \
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=auth.netrc,target=/root/.netrc \
+    cat /root/.netrc && \
     uv sync --frozen --no-dev --no-install-project --package moderator --no-install-workspace
 
 # Copy code into builder
 COPY . /src
+COPY ./ads /ads
 WORKDIR /src
 
 # Install just the pdf_assistant package
@@ -29,5 +32,6 @@ FROM python:3.13.2-bookworm AS runner
 
 # Copy venv from builder with just the dependencies we need + our package
 COPY --from=builder --chown=app:app /app /app
+COPY --from=builder --chown=app:app /ads /ads
 
 CMD ["/app/bin/moderator"]
