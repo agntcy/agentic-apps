@@ -31,4 +31,4 @@ FROM python:3.13.2-bookworm AS runner
 COPY --from=builder --chown=app:app /app /app
 COPY ./ads /ads
 
-CMD ["bash", "-c", "env && /app/bin/moderator"]
+CMD ["/app/bin/moderator"]
