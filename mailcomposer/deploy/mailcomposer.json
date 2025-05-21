@@ -1,231 +1,237 @@
 {
-  "metadata": {
-    "ref": {
-      "name": "org.agntcy.mailcomposer",
-      "version": "0.0.1"
-    },
-    "description": "Offer a chat interface to compose an email for a marketing campaign. Final output is the email that could be used for the campaign"
-  },
-  "specs": {
-    "capabilities": {
-      "threads": false,
-      "interrupts": true,
-      "callbacks": false
-    },
-    "input": {
-      "$defs": {
-        "Message": {
-          "properties": {
-            "type": {
-              "$ref": "#/$defs/Type",
-              "description": "indicates the originator of the message, a human or an assistant"
-            },
-            "content": {
-              "description": "the content of the message",
-              "title": "Content",
-              "type": "string"
-            }
+  "authors": [
+    "Cisco Systems"
+  ],
+  "name": "org.agntcy.mailcomposer",
+  "version": "0.0.1",
+  "extensions": [
+    {
+      "name": "oasf.agntcy.org/feature/runtime/manifest",
+      "data": {
+
+        "acp": {
+          "capabilities": {
+            "threads": false,
+            "interrupts": true,
+            "callbacks": false
           },
-          "required": ["type", "content"],
-          "title": "Message",
-          "type": "object"
-        },
-        "Type": {
-          "enum": ["human", "assistant", "ai"],
-          "title": "Type",
-          "type": "string"
-        }
-      },
-      "properties": {
-        "messages": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/Message"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Messages"
-        },
-        "is_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Is Completed"
-        }
-      },
-      "title": "AgentState",
-      "type": "object"
-    },
-    "output": {
-      "$defs": {
-        "Message": {
-          "properties": {
-            "type": {
-              "$ref": "#/$defs/Type",
-              "description": "indicates the originator of the message, a human or an assistant"
-            },
-            "content": {
-              "description": "the content of the message",
-              "title": "Content",
-              "type": "string"
-            }
-          },
-          "required": ["type", "content"],
-          "title": "Message",
-          "type": "object"
-        },
-        "Type": {
-          "enum": ["human", "assistant", "ai"],
-          "title": "Type",
-          "type": "string"
-        }
-      },
-      "properties": {
-        "messages": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/Message"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Messages"
-        },
-        "is_completed": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Is Completed"
-        },
-        "final_email": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Final email produced by the mail composer, in html format",
-          "title": "Final Email"
-        }
-      },
-      "title": "OutputState",
-      "type": "object"
-    },
-    "config": {
-      "properties": {
-        "test": {
-          "title": "Test",
-          "type": "boolean"
-        }
-      },
-      "required": ["test"],
-      "title": "ConfigSchema",
-      "type": "object"
-    },
-    "interrupts": [
-      {
-        "interrupt_type": "format_email",
-        "interrupt_payload": {
-          "$defs": {
-            "Message": {
-              "properties": {
-                "type": {
-                  "$ref": "#/$defs/Type",
-                  "description": "indicates the originator of the message, a human or an assistant"
+          "input": {
+            "$defs": {
+              "Message": {
+                "properties": {
+                  "type": {
+                    "$ref": "#/$defs/Type",
+                    "description": "indicates the originator of the message, a human or an assistant"
+                  },
+                  "content": {
+                    "description": "the content of the message",
+                    "title": "Content",
+                    "type": "string"
+                  }
                 },
-                "content": {
-                  "description": "the content of the message",
-                  "title": "Content",
-                  "type": "string"
+                "required": ["type", "content"],
+                "title": "Message",
+                "type": "object"
+              },
+              "Type": {
+                "enum": ["human", "assistant", "ai"],
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "properties": {
+              "messages": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Message"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Messages"
+              },
+              "is_completed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Is Completed"
+              }
+            },
+            "title": "AgentState",
+            "type": "object"
+          },
+          "output": {
+            "$defs": {
+              "Message": {
+                "properties": {
+                  "type": {
+                    "$ref": "#/$defs/Type",
+                    "description": "indicates the originator of the message, a human or an assistant"
+                  },
+                  "content": {
+                    "description": "the content of the message",
+                    "title": "Content",
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "content"],
+                "title": "Message",
+                "type": "object"
+              },
+              "Type": {
+                "enum": ["human", "assistant", "ai"],
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "properties": {
+              "messages": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Message"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Messages"
+              },
+              "is_completed": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Is Completed"
+              },
+              "final_email": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Final email produced by the mail composer, in html format",
+                "title": "Final Email"
+              }
+            },
+            "title": "OutputState",
+            "type": "object"
+          },
+          "config": {
+            "properties": {
+              "test": {
+                "title": "Test",
+                "type": "boolean"
+              }
+            },
+            "required": ["test"],
+            "title": "ConfigSchema",
+            "type": "object"
+          },
+          "interrupts": [
+            {
+              "interrupt_type": "format_email",
+              "interrupt_payload": {
+                "$defs": {
+                  "Message": {
+                    "properties": {
+                      "type": {
+                        "$ref": "#/$defs/Type",
+                        "description": "indicates the originator of the message, a human or an assistant"
+                      },
+                      "content": {
+                        "description": "the content of the message",
+                        "title": "Content",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "content"],
+                    "title": "Message",
+                    "type": "object"
+                  },
+                  "Type": {
+                    "enum": ["human", "assistant", "ai"],
+                    "title": "Type",
+                    "type": "string"
+                  }
                 }
               },
-              "required": ["type", "content"],
-              "title": "Message",
-              "type": "object"
-            },
-            "Type": {
-              "enum": ["human", "assistant", "ai"],
-              "title": "Type",
-              "type": "string"
-            }
-          }
-        },
-        "resume_payload": {
-          "$defs": {
-            "Message": {
-              "properties": {
-                "type": {
-                  "$ref": "#/$defs/Type",
-                  "description": "indicates the originator of the message, a human or an assistant"
-                },
-                "content": {
-                  "description": "the content of the message",
-                  "title": "Content",
-                  "type": "string"
+              "resume_payload": {
+                "$defs": {
+                  "Message": {
+                    "properties": {
+                      "type": {
+                        "$ref": "#/$defs/Type",
+                        "description": "indicates the originator of the message, a human or an assistant"
+                      },
+                      "content": {
+                        "description": "the content of the message",
+                        "title": "Content",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "content"],
+                    "title": "Message",
+                    "type": "object"
+                  },
+                  "Type": {
+                    "enum": ["human", "assistant", "ai"],
+                    "title": "Type",
+                    "type": "string"
+                  }
                 }
-              },
-              "required": ["type", "content"],
-              "title": "Message",
-              "type": "object"
-            },
-            "Type": {
-              "enum": ["human", "assistant", "ai"],
-              "title": "Type",
-              "type": "string"
+              }
             }
-          }
+          ]
+        },
+        "deployment": {
+          "deployment_options": [
+            {
+              "type": "source_code",
+              "name": "source_code_local",
+              "url": "./../",
+              "framework_config": {
+                "framework_type": "langgraph",
+                "graph": "mailcomposer.mailcomposer:graph"
+              }
+            }
+          ],
+          "env_vars": [
+            {
+              "desc": "Azure key for the OpenAI service",
+              "name": "AZURE_OPENAI_API_KEY"
+            },
+            {
+              "desc": "Azure endpoint for the OpenAI service",
+              "name": "AZURE_OPENAI_ENDPOINT"
+            }
+          ],
+          "agent_deps": []
         }
       }
-    ]
-  },
-  "deployment": {
-    "deployment_options": [
-      {
-        "type": "source_code",
-        "name": "source_code_local",
-        "url": "./../",
-        "framework_config": {
-          "framework_type": "langgraph",
-          "graph": "mailcomposer.mailcomposer:graph"
-        }
-      }
-    ],
-    "env_vars": [
-      {
-        "desc": "Azure key for the OpenAI service",
-        "name": "AZURE_OPENAI_API_KEY"
-      },
-      {
-        "desc": "Azure endpoint for the OpenAI service",
-        "name": "AZURE_OPENAI_ENDPOINT"
-      }
-    ],
-    "dependencies": []
-  }
+    }
+  ]
 }
