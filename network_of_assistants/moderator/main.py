@@ -8,6 +8,7 @@ from evaluator import EvaluatorAgent
 
 from poirot.sdk.decorators import agent, graph
 from poirot.sdk import Poirot
+from poirot.sdk.connectors.agp import AGPConnector, process_agp_msg
 
 Poirot.init("moderator-agent", api_endpoint=os.getenv("OTLP_HTTP_ENDPOINT", "http://host.docker.internal:4318"))
 
@@ -61,6 +62,15 @@ async def main(args):
     supervisor_agent = SupervisorAgent()
 
     await supervisor_agent.agp.init()
+
+    # initialize the AGP connector
+    agp_connector = AGPConnector(
+        remote_org="organization",
+        remote_namespace="namespace",
+        shared_space="chat",
+    )
+    # register the agent with the AGP connector
+    agp_connector.register("moderator_agent")
     
     agents = supervisor_agent.get_agents()
     evaluator_agent = agents["evaluator"]
@@ -72,6 +82,7 @@ async def main(args):
 
     chat_agents = set()
 
+    @process_agp_msg("moderator_agent")
     async def on_message_received(message: bytes):
         # Decode the message from bytes to string
         decoded_message = message.decode("utf-8")

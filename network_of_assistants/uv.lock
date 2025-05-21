@@ -1202,7 +1202,7 @@ requires-dist = [
     { name = "agp", editable = "agp" },
     { name = "langchain", specifier = ">=0.3.23" },
     { name = "langchain-openai", specifier = ">=0.3.12" },
-    { name = "poirot-sdk", specifier = "==0.1.12", index = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple" },
+    { name = "poirot-sdk", specifier = "==0.1.14", index = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
 ]
 
@@ -1782,7 +1782,7 @@ requires-dist = [
     { name = "llama-index-llms-azure-openai", specifier = ">=0.3.2" },
     { name = "llama-index-llms-ollama", specifier = ">=0.5.4" },
     { name = "llama-index-llms-openai-like", specifier = ">=0.3.4" },
-    { name = "poirot-sdk", specifier = "==0.1.12", index = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple" },
+    { name = "poirot-sdk", specifier = "==0.1.14", index = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple" },
 ]
 
 [[package]]
@@ -1835,7 +1835,7 @@ wheels = [
 
 [[package]]
 name = "poirot-sdk"
-version = "0.1.12"
+version = "0.1.14"
 source = { registry = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/simple" }
 dependencies = [
     { name = "aiohappyeyeballs" },
@@ -1908,9 +1908,9 @@ dependencies = [
     { name = "yarl" },
     { name = "zipp" },
 ]
-sdist = { url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/poirot-sdk/0.1.12/poirot_sdk-0.1.12.tar.gz", hash = "sha256:dd6dac3f8f5050699313d350f280df4caa188a190b2fd6d052699c993e36f902" }
+sdist = { url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/poirot-sdk/0.1.14/poirot_sdk-0.1.14.tar.gz", hash = "sha256:5c48b0d2efb350ac5f92433a14797f7690f3cfb3203b60ffa3e972053648d922" }
 wheels = [
-    { url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/poirot-sdk/0.1.12/poirot_sdk-0.1.12-py3-none-any.whl", hash = "sha256:5a8aaf1fe0bcd653335a19fd458f8169eac2bada3d3d407a03130bc7641564f4" },
+    { url = "https://artifactory.devhub-cloud.cisco.com/artifactory/api/pypi/outshift-pypi/poirot-sdk/0.1.14/poirot_sdk-0.1.14-py3-none-any.whl", hash = "sha256:bb90bd3fbedb959eb95e741f63805c54d59fff06cd2c42b51a9babfad225052d" },
 ]
 
 [[package]]
