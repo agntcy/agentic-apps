@@ -4,5 +4,5 @@ config:
         apiKey: 799cccc7-49e4-420a-b0a8-e4de949ae673
         id: 45fb3f84-c0d7-41fb-bae3-363ca8f8092a
         envVars:
-          AZURE_OPENAI_API_KEY: [YOUR AZURE OPEN API KEY]
-          AZURE_OPENAI_ENDPOINT: https://[YOUR ENDPOINT].openai.azure.com
+          AZURE_OPENAI_API_KEY: "[YOUR AZURE OPEN API KEY]"
+          AZURE_OPENAI_ENDPOINT: "https://[YOUR ENDPOINT].openai.azure.com"

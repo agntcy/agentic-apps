@@ -2,13 +2,26 @@
   "authors": [
     "Cisco Systems"
   ],
+  "created_at": "2025-05-21T00:00:00Z",
   "name": "org.agntcy.mailcomposer",
+  "description": "Offer a chat interface to compose an email for a marketing campaign. Final output is the email that could be used for the campaign",
   "version": "0.0.1",
+  "schema_version": "0.3.1",
+  "locators": [
+      {        
+          "url": "github.com/agntcy/agentic-apps.git//mailcomposer",            
+          "type": "source-code"
+      }
+  ],
+  "skills": [
+      {
+          "class_uid": 10201
+      }
+  ],    
   "extensions": [
     {
       "name": "oasf.agntcy.org/feature/runtime/manifest",
       "data": {
-
         "acp": {
           "capabilities": {
             "threads": false,

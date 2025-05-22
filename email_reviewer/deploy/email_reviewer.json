@@ -2,6 +2,22 @@
   "authors": [
     "Cisco Systems"
   ],
+  "created_at": "2025-05-21T00:00:00Z",
+  "name": "org.agntcy.mail_reviewer",
+  "description": "Review emails",
+  "version": "0.0.1",   
+  "schema_version": "0.3.1",
+  "locators": [
+    {
+      "url": "github.com/agntcy/agentic-apps.git//email_reviewer",      
+      "type": "source-code"
+    }
+  ],
+  "skills": [
+    {
+      "class_uid": 10201
+    }
+  ],
   "extensions": [
     {
       "name": "oasf.agntcy.org/feature/runtime/manifest",
@@ -121,20 +137,5 @@
       },
       "version": "v0.2.2"
     }
-  ],
-  "locators": [
-    {
-      "source": {
-        "url": "github.com/agntcy/agentic-apps.git//email_reviewer"
-      },
-      "type": "package-source-code"
-    }
-  ],
-  "name": "org.agntcy.mail_reviewer",
-  "skills": [
-    {
-      "class_uid": 10201
-    }
-  ],
-  "version": "0.0.1"
+  ]
 }
