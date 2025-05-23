@@ -4,8 +4,6 @@ The Email Reviewer Agent is a demonstration AI agent developed with Llama-index,
 
 The main workflow is defined in [email_reviewer.py](email_reviewer/email_reviewer.py).
 
-The [generate_manifest.py](email_reviewer/generate_manifest.py) file is used to generate the manifest for the agent workflow server from ACP.
-
 ## Requirements
 
 - [Agent Workflow Server](https://docs.agntcy.org/pages/agws/workflow_server_manager.html#installation)
