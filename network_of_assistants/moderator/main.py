@@ -131,13 +131,13 @@ def run():
     parser.add_argument(
         "--endpoint",
         type=str,
-        default="http://localhost:12345",
+        default=os.environ.get("MODERATOR_AGP_ENDPOINT", "http://localhost:12345"),
         help="AGP endpoint URL (e.g., http://localhost:12345)",
     )
     parser.add_argument(
         "--agents-dir",
         type=str,
-        default="../ads/datamodels",
+        default=os.environ.get("MODERATOR_AGENTS_DIR", "../ads/datamodels"),
         help="Directory of available agent specs",
     )
     args = parser.parse_args()

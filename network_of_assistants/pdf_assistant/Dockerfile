@@ -29,4 +29,7 @@ FROM python:3.13.2-bookworm AS runner
 
 # Copy venv from builder with just the dependencies we need + our package
 COPY --from=builder --chown=app:app /app /app
+COPY pdf_assistant/nexus /docs/nexus
+COPY pdf_assistant/catalyst /docs/catalyst
 
+ENTRYPOINT ["/app/bin/pdf-assistant"]
