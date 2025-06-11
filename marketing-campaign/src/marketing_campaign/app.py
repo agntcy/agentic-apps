@@ -1,26 +1,25 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import os
 import copy
+import os
 
-from agntcy_iomapper import FieldMetadata
+from agntcy_acp import ApiClientConfiguration
+from agntcy_acp.langgraph.acp_node import ACPNode
 from agntcy_acp.langgraph.api_bridge import APIBridgeAgentNode
 from agntcy_acp.langgraph.io_mapper import (
     add_io_mapped_conditional_edge,
     add_io_mapped_edge,
 )
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.state import CompiledStateGraph
-from marketing_campaign import mailcomposer
-from marketing_campaign import state
-from agntcy_acp.langgraph.acp_node import ACPNode
-from agntcy_acp import ApiClientConfiguration
-from langchain_core.runnables.graph import MermaidDrawMethod
+from agntcy_iomapper import FieldMetadata
 from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables.graph import MermaidDrawMethod
 from langchain_openai.chat_models.azure import AzureChatOpenAI
-from marketing_campaign import email_reviewer
-from marketing_campaign.state import MailComposerState
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+
+from marketing_campaign import email_reviewer, mailcomposer, state
+from marketing_campaign.state import MailComposerState
 
 # Fill in client configuration for the remote agent
 MAILCOMPOSER_AGENT_ID = os.environ.get("MAILCOMPOSER_ID", "")

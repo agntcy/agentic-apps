@@ -4,18 +4,18 @@ import asyncio
 import os
 
 import gradio as gr
-from marketing_campaign import mailcomposer
-from marketing_campaign.email_reviewer import TargetAudience
-from marketing_campaign.state import ConfigModel, OverallState
-
-from agntcy_acp.acp_v0.async_client.api_client import ApiClient
 from agntcy_acp import ApiClientConfiguration, AsyncACPClient
+from agntcy_acp.acp_v0.async_client.api_client import ApiClient
 from agntcy_acp.models import (
     Config,
     RunCreateStateless,
     RunError,
     RunResult,
 )
+
+from marketing_campaign import mailcomposer
+from marketing_campaign.email_reviewer import TargetAudience
+from marketing_campaign.state import ConfigModel, OverallState
 
 overall_state = OverallState(
     messages=[], operation_logs=[], has_composer_completed=False

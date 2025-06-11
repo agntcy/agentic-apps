@@ -1,14 +1,16 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import os
 import asyncio
+import os
 import uuid
-from marketing_campaign.app import graph
-from marketing_campaign.state import OverallState, ConfigModel
-from marketing_campaign import mailcomposer
-from marketing_campaign.email_reviewer import TargetAudience
+
 from langchain_core.runnables.config import RunnableConfig
 from langgraph.types import Command
+
+from marketing_campaign import mailcomposer
+from marketing_campaign.app import graph
+from marketing_campaign.email_reviewer import TargetAudience
+from marketing_campaign.state import ConfigModel, OverallState
 
 
 async def main():
@@ -20,8 +22,10 @@ async def main():
     thread_id = uuid.uuid4()
     while True:
         usermsg = input("YOU [Type OK when you are happy with the email proposed] >>> ")
-        
-        inputState.messages.append(mailcomposer.Message(content=usermsg, type=mailcomposer.Type.human))
+
+        inputState.messages.append(
+            mailcomposer.Message(content=usermsg, type=mailcomposer.Type.human)
+        )
 
         config = ConfigModel(
             recipient_email_address=os.environ["RECIPIENT_EMAIL_ADDRESS"],
