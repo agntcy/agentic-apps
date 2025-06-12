@@ -933,7 +933,7 @@
                     ]
                 }
             },
-            "name": "oasf.agntcy.org/feature/runtime/manifest",
+            "name": "schema.oasf.agntcy.org/features/runtime/manifest",
             "version": "v0.2.2"
         }
     ],

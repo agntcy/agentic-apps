@@ -13,7 +13,7 @@ dependencies = [
     "langgraph >= 0.3.5",
     "langchain-openai >= 0.3.8",
     "langchain >= 0.3.20",
-    "agntcy-acp [langgraph,iomapper-langgraph] >= 1.5.0",
+    "agntcy-acp [langgraph,iomapper-langgraph] >= 1.5.1",
     "gradio >= 5.23.1",
 ]
 

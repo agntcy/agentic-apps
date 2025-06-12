@@ -83,10 +83,6 @@
             {
               "name": "python-dotenv",
               "version": "^1.0.1"
-            },
-            {
-              "name": "agntcy_acp",
-              "version": "v0.1.0a2"
             }
           ]
         }
