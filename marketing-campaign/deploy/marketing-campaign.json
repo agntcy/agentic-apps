@@ -919,7 +919,7 @@
                             "ref": {
                                 "name": "org.agntcy.mailcomposer",
                                 "version": "0.0.1",
-                                "url": "file://mailcomposer.json/"
+                                "url": "file://mailcomposer.json"
                             }
                         },
                         {
@@ -927,7 +927,7 @@
                             "ref": {
                                 "name": "org.agntcy.email_reviewer",
                                 "version": "0.0.1",
-                                "url": "file://email_reviewer.json/"
+                                "url": "file://email_reviewer.json"
                             }
                         }
                     ]
@@ -940,7 +940,7 @@
     "locators": [
         {
             "type": "source-code",
-            "url": "github.com/agntcy/agentic-apps.git//marketing-campaign"
+            "url": "https://github.com/agntcy/agentic-apps.git//marketing-campaign"
         }
     ],
     "name": "org.agntcy.marketing-campaign",
