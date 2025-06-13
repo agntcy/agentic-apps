@@ -1,6 +1,6 @@
 [project]
 name = "marketing-campaign"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = [
     {name = "Alessandro Duminuco",email = "aduminuc@cisco.com"}
@@ -8,14 +8,14 @@ authors = [
 readme = "README.md"
 requires-python =  ">=3.10.0,<4.0"
 dynamic = [ "dependencies" ]
-
-[tool.poetry.dependencies]
-python-dotenv = "^1.0.1"
-langgraph = "^0.3.5"
-langchain-openai = "^0.3.8"
-langchain = "^0.3.20"
-agntcy-acp = "1.4.1"
-gradio = "^5.23.1"
+dependencies = [
+    "python-dotenv >= 1.0.1",
+    "langgraph >= 0.3.5",
+    "langchain-openai >= 0.3.8",
+    "langchain >= 0.3.20",
+    "agntcy-acp [langgraph,iomapper-langgraph] >= 1.5.1",
+    "gradio >= 5.23.1",
+]
 
 [project.scripts]
 ui = "marketing_campaign.gradio_ui:main"
@@ -23,6 +23,20 @@ ui = "marketing_campaign.gradio_ui:main"
 [tool.poetry]
 packages = [{include = "marketing_campaign", from = "src"}]
 
+[tool.ruff]
+lint.select = ["E", "F", "I", "TID251"]
+lint.ignore = ["E501"]
+line-length = 88
+indent-width = 4
+extend-include = ["*.ipynb"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

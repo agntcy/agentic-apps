@@ -50,7 +50,7 @@ python email_reviewer/email_reviewer.py
     ```
 * Start the workflow server through the worflow server manager.
     ```
-    wfsm deploy -m ./deploy/email_reviewer.json -c ./deploy/email_reviewer_example.yaml --dryRun=false
+    wfsm deploy --manifestPath deploy/email_reviewer.json --configPath deploy/email_reviewer_example.yaml --dryRun=false
     ```
     
 * Export the following environment variables

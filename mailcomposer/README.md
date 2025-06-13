@@ -42,7 +42,7 @@ Before running the application, ensure you have the following:
     ```
 * Start the workflow server through the worflow server manager.
     ```
-    wfsm deploy -m ./deploy/mailcomposer.json -c ./deploy/mailcomposer_example.yaml --dryRun=false
+    wfsm deploy --manifestPath deploy/mailcomposer.json --configPath deploy/mailcomposer_example.yaml --dryRun=false
     ```
 
 

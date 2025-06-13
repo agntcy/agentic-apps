@@ -58,7 +58,7 @@
   ],  
   "extensions": [     
     {
-      "name": "oasf.agntcy.org/feature/runtime/manifest",
+      "name": "schema.oasf.agntcy.org/features/runtime/manifest",
       "data": {
         "acp": {
           "capabilities": {
@@ -263,7 +263,7 @@
             {
               "type": "source_code",
               "name": "source_code_local",
-              "url": "./../",
+              "url": "file://./../",
               "framework_config": {
                 "framework_type": "langgraph",
                 "graph": "mailcomposer.mailcomposer:graph"
