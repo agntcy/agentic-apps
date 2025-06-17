@@ -3,7 +3,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agntcy_acp.agws_v0 import OASF_EXTENSION_NAME_MANIFEST
 from agntcy_acp.manifest import (
     AgentACPSpec,
     AgentDependency,
@@ -19,19 +18,24 @@ from agntcy_acp.manifest import (
     Manifest,
     Skill,
     SourceCodeDeployment,
+    OASF_EXTENSION_NAME_MANIFEST,
 )
 from pydantic import AnyUrl
 
 from marketing_campaign.state import ConfigModel, OverallState
 
+# Deps are relative to the main manifest file.
+mailcomposer_dependency_manifest = "mailcomposer.json"
+email_reviewer_dependency_manifest = "email_reviewer.json"
+
 manifest = AgentManifest(
     name="org.agntcy.marketing-campaign",
-    authors=["Cisco Systems Inc."],
+    authors=["AGNTCY Internet of Agents Collective"],
     annotations={"type": "langgraph"},
     version="0.3.1",
     locators=[
         Locator(
-            url="github.com/agntcy/agentic-apps.git//marketing-campaign",
+            url="https://github.com/agntcy/agentic-apps/tree/main/marketing-campaign",
             type="source-code",
         ),
     ],
@@ -123,7 +127,7 @@ manifest = AgentManifest(
                             ref=AgentRef(
                                 name="org.agntcy.mailcomposer",
                                 version="0.0.1",
-                                url=AnyUrl("file://mailcomposer.json"),
+                                url=AnyUrl(f"file://{mailcomposer_dependency_manifest}"),
                             ),
                             deployment_option=None,
                             env_var_values=None,
@@ -133,7 +137,7 @@ manifest = AgentManifest(
                             ref=AgentRef(
                                 name="org.agntcy.email_reviewer",
                                 version="0.0.1",
-                                url=AnyUrl("file://email_reviewer.json"),
+                                url=AnyUrl(f"file://{email_reviewer_dependency_manifest}"),
                             ),
                             deployment_option=None,
                             env_var_values=None,
@@ -145,12 +149,11 @@ manifest = AgentManifest(
     ],
 )
 
-with open(f"{Path(__file__).parent}/../../deploy/marketing-campaign.json", "w") as f:
-    f.write(
-        manifest.model_dump_json(
-            exclude_unset=True,
-            exclude_none=True,
-            indent=4,
-        )
+with open(
+    f"{Path(__file__).parent.parent.parent}/manifests/marketing-campaign.json", "w"
+) as f:
+    json_content = manifest.model_dump_json(
+        exclude_unset=True, exclude_none=True, indent=2
     )
+    f.write(json_content)
     f.write("\n")

@@ -263,7 +263,7 @@
             {
               "type": "source_code",
               "name": "source_code_local",
-              "url": "file://./../",
+              "url": "github.com/agntcy/agentic-apps.git//mailcomposer",
               "framework_config": {
                 "framework_type": "langgraph",
                 "graph": "mailcomposer.mailcomposer:graph"
