@@ -23,7 +23,7 @@ data:
       drain_timeout: 10s
 
     services:
-      gateway/0:
+      slim/0:
         pubsub:
           servers:
             - endpoint: "0.0.0.0:{{ .Values.networkOfAssistants.slim.service.port }}"

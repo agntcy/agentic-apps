@@ -16,7 +16,7 @@ dependencies = [
         "pydantic-settings>=2.8.1",
         "ollama>=0.4.7",
         "azure-ai-inference>=1.0.0b9",
-        "ioa-observe-sdk>=1.0.12",
+        "ioa-observe-sdk>=1.0.13",
         "slim-bindings>=0.3.5",
     ]
 

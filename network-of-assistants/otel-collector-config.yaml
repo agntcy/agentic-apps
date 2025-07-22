@@ -1,0 +1,25 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+        max_request_body_size: 10485760
+
+exporters:
+  clickhouse:
+    endpoint: "tcp://clickhouse-server:9000"
+    database: "default"
+    username: "admin"
+    password: "password"
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [clickhouse]
+
+    traces:
+      receivers: [otlp]
+      exporters: [clickhouse, rabbitmq]

@@ -43,7 +43,7 @@ spec:
           {{- end }}
           image: "{{ .Values.networkOfAssistants.slim.image.repository }}:{{ .Values.networkOfAssistants.slim.image.tag | default .Chart.AppVersion }}"
           args:
-            - /gateway
+            - /slim
             - --config
             - /config/server-config.yaml
           imagePullPolicy: {{ .Values.networkOfAssistants.slim.image.pullPolicy }}

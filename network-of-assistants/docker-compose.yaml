@@ -3,6 +3,44 @@
 
 services:
 
+  clickhouse-server:
+    image: clickhouse/clickhouse-server
+    container_name: clickhouse-server
+    networks:
+      - app_network
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=password
+      - CLICKHOUSE_DB=default
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - app_network
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      clickhouse-server:
+        condition: service_healthy
+
   noa-slim:
     image: ghcr.io/agntcy/slim:0.3.15
     networks:
@@ -21,6 +59,7 @@ services:
       - app_network
     depends_on:
       - noa-slim
+      - otel-collector
     volumes:
       - ./dir:/app/dir
     environment:
@@ -30,6 +69,9 @@ services:
       - MODERATOR_LLM_API_KEY
       - SLIM_ENDPOINT=http://noa-slim:46357
       - AGENTS_DIR=/app/dir/datamodels
+      - WITH_OBS=true
+      - OTLP_HTTP_ENDPOINT=http://otel-collector:4318
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
 
   noa-file-assistant:
     build:
@@ -40,6 +82,7 @@ services:
     depends_on:
       - noa-slim
       - noa-moderator
+      - otel-collector
     volumes:
       - ./noa-file-assistant/files:/home/files
     environment:
@@ -53,6 +96,9 @@ services:
       - ASSISTANT_ID=noa-file-assistant
       - ASSISTANT_DOC_DIR=/home/files
       - FILE_URL=https://arxiv.org/pdf/2410.10934?
+      - WITH_OBS=true
+      - OTLP_HTTP_ENDPOINT=http://otel-collector:4318
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
 
   noa-web-surfer:
     build:
@@ -63,6 +109,7 @@ services:
     depends_on:
       - noa-slim
       - noa-moderator
+      - otel-collector
     environment:
       - WEB_SURFER_LLM_TYPE=openai
       - WEB_SURFER_LLM_MODEL=gpt-4o
@@ -70,6 +117,9 @@ services:
       - WEB_SURFER_LLM_API_KEY
       - SLIM_ENDPOINT=http://noa-slim:46357
       - WEB_SURFER_ID=noa-web-surfer-assistant
+      - WITH_OBS=true
+      - OTLP_HTTP_ENDPOINT=http://otel-collector:4318
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
 
   noa-math-assistant:
     build:
@@ -80,6 +130,7 @@ services:
     depends_on:
       - noa-slim
       - noa-moderator
+      - otel-collector
     environment:
       - MATH_ASSISTANT_LLM_TYPE=openai
       - MATH_ASSISTANT_LLM_MODEL=gpt-4o
@@ -87,6 +138,9 @@ services:
       - MATH_ASSISTANT_LLM_API_KEY
       - SLIM_ENDPOINT=http://noa-slim:46357
       - MATH_ASSISTANT_ID=noa-math-assistant
+      - WITH_OBS=true
+      - OTLP_HTTP_ENDPOINT=http://otel-collector:4318
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
 
   noa-user-proxy:
     build:
@@ -106,6 +160,7 @@ services:
       - noa-file-assistant
       - noa-web-surfer
       - noa-math-assistant
+      - otel-collector
 
 networks:
   app_network:

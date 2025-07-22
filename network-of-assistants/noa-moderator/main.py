@@ -67,7 +67,6 @@ async def main(args):
         json_message = json.loads(decoded_message)
 
         log.info(f"Received message: {json_message}")
-        chat_history.append(json_message)
 
         if json_message["type"] == "ChatMessage":
             try:
@@ -77,6 +76,7 @@ async def main(args):
                         "query_message": json_message,
                     }
                 )
+                chat_history.append(json_message)
 
                 if "messages" not in answers_list:
                     answers_list = {"messages": [answers_list]}
