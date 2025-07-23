@@ -3,7 +3,7 @@ fastapi==0.110.0
 uvicorn==0.27.0
 python-dotenv==1.0.0
 jinja2==3.1.2
-pydantic==2.5.3
+pydantic>=2.6.1,<3.0.0
 rich>=13.0.0
 
 # Direct OpenAI dependency instead of relying on Simple Agent Framework's LLM utility
