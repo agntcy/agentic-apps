@@ -1,4 +1,4 @@
-"""Setup configuration for A2A Summit Demo package."""
+"""Setup configuration for Demo package."""
 
 from setuptools import setup, find_packages
 
