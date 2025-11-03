@@ -26,8 +26,6 @@ tourist_scheduling_system/
 │       └── messages.py   # Message schemas
 ├── scripts/                  # Demo and utility scripts
 ├── tests/                    # Test files
-├── docs/                     # Documentation
-├── examples/                 # Example implementations
 └── slides/                   # Presentation materials
 ```
 
@@ -218,9 +216,7 @@ mypy src/
 
 ## 📚 Documentation
 
-- [UI Agent Documentation](docs/README_UI_AGENT.md)
-- [Agent Discovery Problem Statement](docs/ai-agent-discovery-problem-statement.md)
-- [API Documentation](docs/)
+Legacy documentation and examples have been removed for clarity. Refer to git history if needed. Current authoritative sources are inline code docstrings and this README.
 
 ## 🤝 Contributing
 
