@@ -15,6 +15,9 @@ providing visibility into the scheduling process in real-time.
 import json
 import logging
 import asyncio
+import socket
+from threading import Thread
+from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Set, Optional
@@ -233,6 +236,11 @@ class UIAgentExecutor(AgentExecutor):
 
 # FastAPI app for web UI
 web_app = FastAPI(title="Tourist Scheduling Dashboard")
+
+@web_app.get("/health")
+async def health():
+    """Simple health check endpoint for launcher scripts."""
+    return {"status": "ok", "timestamp": datetime.now().isoformat(), "connected_clients": len(ui_state.connected_clients)}
 
 @web_app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -505,21 +513,45 @@ HTML_TEMPLATE = """
             if (message.type === 'initial_state') {
                 updateFullState(message.data);
             } else if (message.type === 'tourist_request') {
-                updateTourists(message.data);
+                // Single tourist request object
+                updateTouristsList([message.data]);
+                updateMetricsIncremental('tourist');
             } else if (message.type === 'guide_offer') {
-                updateGuides(message.data);
+                // Single guide offer object
+                updateGuidesList([message.data]);
+                updateMetricsIncremental('guide');
             } else if (message.type === 'schedule_proposal') {
-                updateAssignments(message.data.assignments);
+                // Proposal contains assignments array; update assignments list and metrics
+                updateAssignmentsList(message.data.assignments || []);
+                updateMetrics(message.data.metrics || document.cachedMetrics || {});
             } else if (message.type === 'metrics') {
                 updateMetrics(message.data);
+                document.cachedMetrics = message.data; // cache latest metrics
             }
         };
 
         function updateFullState(state) {
-            updateMetrics(state.metrics);
-            updateTouristsList(state.tourist_requests);
-            updateGuidesList(state.guide_offers);
-            updateAssignmentsList(state.assignments);
+            updateMetrics(state.metrics || {});
+            updateTouristsList(state.tourist_requests || []);
+            updateGuidesList(state.guide_offers || []);
+            updateAssignmentsList(state.assignments || []);
+            document.cachedMetrics = state.metrics;
+        }
+
+        function updateMetricsIncremental(kind) {
+            // Lightweight recalculation from DOM counts when individual items arrive
+            const tourists = document.querySelectorAll('#tourists-list .item-header').length;
+            const guides = document.querySelectorAll('#guides-list .item-header').length;
+            const assignments = document.querySelectorAll('#assignments-list .assignment').length;
+            const metrics = {
+                total_tourists: tourists,
+                total_guides: guides,
+                total_assignments: assignments,
+                satisfied_tourists: assignments, // approximation
+                guide_utilization: guides ? (assignments / guides) : 0,
+                avg_assignment_cost: document.cachedMetrics ? document.cachedMetrics.avg_assignment_cost : 0
+            };
+            updateMetrics(metrics);
         }
 
         function updateMetrics(metrics) {
@@ -539,42 +571,49 @@ HTML_TEMPLATE = """
                 '$' + metrics.avg_assignment_cost.toFixed(0);
         }
 
-        function updateTouristsList(tourists) {
-            const container = document.getElementById('tourists-list');
-            if (!tourists || tourists.length === 0) {
-                container.innerHTML = '<div class="item">No tourists yet</div>';
+        // Maintain maps so incremental updates append/replace individual items instead of wiping entire list.
+        const touristsState = new Map();
+        const guidesState = new Map();
+
+        function renderCollection(containerId, stateMap, kind) {
+            const container = document.getElementById(containerId);
+            if (stateMap.size === 0) {
+                container.innerHTML = `<div class="item">No ${kind} yet</div>`;
                 return;
             }
+            const items = Array.from(stateMap.values()).sort((a,b) => (a[`${kind === 'tourists' ? 'tourist_id' : 'guide_id'}`] || '').localeCompare(b[`${kind === 'tourists' ? 'tourist_id' : 'guide_id'}`] || ''));
+            container.innerHTML = items.map(obj => {
+                if (kind === 'tourists') {
+                    return `<div class="item">
+                        <div class="item-header">${obj.tourist_id}</div>
+                        <div class="item-details">Budget: $${obj.budget} | Preferences: ${obj.preferences.join(', ')} | Windows: ${obj.availability.length}</div>
+                    </div>`;
+                } else {
+                    return `<div class="item">
+                        <div class="item-header">${obj.guide_id}</div>
+                        <div class="item-details">Rate: $${obj.hourly_rate}/hour | Categories: ${obj.categories.join(', ')} | Max Group: ${obj.max_group_size}</div>
+                    </div>`;
+                }
+            }).join('');
+        }
 
-            container.innerHTML = tourists.map(tourist => `
-                <div class="item">
-                    <div class="item-header">${tourist.tourist_id}</div>
-                    <div class="item-details">
-                        Budget: $${tourist.budget} |
-                        Preferences: ${tourist.preferences.join(', ')} |
-                        Windows: ${tourist.availability.length}
-                    </div>
-                </div>
-            `).join('');
+        function updateTouristsList(tourists) {
+            // tourists can be full list (initial) or single-item array
+            if (Array.isArray(tourists)) {
+                tourists.forEach(t => { if (t && t.tourist_id) touristsState.set(t.tourist_id, t); });
+            } else if (tourists && tourists.tourist_id) {
+                touristsState.set(tourists.tourist_id, tourists);
+            }
+            renderCollection('tourists-list', touristsState, 'tourists');
         }
 
         function updateGuidesList(guides) {
-            const container = document.getElementById('guides-list');
-            if (!guides || guides.length === 0) {
-                container.innerHTML = '<div class="item">No guides yet</div>';
-                return;
+            if (Array.isArray(guides)) {
+                guides.forEach(g => { if (g && g.guide_id) guidesState.set(g.guide_id, g); });
+            } else if (guides && guides.guide_id) {
+                guidesState.set(guides.guide_id, guides);
             }
-
-            container.innerHTML = guides.map(guide => `
-                <div class="item">
-                    <div class="item-header">${guide.guide_id}</div>
-                    <div class="item-details">
-                        Rate: $${guide.hourly_rate}/hour |
-                        Categories: ${guide.categories.join(', ')} |
-                        Max Group: ${guide.max_group_size}
-                    </div>
-                </div>
-            `).join('');
+            renderCollection('guides-list', guidesState, 'guides');
         }
 
         function updateAssignmentsList(assignments) {
@@ -617,32 +656,68 @@ HTML_TEMPLATE = """
 @click.option("--a2a-port", default=10002, type=int, help="A2A agent port")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def main(host: str, port: int, a2a_port: int, debug: bool):
-    """Start the UI Agent with both web dashboard and A2A capabilities"""
+    """Start the UI Agent with both web dashboard and A2A capabilities.
+
+    Previous implementation attempted to run two uvicorn servers concurrently via
+    asyncio.gather. In certain environments one server would start while the other
+    silently failed (resulting in ERR_CONNECTION_REFUSED for the web dashboard).
+
+    This revised launcher:
+    1. Performs port auto-retry (increment) when a requested port is busy.
+    2. Starts the web dashboard in a background thread using uvicorn.run (its own loop).
+    3. Runs the A2A server in the main asyncio loop.
+    4. Provides clear logging of the final bound ports.
+    """
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    # Resolve / auto-increment ports if occupied
+    original_web_port = port
+    original_a2a_port = a2a_port
+    port = find_available_port(host, port, label="web", max_increment=10)
+    a2a_port = find_available_port(host, a2a_port, label="a2a", max_increment=10)
+
+    if port != original_web_port:
+        logger.warning(f"[UI Agent] Requested web port {original_web_port} busy, using {port}")
+    if a2a_port != original_a2a_port:
+        logger.warning(f"[UI Agent] Requested A2A port {original_a2a_port} busy, using {a2a_port}")
 
     logger.info(f"[UI Agent] Starting web dashboard on {host}:{port}")
     logger.info(f"[UI Agent] Starting A2A agent on {host}:{a2a_port}")
     logger.info(f"[UI Agent] Dashboard available at: http://{host}:{port}/")
+    logger.info("[UI Agent] Health endpoint: /health (will report status: ok)")
 
-    async def run_both_servers():
-        """Run both the web dashboard and A2A agent"""
-        import asyncio
+    # Persist final ports so other processes (scheduler) can discover actual A2A port if it auto-incremented
+    try:
+        ports_file = Path(__file__).resolve().parent.parent / "ui_agent_ports.json"
+        ports_file.write_text(json.dumps({"host": host, "web_port": port, "a2a_port": a2a_port}, indent=2))
+        logger.info(f"[UI Agent] Wrote ports file: {ports_file}")
+    except Exception as e:
+        logger.warning(f"[UI Agent] Failed to write ports file: {e}")
 
-        # Start A2A server in background
-        a2a_server_task = asyncio.create_task(start_a2a_server(host, a2a_port))
+    # Launch web server in thread so uvicorn's internal loop does not conflict
+    def _start_web():
+        try:
+            uvicorn.run(web_app, host=host, port=port, log_level="debug" if debug else "info")
+        except Exception as e:
+            logger.error(f"[UI Agent] Web server failed: {e}")
+    web_thread = Thread(target=_start_web, name="ui-web-thread", daemon=True)
+    web_thread.start()
+    logger.info("[UI Agent] Web server thread started")
 
-        # Start web server in background
-        web_server_task = asyncio.create_task(start_web_server(host, port, debug))
+    # Run A2A server in main loop (blocking until shutdown)
+    try:
+        asyncio.run(start_a2a_server(host, a2a_port))
+    except KeyboardInterrupt:
+        logger.info("[UI Agent] Shutdown requested (KeyboardInterrupt)")
+    except Exception as e:
+        logger.error(f"[UI Agent] A2A server error: {e}")
 
-        # Wait for both
-        await asyncio.gather(a2a_server_task, web_server_task)
-
-    asyncio.run(run_both_servers())
+    logger.info("[UI Agent] Exiting main process")
 
 
 async def start_a2a_server(host: str, port: int):
-    """Start the A2A agent server"""
+    """Start the A2A agent server (with port retry already performed in main)."""
     skill = AgentSkill(
         id="real_time_dashboard",
         name="Real-time System Dashboard",
@@ -680,16 +755,25 @@ async def start_a2a_server(host: str, port: int):
     await server.serve()
 
 
-async def start_web_server(host: str, port: int, debug: bool):
-    """Start the web dashboard server"""
-    config = uvicorn.Config(
-        web_app,
-        host=host,
-        port=port,
-        log_level="debug" if debug else "info"
-    )
-    server = uvicorn.Server(config)
-    await server.serve()
+def find_available_port(host: str, desired_port: int, label: str, max_increment: int = 5) -> int:
+    """Return an available port, incrementing if the desired one is busy.
+
+    This avoids hard failures when the UI agent is relaunched while previous A2A
+    sockets are still bound. We attempt up to max_increment increments.
+    """
+    for offset in range(0, max_increment + 1):
+        candidate = desired_port + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind((host, candidate))
+                # Successfully bound; release and return
+                logger.debug(f"[UI Agent] Port check success for {label} port {candidate}")
+                return candidate
+            except OSError:
+                logger.debug(f"[UI Agent] Port {candidate} busy for {label}")
+                continue
+    raise RuntimeError(f"[UI Agent] No available {label} port found starting at {desired_port}")
 
 
 if __name__ == "__main__":

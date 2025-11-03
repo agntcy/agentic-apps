@@ -93,6 +93,66 @@ python scripts/run_autonomous_demo.py
 
 This starts 5 autonomous agents (3 guides + 2 tourists) with unique AI personalities making intelligent decisions for 10 minutes.
 
+### Unified Script Autonomous Mode (run_with_ui.sh)
+
+You can also launch a timed autonomous session directly via the unified demo script that starts (or reuses) the scheduler and UI dashboard and then runs one autonomous guide + one autonomous tourist agent. This is useful for quick smoke tests without the full multi-agent autonomous swarm.
+
+Flags added to `scripts/run_with_ui.sh`:
+
+```
+--autonomous              Enable autonomous pair (guide + tourist)
+--auto-guide-id TEXT      Guide agent ID (default: ag-auto)
+--auto-tourist-id TEXT    Tourist agent ID (default: at-auto)
+--auto-duration INT       Duration in minutes (default: 5)
+--no-demo                 Skip sending the basic non-autonomous demo interactions
+```
+
+Example (1-minute autonomous run, custom IDs, skip standard demo traffic):
+
+```bash
+PYTHONPATH=src scripts/run_with_ui.sh \
+	--scheduler-port 10010 \
+	--ui-web-port 10011 \
+	--ui-a2a-port 10012 \
+	--autonomous \
+	--auto-duration 1 \
+	--auto-guide-id guide-neo \
+	--auto-tourist-id tourist-trinity \
+	--no-demo
+```
+
+Then open the dashboard:
+
+```
+http://localhost:10011
+```
+
+Log files created in the working directory:
+
+```
+autonomous_guide.log
+autonomous_tourist.log
+scheduler_demo.log (or scheduler_agent_<port>.log on reuse)
+ui_demo.log (or ui_agent_<port>.log on reuse)
+```
+
+Tail logs while it runs:
+
+```bash
+tail -f autonomous_guide.log autonomous_tourist.log
+```
+
+When the duration elapses the autonomous agents stop; use Ctrl+C once to trigger cleanup (terminating background processes started by the script).
+
+If Azure OpenAI environment variables are not set, the agents automatically fall back to heuristic decision logic (pricing, availability, budget) and emit a warning line like:
+
+```
+WARNING:__main__:[Guide ag-auto] Azure OpenAI env vars missing; falling back to heuristic decisions
+```
+
+This mode ensures graceful operation in local dev environments without cloud credentials.
+
+
 ## 🏗️ Architecture
 
 ### Agent Types

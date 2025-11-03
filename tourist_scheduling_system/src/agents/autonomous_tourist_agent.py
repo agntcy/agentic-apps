@@ -17,11 +17,18 @@ from typing import Dict
 
 import click
 import httpx
-from openai import AsyncAzureOpenAI
-from a2a.client import ClientFactory
+try:
+    from openai import AsyncAzureOpenAI  # type: ignore
+except Exception:  # pragma: no cover
+    AsyncAzureOpenAI = None
+from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:  # pragma: no cover
+    def load_dotenv():
+        return None
 
 from core.messages import TouristRequest, Window
 
@@ -39,12 +46,25 @@ class AutonomousTouristAgent:
         self.tourist_id = tourist_id
         self.scheduler_url = scheduler_url
         # Use existing Azure OpenAI environment variables
-        self.openai_client = AsyncAzureOpenAI(
-            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
-        )
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.llm_available = bool(AsyncAzureOpenAI and api_key and api_version and endpoint and self.deployment_name)
+        if self.llm_available and AsyncAzureOpenAI:
+            try:
+                self.openai_client = AsyncAzureOpenAI(
+                    api_key=api_key,
+                    api_version=api_version,
+                    azure_endpoint=endpoint,
+                )
+            except Exception as e:
+                logger.warning("[Tourist %s] Failed to init OpenAI client: %s; fallback to heuristic", self.tourist_id, e)
+                self.openai_client = None
+                self.llm_available = False
+        else:
+            self.openai_client = None
+            logger.warning("[Tourist %s] Azure OpenAI env vars missing; heuristic decisions only", self.tourist_id)
         self.persona = self._generate_persona()
         self.trip_context = self._generate_trip_context()
         self.booking_history = []
@@ -129,30 +149,29 @@ class AutonomousTouristAgent:
         Respond with just a number (budget in dollars), no currency symbol or explanation.
         """
 
-        try:
-            response = await self.openai_client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=50,
-                temperature=0.8
-            )
-
-            budget_text = response.choices[0].message.content.strip()
-            # Extract number from response
-            import re
-            budget_match = re.search(r'\d+(?:\.\d+)?', budget_text)
-            if budget_match:
-                new_budget = float(budget_match.group())
-                # Keep within reasonable bounds (50% to 300% of base budget)
-                min_budget = self.persona['base_budget'] * 0.5
-                max_budget = self.persona['base_budget'] * 3.0
-                new_budget = max(min_budget, min(max_budget, new_budget))
-
-                logger.info(f"[Tourist {self.tourist_id}] LLM budget decision: ${new_budget} (base: ${self.persona['base_budget']})")
-                return new_budget
-
-        except Exception as e:
-            logger.warning(f"[Tourist {self.tourist_id}] LLM budget failed, using base: {e}")
+        if self.llm_available and self.openai_client is not None:
+            try:
+                client_chat = getattr(self.openai_client, "chat", None)
+                if client_chat is None:
+                    raise AttributeError("OpenAI client missing 'chat'")
+                response = await client_chat.completions.create(
+                    model=self.deployment_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=50,
+                    temperature=0.8
+                )
+                budget_text = response.choices[0].message.content.strip()
+                import re
+                budget_match = re.search(r'\d+(?:\.\d+)?', budget_text)
+                if budget_match:
+                    new_budget = float(budget_match.group())
+                    min_budget = self.persona['base_budget'] * 0.5
+                    max_budget = self.persona['base_budget'] * 3.0
+                    new_budget = max(min_budget, min(max_budget, new_budget))
+                    logger.info(f"[Tourist {self.tourist_id}] LLM budget decision: ${new_budget} (base: ${self.persona['base_budget']})")
+                    return new_budget
+            except Exception as e:
+                logger.warning(f"[Tourist {self.tourist_id}] LLM budget failed, heuristic fallback: {e}")
 
         return self.persona['base_budget']
 
@@ -181,34 +200,31 @@ class AutonomousTouristAgent:
         Respond with start and end times in 24-hour format, like: "09:00-17:00"
         """
 
-        try:
-            response = await self.openai_client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=100,
-                temperature=0.8
-            )
-
-            time_text = response.choices[0].message.content.strip()
-            # Parse time range like "09:00-17:00"
-            import re
-            time_match = re.search(r'(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})', time_text)
-            if time_match:
-                start_hour, start_min, end_hour, end_min = map(int, time_match.groups())
-
-                # Use tomorrow's date for availability
-                tomorrow = now + timedelta(days=1)
-                start_time = tomorrow.replace(hour=start_hour, minute=start_min, second=0, microsecond=0)
-                end_time = tomorrow.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
-
-                if end_time <= start_time:
-                    end_time += timedelta(hours=4)  # Minimum 4-hour window
-
-                logger.info(f"[Tourist {self.tourist_id}] LLM availability decision: {start_time} to {end_time}")
-                return Window(start=start_time, end=end_time)
-
-        except Exception as e:
-            logger.warning(f"[Tourist {self.tourist_id}] LLM availability failed, using default: {e}")
+        if self.llm_available and self.openai_client is not None:
+            try:
+                client_chat = getattr(self.openai_client, "chat", None)
+                if client_chat is None:
+                    raise AttributeError("OpenAI client missing 'chat'")
+                response = await client_chat.completions.create(
+                    model=self.deployment_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=100,
+                    temperature=0.8
+                )
+                time_text = response.choices[0].message.content.strip()
+                import re
+                time_match = re.search(r'(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})', time_text)
+                if time_match:
+                    start_hour, start_min, end_hour, end_min = map(int, time_match.groups())
+                    tomorrow = now + timedelta(days=1)
+                    start_time = tomorrow.replace(hour=start_hour, minute=start_min, second=0, microsecond=0)
+                    end_time = tomorrow.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
+                    if end_time <= start_time:
+                        end_time += timedelta(hours=4)
+                    logger.info(f"[Tourist {self.tourist_id}] LLM availability decision: {start_time} to {end_time}")
+                    return Window(start=start_time, end=end_time)
+            except Exception as e:
+                logger.warning(f"[Tourist {self.tourist_id}] LLM availability failed, heuristic fallback: {e}")
 
         # Default availability: tomorrow 9 AM to 5 PM
         tomorrow = now + timedelta(days=1)
@@ -240,10 +256,7 @@ class AutonomousTouristAgent:
         async with httpx.AsyncClient():
             try:
                 # Create A2A client
-                client = await ClientFactory.connect(
-                    agent=minimal_agent_card(self.scheduler_url),
-                    client_config=None,
-                )
+                client = ClientFactory(ClientConfig()).create(minimal_agent_card(self.scheduler_url))
 
                 # Send message
                 message = create_text_message_object(content=request.to_json())
@@ -258,9 +271,10 @@ class AutonomousTouristAgent:
                             for msg in task.history:
                                 if msg.role.value == "agent" and msg.parts:
                                     for part in msg.parts:
-                                        if hasattr(part.root, "text"):
+                                        text_value = getattr(part.root, "text", None)
+                                        if text_value:
                                             try:
-                                                data = json.loads(part.root.text)
+                                                data = json.loads(text_value)
                                                 if data.get("type") == "ScheduleProposal":
                                                     await self.evaluate_proposal(data)
                                             except json.JSONDecodeError:
@@ -291,27 +305,40 @@ class AutonomousTouristAgent:
         Respond with just "ACCEPT" or "DECLINE" followed by a brief reason.
         """
 
-        try:
-            response = await self.openai_client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=100,
-                temperature=0.7
-            )
+        if self.llm_available and self.openai_client is not None:
+            try:
+                client_chat = getattr(self.openai_client, "chat", None)
+                if client_chat is None:
+                    raise AttributeError("OpenAI client missing 'chat'")
+                response = await client_chat.completions.create(
+                    model=self.deployment_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=100,
+                    temperature=0.7
+                )
+                decision = response.choices[0].message.content.strip()
+                logger.info(f"[Tourist {self.tourist_id}] LLM evaluation: {decision}")
+                if "ACCEPT" in decision.upper():
+                    self.booking_history.append(proposal_data)
+                    logger.info(f"[Tourist {self.tourist_id}] \u2705 Accepted proposal!")
+                else:
+                    logger.info(f"[Tourist {self.tourist_id}] \u274c Declined proposal")
+                return
+            except Exception as e:
+                logger.warning(f"[Tourist {self.tourist_id}] LLM evaluation failed: {e}")
+        # Heuristic evaluation fallback
+        guide_rate = proposal_data.get("assignments", [{}])[0].get("hourly_rate", 0)
+        budget_ok = guide_rate <= (self.persona['base_budget'] * 1.5)
+        interests = set(self.persona['interests'])
+        categories = set(proposal_data.get("assignments", [{}])[0].get("categories", []))
+        interest_match = bool(interests & categories)
+        if budget_ok and interest_match:
+            self.booking_history.append(proposal_data)
+            logger.info(f"[Tourist {self.tourist_id}] Heuristic ACCEPT (rate={guide_rate})")
+        else:
+            logger.info(f"[Tourist {self.tourist_id}] Heuristic DECLINE (rate={guide_rate}, match={interest_match})")
 
-            decision = response.choices[0].message.content.strip()
-            logger.info(f"[Tourist {self.tourist_id}] LLM evaluation: {decision}")
-
-            if "ACCEPT" in decision.upper():
-                self.booking_history.append(proposal_data)
-                logger.info(f"[Tourist {self.tourist_id}] ✅ Accepted proposal!")
-            else:
-                logger.info(f"[Tourist {self.tourist_id}] ❌ Declined proposal")
-
-        except Exception as e:
-            logger.warning(f"[Tourist {self.tourist_id}] LLM evaluation failed: {e}")
-
-    async def autonomous_operation(self, duration_minutes: int = 60):
+    async def autonomous_operation(self, duration_minutes: int = 60, min_interval: int = 60, max_interval: int = 180):
         """Run autonomous operations for specified duration"""
         logger.info(f"[Tourist {self.tourist_id}] Starting autonomous operation for {duration_minutes} minutes")
         logger.info(f"[Tourist {self.tourist_id}] Persona: {self.persona['type']} - {self.persona['personality']}")
@@ -325,8 +352,12 @@ class AutonomousTouristAgent:
                 request = await self.create_tourist_request()
                 await self.send_request_to_scheduler(request)
 
-                # Wait before next request (tourists don't spam requests)
-                wait_time = random.randint(60, 180)  # 1 to 3 minutes
+                # Wait before next request (interval configurable)
+                if min_interval < 5:
+                    min_interval = 5  # keep a small floor
+                if max_interval < min_interval:
+                    max_interval = min_interval
+                wait_time = random.randint(min_interval, max_interval)
                 logger.info(f"[Tourist {self.tourist_id}] Waiting {wait_time} seconds before next request...")
                 await asyncio.sleep(wait_time)
 
@@ -337,17 +368,21 @@ class AutonomousTouristAgent:
         logger.info(f"[Tourist {self.tourist_id}] Autonomous operation completed")
 
 
+async def _async_main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int):
+    agent = AutonomousTouristAgent(tourist_id, scheduler_url)
+    await agent.autonomous_operation(duration, min_interval=min_interval, max_interval=max_interval)
+
+
 @click.command()
 @click.option("--scheduler-url", default="http://localhost:10010", help="Scheduler A2A server URL")
 @click.option("--tourist-id", default="tourist-ai-1", help="Tourist ID")
-@click.option("--duration", default=60, help="Operation duration in minutes")
-async def main(scheduler_url: str, tourist_id: str, duration: int):
-    """Run autonomous tourist agent with Azure OpenAI decision-making"""
+@click.option("--duration", default=60, type=int, help="Operation duration in minutes")
+@click.option("--min-interval", default=60, type=int, help="Minimum seconds between requests")
+@click.option("--max-interval", default=180, type=int, help="Maximum seconds between requests")
+def main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int):
+    """Run autonomous tourist agent (LLM optional)"""
+    asyncio.run(_async_main(scheduler_url, tourist_id, duration, min_interval, max_interval))
 
-    # Create and run autonomous agent (Azure OpenAI env vars already set)
-    agent = AutonomousTouristAgent(tourist_id, scheduler_url)
-    await agent.autonomous_operation(duration)
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+if __name__ == "__main__":  # pragma: no cover
+    main()

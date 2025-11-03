@@ -1,183 +1,138 @@
 #!/usr/bin/env python3
-"""
-Test script for UI Agent
+"""Synchronous functional test for UI Agent using FastAPI TestClient.
 
-This script demonstrates how the UI Agent works by sending sample messages
-to test the real-time dashboard functionality.
+Avoids spinning up real uvicorn servers; interacts directly with ASGI apps.
 """
 
-import asyncio
 import json
 import time
 import sys
 import os
 from datetime import datetime, timedelta
-import httpx
+from fastapi.testclient import TestClient
 
-# Add src directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+TEST_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+SRC_PATH = os.path.join(TEST_ROOT, 'src')
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 
-from core.messages import TouristRequest, GuideOffer, ScheduleProposal, Assignment, Window
+from core.messages import TouristRequest, GuideOffer, ScheduleProposal, Assignment, Window  # noqa: E402
+from agents.ui_agent import UIAgentExecutor, web_app, ui_state  # noqa: E402
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill  # noqa: E402
+from a2a.server.request_handlers import DefaultRequestHandler  # noqa: E402
+from a2a.server.tasks import InMemoryTaskStore  # noqa: E402
+from a2a.server.apps import A2AStarletteApplication  # noqa: E402
 
 
-async def test_ui_agent():
-    """Test the UI agent by sending sample messages"""
+def build_a2a_app():
+    skill = AgentSkill(
+        id="real_time_dashboard",
+        name="Real-time System Dashboard",
+        description="Provides real-time web dashboard for multi-agent tourist scheduling system",
+        tags=["dashboard", "ui", "monitoring", "real-time"],
+        examples=["Monitor tourist requests and guide availability"],
+    )
+    agent_card = AgentCard(
+        name="UI Agent",
+        description="Real-time web dashboard for tourist scheduling system monitoring",
+        url="http://testserver/",
+        version="1.0.0",
+        default_input_modes=["text"],
+        default_output_modes=["text"],
+        capabilities=AgentCapabilities(streaming=False),
+        skills=[skill],
+    )
+    request_handler = DefaultRequestHandler(
+        agent_executor=UIAgentExecutor(),
+        task_store=InMemoryTaskStore(),
+    )
+    return A2AStarletteApplication(agent_card=agent_card, http_handler=request_handler).build()
 
-    ui_agent_url = "http://localhost:10002"  # A2A port for UI agent
 
-    print("🧪 Testing UI Agent Real-time Dashboard")
-    print("=====================================")
+def reset_state():
+    ui_state.tourist_requests.clear()
+    ui_state.guide_offers.clear()
+    ui_state.assignments.clear()
+    ui_state.schedule_proposals.clear()
+    ui_state.metrics.total_tourists = 0
+    ui_state.metrics.total_guides = 0
+    ui_state.metrics.total_assignments = 0
+    ui_state.metrics.satisfied_tourists = 0
+    ui_state.metrics.guide_utilization = 0
+    ui_state.metrics.avg_assignment_cost = 0
 
-    # Wait for UI agent to be ready
-    print("⏳ Waiting for UI Agent to start...")
-    for i in range(10):
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{ui_agent_url}/health", timeout=5.0)
-                if response.status_code == 200:
-                    break
-        except Exception:
-            pass
-        await asyncio.sleep(1)
-    else:
-        print("❌ UI Agent not responding, make sure it's running on port 10002")
-        return
 
-    print("✅ UI Agent is ready!")
-    print("📊 Dashboard available at: http://localhost:10001")
-    print()
+def test_ui_agent():
+    reset_state()
 
-    # Create sample data
+    # Create TestClients
+    web_client = TestClient(web_app)
+    a2a_client = TestClient(build_a2a_app())
+
+    # Basic health
+    r = web_client.get("/health")
+    assert r.status_code == 200
+
     now = datetime.now()
-
-    # Sample tourist requests
-    tourists = [
-        TouristRequest(
-            tourist_id="t1",
-            availability=[Window(start=now, end=now + timedelta(hours=8))],
-            budget=200,
-            preferences=["culture", "food"]
-        ),
-        TouristRequest(
-            tourist_id="t2",
-            availability=[Window(start=now + timedelta(hours=1), end=now + timedelta(hours=10))],
-            budget=150,
-            preferences=["outdoors", "adventure"]
-        ),
-        TouristRequest(
-            tourist_id="t3",
-            availability=[Window(start=now + timedelta(minutes=30), end=now + timedelta(hours=6))],
-            budget=300,
-            preferences=["culture", "relax"]
-        )
-    ]
-
-    # Sample guide offers
-    guides = [
-        GuideOffer(
-            guide_id="g1",
-            categories=["culture", "food"],
-            available_window=Window(start=now, end=now + timedelta(hours=4)),
-            hourly_rate=80.0,
-            max_group_size=6
-        ),
-        GuideOffer(
-            guide_id="g2",
-            categories=["outdoors", "adventure"],
-            available_window=Window(start=now + timedelta(hours=1), end=now + timedelta(hours=5)),
-            hourly_rate=100.0,
-            max_group_size=4
-        ),
-        GuideOffer(
-            guide_id="g3",
-            categories=["culture", "relax"],
-            available_window=Window(start=now + timedelta(minutes=30), end=now + timedelta(hours=3)),
-            hourly_rate=60.0,
-            max_group_size=8
-        )
-    ]
-
-    async def send_message(message_data: dict):
-        """Send a message to the UI agent"""
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{ui_agent_url}/execute",
-                    json={
-                        "message": {
-                            "parts": [{
-                                "text": json.dumps(message_data)
-                            }]
-                        }
-                    },
-                    timeout=10.0
-                )
-                return response.status_code == 200
-            except Exception as e:
-                print(f"❌ Error sending message: {e}")
-                return False
-
-    # Send tourist requests
-    print("👥 Sending tourist requests...")
-    for i, tourist in enumerate(tourists, 1):
-        print(f"   📤 Sending tourist {tourist.tourist_id}")
-        success = await send_message(tourist.to_dict())
-        if success:
-            print(f"   ✅ Tourist {tourist.tourist_id} sent successfully")
-        else:
-            print(f"   ❌ Failed to send tourist {tourist.tourist_id}")
-        await asyncio.sleep(1)
-
-    print()
-
-    # Send guide offers
-    print("🗺️  Sending guide offers...")
-    for guide in guides:
-        print(f"   📤 Sending guide {guide.guide_id}")
-        success = await send_message(guide.to_dict())
-        if success:
-            print(f"   ✅ Guide {guide.guide_id} sent successfully")
-        else:
-            print(f"   ❌ Failed to send guide {guide.guide_id}")
-        await asyncio.sleep(1)
-
-    print()
-
-    # Create and send a sample schedule proposal
-    print("📋 Sending schedule proposal...")
-    assignments = [
-        Assignment(
-            tourist_id="t1",
-            guide_id="g1",
-            time_window=Window(start=now, end=now + timedelta(hours=2)),
-            categories=["culture", "food"],
-            total_cost=160.0
-        ),
-        Assignment(
-            tourist_id="t2",
-            guide_id="g2",
-            time_window=Window(start=now + timedelta(hours=1), end=now + timedelta(hours=3)),
-            categories=["outdoors", "adventure"],
-            total_cost=200.0
-        ),
-    ]
-
+    offer = GuideOffer(
+        guide_id="g-test",
+        categories=["culture"],
+        available_window=Window(start=now, end=now + timedelta(hours=2)),
+        hourly_rate=42.0,
+        max_group_size=5,
+    )
+    request = TouristRequest(
+        tourist_id="t-test",
+        availability=[Window(start=now, end=now + timedelta(hours=3))],
+        budget=150,
+        preferences=["culture"],
+    )
+    assignment = Assignment(
+        tourist_id="t-test",
+        guide_id="g-test",
+        time_window=Window(start=now, end=now + timedelta(hours=1)),
+        categories=["culture"],
+        total_cost=42.0,
+    )
     proposal = ScheduleProposal(
-        proposal_id=f"test-proposal-{int(time.time())}",
-        assignments=assignments
+        proposal_id=f"p-{int(time.time())}",
+        assignments=[assignment],
     )
 
-    success = await send_message(proposal.to_dict())
-    if success:
-        print("   ✅ Schedule proposal sent successfully")
-    else:
-        print("   ❌ Failed to send schedule proposal")
+    def send(msg_dict):
+        payload = {
+            "jsonrpc": "2.0",
+            "id": f"test-{int(time.time()*1000)}",
+            "method": "message/send",
+            "params": {
+                "message": {
+                    "role": "user",
+                    "parts": [
+                        {"kind": "text", "text": json.dumps(msg_dict)}
+                    ],
+                    "messageId": f"test-msg-{int(time.time()*1000)}"
+                }
+            }
+        }
+        r_local = a2a_client.post("/", json=payload)
+        assert r_local.status_code == 200, r_local.text
 
-    print()
-    print("🎉 Test complete!")
-    print("📊 Check the dashboard at http://localhost:10001 to see the updates")
-    print("💡 The dashboard should show real-time metrics and data")
+    send(offer.to_dict())
+    send(request.to_dict())
+    send(proposal.to_dict())
 
+    state_resp = web_client.get("/api/state")
+    assert state_resp.status_code == 200
+    state = state_resp.json()
 
-if __name__ == "__main__":
-    asyncio.run(test_ui_agent())
+    assert any(g["guide_id"] == "g-test" for g in state.get("guide_offers", []))
+    assert any(t["tourist_id"] == "t-test" for t in state.get("tourist_requests", []))
+    assert state.get("assignments"), "Assignments not recorded in state"
+    metrics = state.get("metrics", {})
+    assert metrics.get("total_tourists", 0) >= 1
+    assert metrics.get("total_guides", 0) >= 1
+
+if __name__ == "__main__":  # pragma: no cover
+    import contextlib
+    import pytest as _pytest
+    _pytest.main([__file__])

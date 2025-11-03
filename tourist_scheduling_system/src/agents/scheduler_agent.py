@@ -14,6 +14,7 @@ This is implemented as an A2A server using the official a2a-sdk.
 import json
 import logging
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -66,11 +67,29 @@ class SchedulerState:
 state = SchedulerState()
 
 
+def _discover_ui_ports() -> int:
+    """Attempt to discover the UI agent A2A port from written ports file.
+
+    Returns discovered port or default 10012. Non-fatal if file missing.
+    """
+    default_port = 10012
+    try:
+        ports_file = Path(__file__).resolve().parent.parent / "ui_agent_ports.json"
+        if ports_file.exists():
+            data = json.loads(ports_file.read_text())
+            a2a_port = int(data.get("a2a_port", default_port))
+            return a2a_port
+    except Exception as e:
+        logger.debug(f"[Scheduler] UI ports file read failed: {e}")
+    return default_port
+
 async def send_to_ui_agent(message_data: dict):
-    """Send data to UI agent for dashboard updates"""
+    """Send data to UI agent for dashboard updates, using dynamic port discovery."""
+    port = _discover_ui_ports()
+    url = f"http://localhost:{port}/"
     try:
         response = requests.post(
-            "http://localhost:10012/",
+            url,
             json={
                 "jsonrpc": "2.0",
                 "id": f"scheduler-ui-{int(time.time())}",
@@ -83,12 +102,14 @@ async def send_to_ui_agent(message_data: dict):
                     }
                 }
             },
-            timeout=2
+            timeout=3
         )
         if response.status_code == 200:
-            logger.info("[Scheduler] Sent update to UI agent")
+            logger.info(f"[Scheduler] Sent update to UI agent on port {port}")
+        else:
+            logger.warning(f"[Scheduler] UI agent POST returned {response.status_code} on port {port}")
     except Exception as e:
-        logger.warning(f"[Scheduler] Failed to send update to UI agent: {e}")
+        logger.warning(f"[Scheduler] Failed to send update to UI agent on port {port}: {e}")
 
 
 def build_schedule(

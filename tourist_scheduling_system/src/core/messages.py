@@ -139,6 +139,7 @@ class ScheduleProposal:
 
     def to_dict(self):
         return {
+            "type": "ScheduleProposal",
             "proposal_id": self.proposal_id,
             "assignments": [a.to_dict() for a in self.assignments]
         }
