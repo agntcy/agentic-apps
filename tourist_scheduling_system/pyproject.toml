@@ -3,18 +3,18 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "a2a-summit-demo"
+name = "multi-agent-tourist-scheduling-system"
 version = "1.0.0"
 description = "Multi-Agent Tourist Scheduling System with Real-time UI"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
-    {name = "A2A Summit Demo Team"}
+    {name = "AGNTCY Contributors"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -56,9 +56,9 @@ a2a-autonomous-guide = "agents.autonomous_guide_agent:main"
 a2a-autonomous-tourist = "agents.autonomous_tourist_agent:main"
 
 [project.urls]
-Homepage = "https://github.com/muscariello/a2a-summit-demo"
-Repository = "https://github.com/muscariello/a2a-summit-demo"
-Issues = "https://github.com/muscariello/a2a-summit-demo/issues"
+Homepage = "https://github.com/agntcy/agentic-apps"
+Repository = "https://github.com/agntcy/agentic-apps"
+Issues = "https://github.com/agntcy/agentic-apps/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

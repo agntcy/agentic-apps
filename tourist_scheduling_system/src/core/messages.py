@@ -1,8 +1,8 @@
 """
-Shared message schemas for A2A Summit Demo.
+Shared message schemas for the Multi-Agent Tourist Scheduling System.
 
 All agents import these dataclasses to ensure consistent message format
-when communicating via A2A protocol.
+when communicating via the A2A protocol.
 """
 
 import json

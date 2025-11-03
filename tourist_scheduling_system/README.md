@@ -1,4 +1,4 @@
-# A2A Summit Demo
+# Multi-Agent Tourist Scheduling System
 
 Multi-agent tourist scheduling system with real-time UI and autonomous LLM-powered agents using the official A2A Python SDK.
 
@@ -228,4 +228,4 @@ Legacy documentation and examples have been removed for clarity. Refer to git hi
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](../LICENSE) file for details.
