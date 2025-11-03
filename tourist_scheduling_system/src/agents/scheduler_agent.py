@@ -36,7 +36,7 @@ from a2a.types import (
     TextPart,
 )
 
-from a2a_summit_demo.core.messages import (
+from core.messages import (
     Assignment,
     GuideOffer,
     ScheduleProposal,

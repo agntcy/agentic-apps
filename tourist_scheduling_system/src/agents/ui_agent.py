@@ -39,7 +39,7 @@ from a2a.types import (
     TextPart,
 )
 
-from a2a_summit_demo.core.messages import Assignment, GuideOffer, TouristRequest, ScheduleProposal
+from core.messages import Assignment, GuideOffer, TouristRequest, ScheduleProposal
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

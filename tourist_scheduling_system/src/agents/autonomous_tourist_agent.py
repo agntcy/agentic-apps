@@ -23,7 +23,7 @@ from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
 from dotenv import load_dotenv
 
-from a2a_summit_demo.core.messages import TouristRequest, Window
+from core.messages import TouristRequest, Window
 
 # Load environment variables
 load_dotenv()
@@ -350,4 +350,4 @@ async def main(scheduler_url: str, tourist_id: str, duration: int):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(standalone_mode=False))
+    asyncio.run(main())

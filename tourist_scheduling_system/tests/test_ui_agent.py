@@ -9,10 +9,15 @@ to test the real-time dashboard functionality.
 import asyncio
 import json
 import time
+import sys
+import os
 from datetime import datetime, timedelta
 import httpx
 
-from messages import TouristRequest, GuideOffer, ScheduleProposal, Assignment, Window
+# Add src directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from core.messages import TouristRequest, GuideOffer, ScheduleProposal, Assignment, Window
 
 
 async def test_ui_agent():

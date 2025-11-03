@@ -20,7 +20,7 @@ setup_python_path()
 
 # Re-export key components for easier imports
 try:
-    from a2a_summit_demo.core.messages import (
+    from core.messages import (
         Assignment,
         GuideOffer,
         ScheduleProposal,
@@ -28,8 +28,8 @@ try:
         Window
     )
 
-    from a2a_summit_demo.agents.scheduler_agent import SchedulerAgentExecutor
-    from a2a_summit_demo.agents.ui_agent import UIAgentExecutor
+    from agents.scheduler_agent import SchedulerAgentExecutor
+    from agents.ui_agent import UIAgentExecutor
 
     __all__ = [
         'Assignment',

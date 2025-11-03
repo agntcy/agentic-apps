@@ -46,12 +46,12 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "a2a-scheduler=a2a_summit_demo.agents.scheduler_agent:main",
-            "a2a-guide=a2a_summit_demo.agents.guide_agent:main",
-            "a2a-tourist=a2a_summit_demo.agents.tourist_agent:main",
-            "a2a-ui=a2a_summit_demo.agents.ui_agent:main",
-            "a2a-autonomous-guide=a2a_summit_demo.agents.autonomous_guide_agent:main",
-            "a2a-autonomous-tourist=a2a_summit_demo.agents.autonomous_tourist_agent:main",
+            "a2a-scheduler=agents.scheduler_agent:main",
+            "a2a-guide=agents.guide_agent:main",
+            "a2a-tourist=agents.tourist_agent:main",
+            "a2a-ui=agents.ui_agent:main",
+            "a2a-autonomous-guide=agents.autonomous_guide_agent:main",
+            "a2a-autonomous-tourist=agents.autonomous_tourist_agent:main",
         ],
     },
     include_package_data=True,

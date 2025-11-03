@@ -13,18 +13,17 @@ Multi-agent tourist scheduling system with real-time UI and autonomous LLM-power
 ## 📁 Project Structure
 
 ```
-a2a-summit-demo/
+tourist_scheduling_system/
 ├── src/
-│   └── a2a_summit_demo/
-│       ├── agents/           # Agent implementations
-│       │   ├── scheduler_agent.py        # Central coordinator
-│       │   ├── guide_agent.py           # Basic guide agent
-│       │   ├── tourist_agent.py         # Basic tourist agent
-│       │   ├── ui_agent.py              # Real-time dashboard
-│       │   ├── autonomous_guide_agent.py # LLM-powered guide
-│       │   └── autonomous_tourist_agent.py # LLM-powered tourist
-│       └── core/             # Core components
-│           └── messages.py   # Message schemas
+│   ├── agents/           # Agent implementations
+│   │   ├── scheduler_agent.py        # Central coordinator
+│   │   ├── guide_agent.py           # Basic guide agent
+│   │   ├── tourist_agent.py         # Basic tourist agent
+│   │   ├── ui_agent.py              # Real-time dashboard
+│   │   ├── autonomous_guide_agent.py # LLM-powered guide
+│   │   └── autonomous_tourist_agent.py # LLM-powered tourist
+│   └── core/             # Core components
+│       └── messages.py   # Message schemas
 ├── scripts/                  # Demo and utility scripts
 ├── tests/                    # Test files
 ├── docs/                     # Documentation
@@ -38,8 +37,8 @@ a2a-summit-demo/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/muscariello/a2a-summit-demo.git
-cd a2a-summit-demo
+git clone https://github.com/agntcy/agentic-apps.git
+cd agentic-apps/tourist_scheduling_system
 ```
 
 2. Create and activate virtual environment:
@@ -58,18 +57,18 @@ pip install -e .
 
 1. **Start the Scheduler**:
 ```bash
-python src/a2a_summit_demo/agents/scheduler_agent.py --host localhost --port 10010
+PYTHONPATH=src python src/agents/scheduler_agent.py --host localhost --port 10010
 ```
 
 2. **Start the Real-time Dashboard**:
 ```bash
-python src/a2a_summit_demo/agents/ui_agent.py --host localhost --port 10011 --a2a-port 10012
+PYTHONPATH=src python src/agents/ui_agent.py --host localhost --port 10011 --a2a-port 10012
 ```
 
 3. **Send Agent Interactions**:
 ```bash
-python src/a2a_summit_demo/agents/guide_agent.py --scheduler-url http://localhost:10010 --guide-id "florence-guide"
-python src/a2a_summit_demo/agents/tourist_agent.py --scheduler-url http://localhost:10010 --tourist-id "alice-tourist"
+PYTHONPATH=src python src/agents/guide_agent.py --scheduler-url http://localhost:10010 --guide-id "florence-guide"
+PYTHONPATH=src python src/agents/tourist_agent.py --scheduler-url http://localhost:10010 --tourist-id "alice-tourist"
 ```
 
 4. **View Dashboard**: Open http://localhost:10011 to see real-time updates

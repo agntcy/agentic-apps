@@ -26,54 +26,54 @@ run_with_path() {
 case "$1" in
     "scheduler")
         echo "🗓️  Starting Scheduler Agent..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/scheduler_agent.py" --host localhost --port 10010
+        run_with_path python "$SRC_DIR/agents/scheduler_agent.py" --host localhost --port 10010
         ;;
     "ui")
         echo "🖥️  Starting UI Agent..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/ui_agent.py" --host localhost --port 10011 --a2a-port 10012
+        run_with_path python "$SRC_DIR/agents/ui_agent.py" --host localhost --port 10011 --a2a-port 10012
         ;;
     "guide")
         GUIDE_ID="${2:-guide-demo}"
         echo "🗺️  Starting Guide Agent ($GUIDE_ID)..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "$GUIDE_ID"
+        run_with_path python "$SRC_DIR/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "$GUIDE_ID"
         ;;
     "tourist")
         TOURIST_ID="${2:-tourist-demo}"
         echo "🧳 Starting Tourist Agent ($TOURIST_ID)..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "$TOURIST_ID"
+        run_with_path python "$SRC_DIR/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "$TOURIST_ID"
         ;;
     "autonomous-guide")
         GUIDE_ID="${2:-guide-ai-demo}"
         echo "🤖 Starting Autonomous Guide Agent ($GUIDE_ID)..."
         source ~/.env-phoenix 2>/dev/null || echo "⚠️  Note: Phoenix environment not available"
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/autonomous_guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "$GUIDE_ID" --duration 5
+        run_with_path python "$SRC_DIR/agents/autonomous_guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "$GUIDE_ID" --duration 5
         ;;
     "autonomous-tourist")
         TOURIST_ID="${2:-tourist-ai-demo}"
         echo "🤖 Starting Autonomous Tourist Agent ($TOURIST_ID)..."
         source ~/.env-phoenix 2>/dev/null || echo "⚠️  Note: Phoenix environment not available"
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/autonomous_tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "$TOURIST_ID" --duration 5
+        run_with_path python "$SRC_DIR/agents/autonomous_tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "$TOURIST_ID" --duration 5
         ;;
     "demo")
         echo "🎬 Running Full Demo..."
         echo "1. Starting Scheduler..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/scheduler_agent.py" --host localhost --port 10010 &
+        run_with_path python "$SRC_DIR/agents/scheduler_agent.py" --host localhost --port 10010 &
         SCHEDULER_PID=$!
         sleep 3
 
         echo "2. Starting UI Agent..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/ui_agent.py" --host localhost --port 10011 --a2a-port 10012 &
+        run_with_path python "$SRC_DIR/agents/ui_agent.py" --host localhost --port 10011 --a2a-port 10012 &
         UI_PID=$!
         sleep 2
 
         echo "3. Sending Guide Offers..."
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "florence" &
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "marco" &
+        run_with_path python "$SRC_DIR/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "florence" &
+        run_with_path python "$SRC_DIR/agents/guide_agent.py" --scheduler-url http://localhost:10010 --guide-id "marco" &
 
         echo "4. Sending Tourist Requests..."
         sleep 1
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "alice" &
-        run_with_path python "$SRC_DIR/a2a_summit_demo/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "bob" &
+        run_with_path python "$SRC_DIR/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "alice" &
+        run_with_path python "$SRC_DIR/agents/tourist_agent.py" --scheduler-url http://localhost:10010 --tourist-id "bob" &
 
         echo ""
         echo "✅ Demo running! Check the dashboard at: http://localhost:10011"

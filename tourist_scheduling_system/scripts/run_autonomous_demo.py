@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 # Add src directory to path so we can import our agents
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from a2a_summit_demo.agents.autonomous_guide_agent import AutonomousGuideAgent
-from a2a_summit_demo.agents.autonomous_tourist_agent import AutonomousTouristAgent
+from agents.autonomous_guide_agent import AutonomousGuideAgent
+from agents.autonomous_tourist_agent import AutonomousTouristAgent
 
 # Load environment variables
 load_dotenv()

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 # Add src directory to path so we can import our messages
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from a2a_summit_demo.core.messages import GuideOffer, Window
+from core.messages import GuideOffer, Window
 
 def send_guide_offer():
     """Send a guide offer to the scheduler via HTTP"""
