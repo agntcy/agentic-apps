@@ -26,7 +26,6 @@ tourist_scheduling_system/
 │       └── messages.py   # Message schemas
 ├── scripts/                  # Demo and utility scripts
 ├── tests/                    # Test files
-└── slides/                   # Presentation materials
 ```
 
 ## 🚀 Quick Start
