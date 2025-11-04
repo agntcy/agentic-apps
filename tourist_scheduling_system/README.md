@@ -38,41 +38,46 @@ git clone https://github.com/agntcy/agentic-apps.git
 cd agentic-apps/tourist_scheduling_system
 ```
 
-2. Create and activate virtual environment:
+2. Create and activate a uv-managed virtual environment (recommended):
 ```bash
-python -m venv .venv
+uv venv .venv
 source .venv/bin/activate  # Linux/Mac
 # .venv\Scripts\activate   # Windows
 ```
 
-3. Install the package:
+3. Sync dependencies directly from `pyproject.toml` using uv:
 ```bash
-pip install -e .
+uv sync
+```
+
+4. (Alternative ephemeral run) You can skip environment activation and run any command with on-demand resolution:
+```bash
+uv run python -m agents.scheduler_agent --host localhost --port 10010
 ```
 
 ### Basic Demo
 
 1. **Start the Scheduler**:
 ```bash
-PYTHONPATH=src python src/agents/scheduler_agent.py --host localhost --port 10010
+uv run python src/agents/scheduler_agent.py --host localhost --port 10010
 ```
 
 2. **Start the Real-time Dashboard**:
 ```bash
-PYTHONPATH=src python src/agents/ui_agent.py --host localhost --port 10011 --a2a-port 10012
+uv run python src/agents/ui_agent.py --host localhost --port 10011 --a2a-port 10012
 ```
 
 3. **Send Agent Interactions**:
 ```bash
-PYTHONPATH=src python src/agents/guide_agent.py --scheduler-url http://localhost:10010 --guide-id "florence-guide"
-PYTHONPATH=src python src/agents/tourist_agent.py --scheduler-url http://localhost:10010 --tourist-id "alice-tourist"
+uv run python src/agents/guide_agent.py --scheduler-url http://localhost:10010 --guide-id "florence-guide"
+uv run python src/agents/tourist_agent.py --scheduler-url http://localhost:10010 --tourist-id "alice-tourist"
 ```
 
 4. **View Dashboard**: Open http://localhost:10011 to see real-time updates
 
 ### 🤖 Autonomous LLM Demo
 
-For Azure OpenAI powered autonomous agents:
+For Azure OpenAI powered autonomous agents (works seamlessly with uv):
 
 1. Set up environment variables:
 ```bash
@@ -85,7 +90,7 @@ export AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
 2. Run the full autonomous demo:
 ```bash
 source ~/.env-phoenix  # If using Phoenix environment
-python scripts/run_autonomous_demo.py
+uv run python scripts/run_autonomous_demo.py
 ```
 
 This starts 5 autonomous agents (3 guides + 2 tourists) with unique AI personalities making intelligent decisions for 10 minutes.
@@ -107,7 +112,7 @@ Flags added to `scripts/run_with_ui.sh`:
 Example (1-minute autonomous run, custom IDs, skip standard demo traffic):
 
 ```bash
-PYTHONPATH=src scripts/run_with_ui.sh \
+scripts/run_with_ui.sh \
 	--scheduler-port 10010 \
 	--ui-web-port 10011 \
 	--ui-a2a-port 10012 \
@@ -197,21 +202,64 @@ This mode ensures graceful operation in local dev environments without cloud cre
 
 ## 🛠️ Development
 
-### Running Tests
+### Running Tests (uv installs dev extras automatically if included)
 ```bash
-pytest tests/
+uv run pytest -q
 ```
 
 ### Code Formatting
 ```bash
-black src/ tests/
-isort src/ tests/
+uv run black src/ tests/
+uv run isort src/ tests/
 ```
 
 ### Type Checking
 ```bash
-mypy src/
+uv run mypy src/
 ```
+
+## 🧩 Using uv Only
+
+This project is now fully operable with just `uv` (no Poetry, no setup.py). Key commands:
+
+```bash
+# Create venv
+uv venv .venv
+source .venv/bin/activate
+
+# Install (sync) dependencies
+uv sync
+
+# Run an agent
+uv run python src/agents/scheduler_agent.py --host localhost --port 10010
+
+# Run demo script
+uv run python scripts/run_autonomous_demo.py
+
+# Add a new dependency
+uv add rich
+
+# Remove a dependency
+uv remove openai
+
+# Upgrade all
+uv lock --upgrade
+uv sync
+
+# Build distribution artifacts
+uv build
+
+# Publish (example; requires credentials configured)
+uv publish
+```
+
+Notes:
+- Dependency sources are defined only in `pyproject.toml`.
+- `uv run` performs ephemeral resolution if dependencies aren't yet synced.
+- Use `uv lock --upgrade` to refresh versions while respecting constraints.
+- Dev tools (pytest, black, isort, mypy) are invoked via `uv run` for environment isolation.
+
+If migrating existing virtualenv workflows, simply replace `pip install -e .` with `uv sync` and prefix Python/CLI invocations with `uv run` where appropriate.
 
 ## 📚 Documentation
 
