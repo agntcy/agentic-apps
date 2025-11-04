@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Shared message schemas for the Multi-Agent Tourist Scheduling System.
 

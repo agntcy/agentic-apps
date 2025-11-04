@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
 """
 Autonomous Tourist Agent - A2A Client with OpenAI LLM
 
