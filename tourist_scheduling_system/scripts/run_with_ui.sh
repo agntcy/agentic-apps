@@ -14,6 +14,7 @@ UI_WEB_PORT=${UI_WEB_PORT:-10011}
 UI_A2A_PORT=${UI_A2A_PORT:-10012}
 DEMO_GUIDES=${DEMO_GUIDES:-"g1 g2"}
 DEMO_TOURISTS=${DEMO_TOURISTS:-"t1 t2"}
+DEMO_ROUNDS=${DEMO_ROUNDS:-1}
 NO_DEMO=${NO_DEMO:-false}
 AUTONOMOUS=${AUTONOMOUS:-false}
 AUTO_GUIDE_ID=${AUTO_GUIDE_ID:-auto-g-1}
@@ -30,7 +31,8 @@ while [[ $# -gt 0 ]]; do
         --ui-web-port) UI_WEB_PORT="$2"; shift 2 ;;
         --ui-a2a-port) UI_A2A_PORT="$2"; shift 2 ;;
         --guides) DEMO_GUIDES="$2"; shift 2 ;;
-        --tourists) DEMO_TOURISTS="$2"; shift 2 ;;
+    --tourists) DEMO_TOURISTS="$2"; shift 2 ;;
+    --demo-rounds) DEMO_ROUNDS="$2"; shift 2 ;;
     --no-demo) NO_DEMO=true; shift ;;
     --autonomous) AUTONOMOUS=true; shift ;;
     --auto-guide-id) AUTO_GUIDE_ID="$2"; shift 2 ;;
@@ -47,7 +49,7 @@ done
 echo "======================================================="
 echo "UI Demo Launcher"
 echo "Scheduler: $SCHED_PORT | UI Web: $UI_WEB_PORT | UI A2A: $UI_A2A_PORT"
-echo "Guides: $DEMO_GUIDES | Tourists: $DEMO_TOURISTS | Demo traffic: $([[ $NO_DEMO == true ]] && echo OFF || echo ON) | Autonomous: $([[ $AUTONOMOUS == true ]] && echo ON || echo OFF)"
+echo "Guides: $DEMO_GUIDES | Tourists: $DEMO_TOURISTS | Rounds: $DEMO_ROUNDS | Demo traffic: $([[ $NO_DEMO == true ]] && echo OFF || echo ON) | Autonomous: $([[ $AUTONOMOUS == true ]] && echo ON || echo OFF)"
 echo "======================================================="
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$PROJECT_ROOT"
@@ -58,16 +60,10 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 
-# Create a managed venv if missing (idempotent). We don't activate it; uv handles it.
-if [[ ! -d .venv ]]; then
-    echo "[env] creating .venv via uv venv"
-    uv venv .venv
-fi
-
-# Ensure dependencies (including dev when needed) are synced once.
+# Pure global usage: rely on system/installed environment; uv will resolve on demand.
+echo "[env] Skipping virtual environment creation (global uv usage)"
 if [[ ! -f uv.lock ]]; then
-    echo "[env] syncing dependencies (generating uv.lock)"
-    uv sync
+    echo "[env] (optional) generate lock for reproducibility: uv lock";
 fi
 
 cleanup() { echo "[cleanup] stopping session processes"; jobs -p | xargs -r kill 2>/dev/null || true; }
@@ -76,11 +72,18 @@ trap cleanup EXIT
 start_or_reuse() {
     local port="$1"; shift
     local cmd=("$@")
+    local script_name="proc"
+    for arg in "${cmd[@]}"; do
+        if [[ "$arg" == *.py ]]; then
+            script_name="$(basename "$arg" .py)"
+        fi
+    done
+    local log_file="${script_name}_${port}.log"
     if lsof -ti tcp:$port >/dev/null 2>&1; then
-        echo "[reuse] port $port already bound (PID $(lsof -ti tcp:$port | head -n1))"
+        echo "[reuse] port $port already bound (PID $(lsof -ti tcp:$port | head -n1)) -> reusing; log: $log_file"
     else
-        echo "[start] ${cmd[*]}"
-        nohup "${cmd[@]}" > "${cmd[1]}_${port}.log" 2>&1 &
+        echo "[start] ${cmd[*]} -> log: $log_file"
+        nohup "${cmd[@]}" > "$log_file" 2>&1 &
     fi
 }
 
@@ -104,17 +107,42 @@ wait_for_health() {
     return 1
 }
 
-wait_for_health "scheduler" "http://localhost:$SCHED_PORT/health" || echo "[warn] scheduler health check failed (continuing)"
-wait_for_health "ui" "http://localhost:$UI_WEB_PORT/health" || { echo "[fatal] ui not healthy; aborting demo launch"; exit 1; }
+wait_for_scheduler_health() {
+    local port="$1"
+    echo "[health] scheduler (port $port) checking /health then / (fallback)"
+    if curl -fsS "http://localhost:$port/health" >/dev/null 2>&1; then
+        echo "[health] scheduler OK (/health)"; return 0
+    fi
+    if curl -fsS "http://localhost:$port/" >/dev/null 2>&1; then
+        echo "[health] scheduler OK (root)"; return 0
+    fi
+    echo "[health] scheduler not healthy after fallback attempts"; return 1
+}
+
+wait_for_ui_health() {
+    local port="$1"
+    wait_for_health "ui" "http://localhost:$port/health"
+}
+
+# Dependency fallback: ensure starlette is present (required by a2a-sdk http-server extras)
+if ! python -c "import starlette, sse_starlette" 2>/dev/null; then
+    echo "[deps] Missing starlette/sse_starlette -> running 'uv sync'"
+    uv sync || echo "[deps] uv sync failed (continuing anyway)"
+fi
+
+wait_for_scheduler_health "$SCHED_PORT" || echo "[warn] scheduler health check failed (continuing)"
+wait_for_ui_health "$UI_WEB_PORT" || { echo "[fatal] ui not healthy; aborting demo launch"; exit 1; }
 
 if [[ "$NO_DEMO" == false ]]; then
-    echo "[demo] guide offers"
-    for gid in $DEMO_GUIDES; do
-        uv run python src/agents/guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid" || echo "guide $gid failed";
-    done
-    echo "[demo] tourist requests"
-    for tid in $DEMO_TOURISTS; do
-        uv run python src/agents/tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid" || echo "tourist $tid failed";
+    for round in $(seq 1 "$DEMO_ROUNDS"); do
+        echo "[demo] round $round guide offers"
+        for gid in $DEMO_GUIDES; do
+            uv run python src/agents/guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid" || echo "guide $gid failed";
+        done
+        echo "[demo] round $round tourist requests"
+        for tid in $DEMO_TOURISTS; do
+            uv run python src/agents/tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid" || echo "tourist $tid failed";
+        done
     done
 fi
 

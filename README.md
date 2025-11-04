@@ -106,7 +106,7 @@ pytest tourist_scheduling_system/tests
 
 ## License
 
-MIT License (see `LICENSE`).
+Apache License 2.0 (see `LICENSE`).
 
 ## Contributing
 

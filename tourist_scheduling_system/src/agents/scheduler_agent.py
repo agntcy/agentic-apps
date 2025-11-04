@@ -37,6 +37,7 @@ from a2a.types import (
     Part,
     TaskState,
     TextPart,
+    DataPart,  # Allows structured JSON parts without manual decoding
 )
 
 from core.messages import (
@@ -125,6 +126,7 @@ def build_schedule(
     """
     assignments = []
     guide_capacity = {g.guide_id: g.max_group_size for g in guide_offers}
+    # Track bookings only for analytics; allow concurrent tourists per guide window up to capacity
     guide_bookings: dict[str, list[Window]] = {g.guide_id: [] for g in guide_offers}
 
     # Sort tourists by first available time
@@ -160,18 +162,7 @@ def build_schedule(
             if not has_overlap:
                 continue
 
-            # Check conflicts with existing bookings
-            conflict = False
-            for booking in guide_bookings[guide.guide_id]:
-                if not (
-                    guide.available_window.end <= booking.start
-                    or guide.available_window.start >= booking.end
-                ):
-                    conflict = True
-                    break
-
-            if conflict:
-                continue
+            # Removed conflict exclusion: allow overlapping usage while capacity>0
 
             # Calculate preference score
             score = sum(
@@ -200,9 +191,7 @@ def build_schedule(
             assignments.append(assignment)
 
             guide_capacity[best_guide.guide_id] -= 1
-            guide_bookings[best_guide.guide_id].append(
-                best_guide.available_window
-            )
+            guide_bookings[best_guide.guide_id].append(best_guide.available_window)
 
     return assignments
 
@@ -228,17 +217,36 @@ class SchedulerAgentExecutor(AgentExecutor):
         # Create task updater for publishing events
         updater = TaskUpdater(event_queue, task.id, task.context_id)
 
-        # Extract message content
-        message_text = None
+        # Extract message content (prefer DataPart for automatic JSON decoding)
+        message_data = None
+        raw_text_fallback = None
         if context.message and context.message.parts:
             for part in context.message.parts:
-                if isinstance(part, Part) and part.root:
-                    if isinstance(part.root, TextPart):
-                        message_text = part.root.text
+                try:
+                    root = part.root
+                    if isinstance(root, DataPart):
+                        # Already decoded dict provided by A2A layer
+                        message_data = root.data
                         break
+                    if isinstance(root, TextPart):
+                        raw_text_fallback = root.text
+                        # Don't break; continue in case a DataPart also exists
+                except Exception as e:
+                    logger.debug(f"[Scheduler] Part inspection failed: {e}")
 
-        if not message_text:
-            logger.warning("[Scheduler] No text content in message")
+        if message_data is None and raw_text_fallback is not None:
+            try:
+                message_data = json.loads(raw_text_fallback)
+            except json.JSONDecodeError as e:
+                logger.error(f"[Scheduler] Failed to decode TextPart JSON: {e}")
+                await updater.update_status(
+                    TaskState.failed,
+                    message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]),
+                )
+                return
+
+        if message_data is None:
+            logger.warning("[Scheduler] No usable DataPart or decodable TextPart in message")
             await updater.complete()
             return
 
@@ -249,8 +257,8 @@ class SchedulerAgentExecutor(AgentExecutor):
                 message=updater.new_agent_message([Part(root=TextPart(text="Processing message..."))])
             )
 
-            # Parse message as JSON
-            data = json.loads(message_text)
+            # Message already decoded (DataPart) or parsed from TextPart fallback
+            data = message_data
             message_type = data.get("type")
 
             if message_type == "TouristRequest":
@@ -278,12 +286,16 @@ class SchedulerAgentExecutor(AgentExecutor):
                     assignments=tourist_assignments
                 )
 
-                # Send proposal to UI agent
-                await send_to_ui_agent(proposal.to_dict())
+                # Include type field for downstream agents (UI, tourist) to identify the message
+                proposal_dict = proposal.to_dict()
+                proposal_dict["type"] = "ScheduleProposal"
 
-                # Send response as artifact
+                # Send proposal to UI agent
+                await send_to_ui_agent(proposal_dict)
+
+                # Send response as structured DataPart artifact (avoids downstream JSON parsing)
                 await updater.add_artifact(
-                    [Part(root=TextPart(text=proposal.to_json()))],
+                    [Part(root=DataPart(data=proposal_dict))],
                     name="schedule_proposal"
                 )
                 logger.info(
@@ -301,12 +313,14 @@ class SchedulerAgentExecutor(AgentExecutor):
                 await send_to_ui_agent(offer.to_dict())
 
                 # Acknowledge receipt
-                ack_message = json.dumps({
+                ack_message = {
                     "type": "Acknowledgment",
                     "message": f"Guide {offer.guide_id} registered",
-                })
+                    "guide_id": offer.guide_id,
+                    "timestamp": int(time.time()),
+                }
                 await updater.add_artifact(
-                    [Part(root=TextPart(text=ack_message))],
+                    [Part(root=DataPart(data=ack_message))],
                     name="guide_acknowledgment"
                 )
 
@@ -374,8 +388,24 @@ def main(host: str, port: int):
         agent_card=agent_card, http_handler=request_handler
     )
 
+    # Build underlying Starlette app and inject a lightweight /health endpoint for launcher scripts
+    app = server.build()
+    try:
+        from starlette.responses import JSONResponse  # provided by a2a-sdk[http-server] extras
+        from starlette.routing import Route
+
+        def health(request):  # type: ignore
+            return JSONResponse({"status": "ok", "timestamp": int(time.time())})
+
+        # Only add if not already present
+        if not any(getattr(r, "path", None) == "/health" for r in app.router.routes):
+            app.router.routes.append(Route("/health", endpoint=health, methods=["GET"]))
+            logger.info("[Scheduler] Added /health endpoint")
+    except Exception as e:
+        logger.warning(f"[Scheduler] Failed to add /health endpoint: {e}")
+
     logger.info("[Scheduler] Agent card configured, starting uvicorn...")
-    uvicorn.run(server.build(), host=host, port=port)
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

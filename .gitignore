@@ -169,6 +169,8 @@ cython_debug/
 .idea/
 
 # VS Code
+# VS Code
+# Added: ensure VS Code workspace dir & settings are ignored (explicit hygiene)
 .vscode/
 
 # PyPI configuration file

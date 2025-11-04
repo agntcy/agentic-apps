@@ -19,7 +19,7 @@ import click
 from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
-from a2a.types import TransportProtocol
+from a2a.types import TransportProtocol, Task, Message, Part, TextPart, DataPart
 
 from core.messages import TouristRequest, Window
 
@@ -55,27 +55,85 @@ async def run_tourist_agent(scheduler_url: str, tourist_id: str):
 
     logger.info(f"[Tourist {tourist_id}] Sending A2A message...")
 
-    # Iterate through responses
-    async for response in client.send_message(message):
-        logger.info(f"[Tourist {tourist_id}] Received response: {response}")
+    # Streaming iterator (actual SDK behavior). Collect Task/Message events and parse parts.
+    schedule_found = False
+    async for event in client.send_message(message):
+        logger.debug(f"[Tourist {tourist_id}] Event type: {type(event)}")
+        task_obj = None
+        msg_obj = None
+        # Handle tuple form (task, update)
+        if isinstance(event, tuple) and len(event) == 2:
+            task_obj, _update = event
+        elif isinstance(event, Task):
+            task_obj = event
+        elif isinstance(event, Message):
+            msg_obj = event
+        else:
+            # Unknown event type; continue
+            continue
 
-        # Extract schedule proposal from response
-        if isinstance(response, tuple):
-            task, update = response
-            if task.history:
-                for msg in task.history:
-                    if msg.role.value == "agent" and msg.parts:
-                        for part in msg.parts:
-                            raw_text = getattr(getattr(part, 'root', None), 'text', None)
-                            if raw_text:
-                                try:
-                                    data = json.loads(raw_text)
-                                    if data.get("type") == "ScheduleProposal":
-                                        logger.info(
-                                            f"[Tourist {tourist_id}] ✅ Received schedule: {data}"
-                                        )
-                                except json.JSONDecodeError:
-                                    pass
+        def inspect_message(message_candidate):
+            nonlocal schedule_found
+            if not message_candidate or not getattr(message_candidate, 'parts', None):
+                return
+            for part in message_candidate.parts:
+                root = getattr(part, 'root', None)
+                payload = None
+                if isinstance(root, DataPart):
+                    payload = root.data
+                elif isinstance(root, TextPart):
+                    try:
+                        payload = json.loads(root.text)
+                    except json.JSONDecodeError:
+                        continue
+                if isinstance(payload, dict) and payload.get('type') == 'ScheduleProposal':
+                    logger.info(f"[Tourist {tourist_id}] ✅ Received schedule proposal: {payload}")
+                    schedule_found = True
+                    return
+
+        if task_obj:
+            # First inspect artifacts directly (preferred structured channel)
+            artifacts = getattr(task_obj, 'artifacts', []) or []
+            for artifact in artifacts:
+                if schedule_found:
+                    break
+                for part in getattr(artifact, 'parts', []) or []:
+                    if schedule_found:
+                        break
+                    root = getattr(part, 'root', None)
+                    payload = None
+                    if isinstance(root, DataPart):
+                        payload = root.data
+                    elif isinstance(root, TextPart):
+                        try:
+                            payload = json.loads(root.text)
+                        except json.JSONDecodeError:
+                            continue
+                    if isinstance(payload, dict) and payload.get('type') == 'ScheduleProposal':
+                        assignments = payload.get('assignments', []) or []
+                        summary = ", ".join(
+                            f"{a.get('tourist_id')}→{a.get('guide_id')}(${int(a.get('total_cost',0))})" for a in assignments
+                        ) or 'no assignments'
+                        logger.info(
+                            f"[Tourist {tourist_id}] ✅ Schedule proposal artifact received ({len(assignments)} assignments): {summary}"
+                        )
+                        schedule_found = True
+                        break
+            # Fallback: inspect agent messages in history
+            if not schedule_found:
+                for history_msg in getattr(task_obj, 'history', []) or []:
+                    if schedule_found:
+                        break
+                    if getattr(history_msg.role, 'value', None) == 'agent':
+                        inspect_message(history_msg)
+        if msg_obj and not schedule_found:
+            inspect_message(msg_obj)
+
+        if schedule_found:
+            break
+
+    if not schedule_found:
+        logger.info(f"[Tourist {tourist_id}] No schedule proposal found in responses")
 
     logger.info(f"[Tourist {tourist_id}] Done")
 
