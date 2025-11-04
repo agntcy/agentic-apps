@@ -1,4 +1,8 @@
-"""Tests autonomous tourist budget & availability heuristics without LLM."""
+"""Tests autonomous tourist budget & availability heuristics without LLM.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+"""
 import sys, os, asyncio
 from datetime import datetime
 

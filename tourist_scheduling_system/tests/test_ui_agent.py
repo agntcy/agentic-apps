@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Synchronous functional test for UI Agent using FastAPI TestClient.
 
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+
 Avoids spinning up real uvicorn servers; interacts directly with ASGI apps.
 """
 

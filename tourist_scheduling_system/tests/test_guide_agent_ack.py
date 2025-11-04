@@ -1,4 +1,8 @@
-"""Tests for Guide Agent acknowledgment handling using stub client responses."""
+"""Tests for Guide Agent acknowledgment handling using stub client responses.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+"""
 import sys, os, json, asyncio
 from types import SimpleNamespace
 

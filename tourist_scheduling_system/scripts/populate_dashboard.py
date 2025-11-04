@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""
-Simple test to populate the UI agent dashboard with sample data
+"""Simple test to populate the UI agent dashboard with sample data
 by directly calling the REST API endpoints.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
 """
 
 import asyncio

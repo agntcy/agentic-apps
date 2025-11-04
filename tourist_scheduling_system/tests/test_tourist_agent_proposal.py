@@ -1,4 +1,8 @@
-"""Tests for Tourist Agent proposal receipt using stub client responses."""
+"""Tests for Tourist Agent proposal receipt using stub client responses.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+"""
 import sys, os, json, asyncio
 from types import SimpleNamespace
 from datetime import datetime, timedelta

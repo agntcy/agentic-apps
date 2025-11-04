@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""
-Quick demonstration of the fixed multi-agent system.
+"""Quick demonstration of the fixed multi-agent system.
 This script manually sends data to show the system working end-to-end.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
 """
 
 import asyncio

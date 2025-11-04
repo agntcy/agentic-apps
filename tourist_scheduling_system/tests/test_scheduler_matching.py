@@ -1,4 +1,8 @@
-"""Tests for SchedulerAgentExecutor matching logic without running uvicorn."""
+"""Tests for SchedulerAgentExecutor matching logic without running uvicorn.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+"""
 import sys, os, json, time
 from datetime import datetime, timedelta
 

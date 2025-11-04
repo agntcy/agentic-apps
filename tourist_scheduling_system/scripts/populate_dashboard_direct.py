@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""
-Direct dashboard population test - sends data directly to UI Agent
-to demonstrate real-time dashboard functionality
+"""Direct dashboard population test - sends data directly to UI Agent
+to demonstrate real-time dashboard functionality.
+
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
 """
 import json
 import requests
