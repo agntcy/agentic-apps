@@ -42,52 +42,33 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-class AgentConfig:
-    """Lightweight environment-driven configuration (pydantic-settings optional)."""
-    def __init__(self):
-        self.azure_openai_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-        self.azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.azure_openai_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        self.azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-
-
 class AutonomousGuideAgent:
     """Intelligent guide agent with LLM decision-making capabilities"""
 
     def __init__(self, guide_id: str, scheduler_url: str):
         self.guide_id = guide_id
         self.scheduler_url = scheduler_url
-        self.config = AgentConfig()  # loads from env
-        self.deployment_name = self.config.azure_openai_deployment_name
-        # Initialize optional OpenAI client only if class available and env populated
-        if AsyncAzureOpenAI is not None and all([
-            self.config.azure_openai_api_key,
-            self.config.azure_openai_api_version,
-            self.config.azure_openai_endpoint,
-            self.deployment_name,
-        ]):
+        # Conditionally create Azure OpenAI client if env vars present (simple env based config)
+        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.llm_available = bool(AsyncAzureOpenAI and api_key and api_version and endpoint and self.deployment_name)
+        if self.llm_available:
             try:
                 self.openai_client = AsyncAzureOpenAI(
-                    api_key=self.config.azure_openai_api_key,
-                    api_version=self.config.azure_openai_api_version,
-                    azure_endpoint=self.config.azure_openai_endpoint,
+                    api_key=api_key,
+                    api_version=api_version,
+                    azure_endpoint=endpoint,
                 )
             except Exception as e:  # pragma: no cover
-                logger.warning(
-                    "[Guide %s] Failed to initialize OpenAI client: %s; using heuristic decisions",
-                    self.guide_id,
-                    e,
-                )
+                logger.warning("[Guide %s] Failed to initialize OpenAI client: %s; using heuristic decisions", self.guide_id, e)
                 self.openai_client = None
+                self.llm_available = False
         else:
             self.openai_client = None
-            logger.warning(
-                "[Guide %s] Azure OpenAI env vars missing; falling back to heuristic decisions",
-                self.guide_id,
-            )
+            logger.warning("[Guide %s] Azure OpenAI env vars missing; falling back to heuristic decisions", self.guide_id)
         self.personality = self._generate_personality()
-        # Backward compatibility for tests referencing llm_available flag
-        self.llm_available = bool(self.openai_client)
         self.market_conditions = {"demand": "medium", "competition": 0, "season": "peak"}
         self.booking_history = []
 
@@ -131,26 +112,24 @@ class AutonomousGuideAgent:
             f"Recent bookings: {len(self.booking_history)}\n"
             "Respond with just a number (hourly rate)."
         )
-        if self.openai_client is not None:
+        if self.openai_client:
             try:
-                client_chat = getattr(self.openai_client, "chat", None)
-                if client_chat is not None:
-                    response = await client_chat.completions.create(
-                        model=self.deployment_name,
-                        messages=[{"role": "user", "content": prompt}],
-                        max_tokens=50,
-                        temperature=0.7,
+                response = await self.openai_client.chat.completions.create(
+                    model=self.deployment_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=50,
+                    temperature=0.7,
+                )
+                rate_text = response.choices[0].message.content.strip()
+                import re
+                match = re.search(r"\d+(?:\.\d+)?", rate_text)
+                if match:
+                    new_rate = float(match.group())
+                    new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
+                    logger.info(
+                        f"[Guide {self.guide_id}] LLM pricing decision: ${new_rate}/hr (was ${base_rate}/hr)"
                     )
-                    rate_text = response.choices[0].message.content.strip()
-                    import re
-                    match = re.search(r"\d+(?:\.\d+)?", rate_text)
-                    if match:
-                        new_rate = float(match.group())
-                        new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
-                        logger.info(
-                            f"[Guide {self.guide_id}] LLM pricing decision: ${new_rate}/hr (was ${base_rate}/hr)"
-                        )
-                        return new_rate
+                    return new_rate
             except Exception as e:  # pragma: no cover
                 logger.warning(f"[Guide {self.guide_id}] LLM pricing failed; heuristic fallback: {e}")
         # Heuristic fallback
@@ -169,30 +148,28 @@ class AutonomousGuideAgent:
             f"Current time: {now.isoformat()}\nDemand: {self.market_conditions['demand']} | Season: {self.market_conditions['season']} | Recent bookings: {len(self.booking_history)}\n"
             "Return a time window in 24h format like 10:00-16:00 for tomorrow."  # concise instruction
         )
-        if self.openai_client is not None:
+        if self.openai_client:
             try:
-                client_chat = getattr(self.openai_client, "chat", None)
-                if client_chat is not None:
-                    response = await client_chat.completions.create(
-                        model=self.deployment_name,
-                        messages=[{"role": "user", "content": prompt}],
-                        max_tokens=50,
-                        temperature=0.8,
+                response = await self.openai_client.chat.completions.create(
+                    model=self.deployment_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=50,
+                    temperature=0.8,
+                )
+                time_text = response.choices[0].message.content.strip()
+                import re
+                m = re.search(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", time_text)
+                if m:
+                    sh, sm, eh, em = map(int, m.groups())
+                    tomorrow = now + timedelta(days=1)
+                    start_time = tomorrow.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                    end_time = tomorrow.replace(hour=eh, minute=em, second=0, microsecond=0)
+                    if end_time <= start_time:
+                        end_time = start_time + timedelta(hours=4)
+                    logger.info(
+                        f"[Guide {self.guide_id}] LLM availability decision: {start_time} to {end_time}"
                     )
-                    time_text = response.choices[0].message.content.strip()
-                    import re
-                    m = re.search(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", time_text)
-                    if m:
-                        sh, sm, eh, em = map(int, m.groups())
-                        tomorrow = now + timedelta(days=1)
-                        start_time = tomorrow.replace(hour=sh, minute=sm, second=0, microsecond=0)
-                        end_time = tomorrow.replace(hour=eh, minute=em, second=0, microsecond=0)
-                        if end_time <= start_time:
-                            end_time = start_time + timedelta(hours=4)
-                        logger.info(
-                            f"[Guide {self.guide_id}] LLM availability decision: {start_time} to {end_time}"
-                        )
-                        return Window(start=start_time, end=end_time)
+                    return Window(start=start_time, end=end_time)
             except Exception as e:  # pragma: no cover
                 logger.warning(f"[Guide {self.guide_id}] LLM availability failed; heuristic fallback: {e}")
         # Heuristic fallback window selection
