@@ -259,18 +259,17 @@ class AutonomousGuideAgent:
                 message = create_text_message_object(content=offer.to_json())
 
                 async for response in client.send_message(message):
-                    # Normalize task extraction (streaming/non-streaming)
+                    # Client abstracts streaming vs non-streaming into a unified event; expect (task, update)
+                    if isinstance(response, Message):
+                        raise RuntimeError("Unexpected bare Message response from scheduler agent")
                     task_obj = None
-                    if isinstance(response, Task):
+                    if isinstance(response, tuple) and len(response) >= 1:
+                        task_obj = response[0]
+                    elif isinstance(response, Task):
                         task_obj = response
-                    elif isinstance(response, tuple) and len(response) == 2:
-                        task_obj, _update = response
-                    elif isinstance(response, Message):
-                        logger.warning("[Guide %s] Unexpected bare Message response", self.guide_id)
-                        continue
                     else:
-                        continue
-                    history = getattr(task_obj, "history", []) or []
+                        continue  # Unknown shape
+                    history = getattr(task_obj, "history", None) or []
                     if not history:
                         continue
                     for msg in history:
