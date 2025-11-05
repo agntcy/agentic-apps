@@ -354,15 +354,25 @@ def main(host: str, port: int):
     """Start the Scheduler A2A server"""
     logger.info(f"[Scheduler] Starting A2A server on {host}:{port}")
 
-    # Define scheduler agent capabilities
-    skill = AgentSkill(
-        id="tourist_scheduling",
-        name="Tourist Scheduling Coordinator",
+    # Define scheduler agent capabilities split into two focused skills
+    skill_matching = AgentSkill(
+        id="tourist_matching",
+        name="Tourist Guide Matching",
         description="Matches tourists with tour guides based on availability, budget, and preferences",
-        tags=["scheduling", "coordination", "matching"],
+        tags=["scheduling", "matching", "tourist", "guide"],
         examples=[
-            "Match tourist with guide for city tour",
-            "Schedule museum visit with available guide",
+            '{"type": "TouristRequest", "tourist_id": "t-123", "availability": [{"start": "2025-11-06T09:00:00", "end": "2025-11-06T17:00:00"}], "budget": 150.0, "preferences": ["culture", "history"]}',
+            "Produces ScheduleProposal artifacts containing matched Assignment entries"
+        ],
+    )
+    skill_offer_collection = AgentSkill(
+        id="guide_offer_collection",
+        name="Guide Offer Collection",
+        description="Receives guide offers and stores them for future tourist request matching",
+        tags=["offers", "guide", "availability", "pricing"],
+        examples=[
+            '{"type": "GuideOffer", "guide_id": "g-42", "categories": ["culture", "art"], "available_window": {"start": "2025-11-07T10:00:00", "end": "2025-11-07T16:00:00"}, "hourly_rate": 85.0, "max_group_size": 6}',
+            "Acknowledges GuideOffer with an Acknowledgment artifact"
         ],
     )
 
@@ -374,7 +384,7 @@ def main(host: str, port: int):
         default_input_modes=["text"],
         default_output_modes=["text"],
         capabilities=AgentCapabilities(streaming=False),
-        skills=[skill],
+    skills=[skill_matching, skill_offer_collection],
     )
 
     request_handler = DefaultRequestHandler(
