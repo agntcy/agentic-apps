@@ -33,6 +33,7 @@ except Exception:  # pragma: no cover
         return None
 
 from core.messages import GuideOffer, Window
+from pydantic import BaseModel
 from a2a.types import Task, Message
 
 # Load environment variables
@@ -113,25 +114,50 @@ class AutonomousGuideAgent:
             "Respond with just a number (hourly rate)."
         )
         if self.openai_client:
+            # Structured output via pydantic model (OpenAI SDK parse API)
+            class PricingDecision(BaseModel):
+                hourly_rate: float
             try:
-                response = await self.openai_client.chat.completions.create(
+                response = await self.openai_client.chat.completions.parse(
                     model=self.deployment_name,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=50,
                     temperature=0.7,
+                    response_format=PricingDecision,
                 )
-                rate_text = response.choices[0].message.content.strip()
-                import re
-                match = re.search(r"\d+(?:\.\d+)?", rate_text)
-                if match:
-                    new_rate = float(match.group())
-                    new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
-                    logger.info(
-                        f"[Guide {self.guide_id}] LLM pricing decision: ${new_rate}/hr (was ${base_rate}/hr)"
-                    )
-                    return new_rate
+                decision = response.choices[0].message.parsed  # type: ignore[attr-defined]
+                new_rate = float(decision.hourly_rate)
+                new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
+                logger.info(
+                    f"[Guide {self.guide_id}] LLM pricing decision (structured): ${new_rate}/hr (was ${base_rate}/hr)"
+                )
+                return new_rate
             except Exception as e:  # pragma: no cover
-                logger.warning(f"[Guide {self.guide_id}] LLM pricing failed; heuristic fallback: {e}")
+                logger.warning(
+                    f"[Guide {self.guide_id}] Structured pricing parse failed; regex fallback: {e}"
+                )
+                # Fallback to original unstructured approach
+                try:
+                    response = await self.openai_client.chat.completions.create(
+                        model=self.deployment_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=50,
+                        temperature=0.7,
+                    )
+                    rate_text = response.choices[0].message.content.strip()
+                    import re
+                    match = re.search(r"\d+(?:\.\d+)?", rate_text)
+                    if match:
+                        new_rate = float(match.group())
+                        new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
+                        logger.info(
+                            f"[Guide {self.guide_id}] LLM pricing decision (fallback): ${new_rate}/hr (was ${base_rate}/hr)"
+                        )
+                        return new_rate
+                except Exception as e2:  # pragma: no cover
+                    logger.warning(
+                        f"[Guide {self.guide_id}] LLM pricing fallback failed; heuristic: {e2}"
+                    )
         # Heuristic fallback
         multiplier = {"low": 0.8, "medium": 1.0, "high": 1.2}.get(self.market_conditions["demand"], 1.0)
         competition_factor = max(0.8, 1.2 - 0.05 * self.market_conditions["competition"])
