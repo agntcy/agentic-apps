@@ -29,7 +29,7 @@ jobs:
       agent-files: ${{ steps.collect-agents.outputs.agent-files }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Find all agent.json files
         id: collect-agents
@@ -46,7 +46,7 @@ jobs:
         agent-path: ${{ fromJson(needs.find-agents.outputs.agent-files) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Try to restore dirctl binary from cache
         id: cache-dirctl
