@@ -79,17 +79,28 @@ uv run python src/agents/tourist_agent.py --scheduler-url http://localhost:10010
 
 For Azure OpenAI powered autonomous agents (works seamlessly with uv):
 
-1. Set up environment variables:
+1. Set up environment variables (either export manually, source a shell env file like `~/.env-phoenix`, or create a `.env` in this directory – the agent will read existing process env and optionally `.env`):
 ```bash
+# Option A: source an existing env file (recommended if you already keep secrets there)
+source ~/.env-phoenix
+
+# Option B: export inline (temporary for current shell)
 export AZURE_OPENAI_API_KEY="your-api-key"
 export AZURE_OPENAI_API_VERSION="2024-08-01-preview"
 export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
 export AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
+
+# Option C: create a .env file (pydantic-settings will load it automatically)
+cat > .env <<'EOF'
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_API_VERSION=2024-08-01-preview
+AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+EOF
 ```
 
 2. Run the full autonomous demo:
 ```bash
-source ~/.env-phoenix  # If using Phoenix environment
 uv run python scripts/run_autonomous_demo.py
 ```
 

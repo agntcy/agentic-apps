@@ -27,17 +27,42 @@ from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
 try:
-    from dotenv import load_dotenv  # type: ignore
-except Exception:  # pragma: no cover
-    def load_dotenv():  # fallback no-op
-        return None
+    from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
+except Exception:  # pragma: no cover - pydantic-settings optional
+    class BaseSettings:  # minimal shim
+        def __init__(self, **kwargs):  # accept arbitrary
+            pass
+    class SettingsConfigDict(dict):  # type: ignore
+        pass
 
 from core.messages import GuideOffer, Window
 from pydantic import BaseModel
 from a2a.types import Task, Message
 
-# Load environment variables
-load_dotenv()
+# Define AgentConfig conditionally depending on pydantic-settings availability
+_P_SETTINGS_AVAILABLE = 'SettingsConfigDict' in globals() and isinstance(SettingsConfigDict, type)
+if _P_SETTINGS_AVAILABLE:
+    class AgentConfig(BaseSettings):  # type: ignore[misc]
+        """Settings for autonomous guide agent loaded from environment/.env.
+
+        Uses pydantic-settings so we get validation + optional .env file loading.
+        All fields are optional; LLM usage is enabled only if all required values
+        are present.
+        """
+        azure_openai_deployment_name: str | None = None
+        azure_openai_api_key: str | None = None
+        azure_openai_api_version: str | None = None
+        azure_openai_endpoint: str | None = None
+
+        model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')  # type: ignore
+else:
+    class AgentConfig:  # fallback simple env loader
+        def __init__(self):
+            self.azure_openai_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+            self.azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+            self.azure_openai_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+            self.azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -49,13 +74,25 @@ class AutonomousGuideAgent:
     def __init__(self, guide_id: str, scheduler_url: str):
         self.guide_id = guide_id
         self.scheduler_url = scheduler_url
-        # Conditionally create Azure OpenAI client if env vars present (simple env based config)
-        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-        api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.llm_available = bool(AsyncAzureOpenAI and api_key and api_version and endpoint and self.deployment_name)
-        if self.llm_available:
+        # Load configuration from environment/.env via pydantic-settings (fallback to direct env if unavailable)
+        try:
+            self.config = AgentConfig()
+        except Exception as e:  # pragma: no cover
+            logger.warning("[Guide %s] AgentConfig init failed (%s); falling back to raw env vars", guide_id, e)
+            class _FallbackConfig:  # minimal shim
+                azure_openai_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+                azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+                azure_openai_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+                azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+            self.config = _FallbackConfig()
+
+        self.deployment_name = self.config.azure_openai_deployment_name
+        api_key = self.config.azure_openai_api_key
+        api_version = self.config.azure_openai_api_version
+        endpoint = self.config.azure_openai_endpoint
+
+        self.llm_available = all([AsyncAzureOpenAI, api_key, api_version, endpoint, self.deployment_name])
+        if self.llm_available and AsyncAzureOpenAI:
             try:
                 self.openai_client = AsyncAzureOpenAI(
                     api_key=api_key,
@@ -68,7 +105,7 @@ class AutonomousGuideAgent:
                 self.llm_available = False
         else:
             self.openai_client = None
-            logger.warning("[Guide %s] Azure OpenAI env vars missing; falling back to heuristic decisions", self.guide_id)
+            logger.warning("[Guide %s] Azure OpenAI env vars missing or incomplete; falling back to heuristic decisions", self.guide_id)
         self.personality = self._generate_personality()
         self.market_conditions = {"demand": "medium", "competition": 0, "season": "peak"}
         self.booking_history = []
