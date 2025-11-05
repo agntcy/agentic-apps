@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .venv
 env/
 venv/
@@ -167,9 +168,28 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+# VS Code
+# VS Code
+# Added: ensure VS Code workspace dir & settings are ignored (explicit hygiene)
+.vscode/
+
 # PyPI configuration file
 .pypirc
 
+# OS specific files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Project specific
 .langgraph_api/
 logs/
 header.txt
+# Tourist Scheduling System generated artifacts
+tourist_scheduling_system/*.log
+tourist_scheduling_system/ui_agent_ports.json
+tourist_scheduling_system/__pycache__/
+tourist_scheduling_system/.pytest_cache/
+tourist_scheduling_system/.DS_Store

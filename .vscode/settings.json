@@ -1,4 +1,0 @@
-{
-    "python.analysis.extraPaths": ["./server", "./server/rest", "./server/rest/core", "./server/rest/api"],
-}
-  
