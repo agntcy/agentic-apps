@@ -21,7 +21,7 @@ import socket
 from threading import Thread
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, is_dataclass
 from typing import List, Dict, Set, Optional
 
 import click
@@ -131,13 +131,24 @@ class UIState:
         self.connected_clients -= disconnected
 
     def to_dict(self) -> dict:
-        """Convert state to dictionary for JSON serialization"""
+        """Convert state to dictionary for JSON serialization (supports Pydantic models or dataclasses)."""
+        def _convert(obj):
+            if hasattr(obj, "model_dump"):
+                return obj.model_dump()
+            if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
+                return obj.dict()
+            if is_dataclass(obj) and not isinstance(obj, type):
+                return asdict(obj)  # type: ignore[arg-type]
+            if hasattr(obj, "to_dict") and not isinstance(obj, type):
+                return obj.to_dict()  # type: ignore[attr-defined]
+            return obj  # fallback raw
+
         return {
-            "tourist_requests": [req.to_dict() for req in self.tourist_requests.values()],
-            "guide_offers": [offer.to_dict() for offer in self.guide_offers.values()],
-            "assignments": [asdict(assignment) for assignment in self.assignments],
-            "schedule_proposals": {pid: prop.to_dict() for pid, prop in self.schedule_proposals.items()},
-            "metrics": asdict(self.metrics)
+            "tourist_requests": [ _convert(req) for req in self.tourist_requests.values() ],
+            "guide_offers": [ _convert(offer) for offer in self.guide_offers.values() ],
+            "assignments": [ _convert(assignment) for assignment in self.assignments ],
+            "schedule_proposals": { pid: _convert(prop) for pid, prop in self.schedule_proposals.items() },
+            "metrics": _convert(self.metrics)
         }
 
 

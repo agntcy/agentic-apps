@@ -22,7 +22,7 @@ from datetime import datetime
 
 import click
 import uvicorn
-import requests
+import httpx
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.events import EventQueue
@@ -87,31 +87,29 @@ def _discover_ui_ports() -> int:
     return default_port
 
 async def send_to_ui_agent(message_data: dict):
-    """Send data to UI agent for dashboard updates, using dynamic port discovery."""
+    """Send data to UI agent for dashboard updates (non-blocking async)."""
     port = _discover_ui_ports()
     url = f"http://localhost:{port}/"
+    payload = {
+        "jsonrpc": "2.0",
+        "id": f"scheduler-ui-{int(time.time())}",
+        "method": "message/send",
+        "params": {
+            "message": {
+                "role": "user",
+                "parts": [{"kind": "text", "text": json.dumps(message_data)}],
+                "messageId": f"scheduler-msg-{int(time.time())}"
+            }
+        }
+    }
     try:
-        response = requests.post(
-            url,
-            json={
-                "jsonrpc": "2.0",
-                "id": f"scheduler-ui-{int(time.time())}",
-                "method": "message/send",
-                "params": {
-                    "message": {
-                        "role": "user",
-                        "parts": [{"kind": "text", "text": json.dumps(message_data)}],
-                        "messageId": f"scheduler-msg-{int(time.time())}"
-                    }
-                }
-            },
-            timeout=3
-        )
+        async with httpx.AsyncClient(timeout=3) as client:
+            response = await client.post(url, json=payload)
         if response.status_code == 200:
             logger.info(f"[Scheduler] Sent update to UI agent on port {port}")
         else:
             logger.warning(f"[Scheduler] UI agent POST returned {response.status_code} on port {port}")
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - network failures are non-fatal
         logger.warning(f"[Scheduler] Failed to send update to UI agent on port {port}: {e}")
 
 

@@ -33,6 +33,7 @@ except Exception:  # pragma: no cover
         return None
 
 from core.messages import GuideOffer, Window
+from a2a.types import Task, Message
 
 # Load environment variables
 load_dotenv()
@@ -41,38 +42,53 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+class AgentConfig:
+    """Lightweight environment-driven configuration (pydantic-settings optional)."""
+    def __init__(self):
+        self.azure_openai_deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        self.azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        self.azure_openai_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+        self.azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+
+
 class AutonomousGuideAgent:
     """Intelligent guide agent with LLM decision-making capabilities"""
 
     def __init__(self, guide_id: str, scheduler_url: str):
         self.guide_id = guide_id
         self.scheduler_url = scheduler_url
-        # Conditionally create Azure OpenAI client if env vars present
-        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-        api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.llm_available = bool(AsyncAzureOpenAI and api_key and api_version and endpoint and self.deployment_name)
-        if self.llm_available:
+        self.config = AgentConfig()  # loads from env
+        self.deployment_name = self.config.azure_openai_deployment_name
+        # Initialize optional OpenAI client only if class available and env populated
+        if AsyncAzureOpenAI is not None and all([
+            self.config.azure_openai_api_key,
+            self.config.azure_openai_api_version,
+            self.config.azure_openai_endpoint,
+            self.deployment_name,
+        ]):
             try:
                 self.openai_client = AsyncAzureOpenAI(
-                    api_key=api_key,
-                    api_version=api_version,
-                    azure_endpoint=endpoint,
+                    api_key=self.config.azure_openai_api_key,
+                    api_version=self.config.azure_openai_api_version,
+                    azure_endpoint=self.config.azure_openai_endpoint,
                 )
             except Exception as e:  # pragma: no cover
-                logger.warning("[Guide %s] Failed to initialize OpenAI client: %s; using heuristic decisions", self.guide_id, e)
+                logger.warning(
+                    "[Guide %s] Failed to initialize OpenAI client: %s; using heuristic decisions",
+                    self.guide_id,
+                    e,
+                )
                 self.openai_client = None
-                self.llm_available = False
         else:
             self.openai_client = None
-            logger.warning("[Guide %s] Azure OpenAI env vars missing; falling back to heuristic decisions", self.guide_id)
+            logger.warning(
+                "[Guide %s] Azure OpenAI env vars missing; falling back to heuristic decisions",
+                self.guide_id,
+            )
         self.personality = self._generate_personality()
-        self.market_conditions = {
-            "demand": "medium",
-            "competition": 0,
-            "season": "peak"
-        }
+        # Backward compatibility for tests referencing llm_available flag
+        self.llm_available = bool(self.openai_client)
+        self.market_conditions = {"demand": "medium", "competition": 0, "season": "peak"}
         self.booking_history = []
 
     def _generate_personality(self) -> Dict:
@@ -106,117 +122,82 @@ class AutonomousGuideAgent:
         return random.choice(personalities)
 
     async def make_pricing_decision(self, base_rate: float) -> float:
-        """Use LLM to decide on dynamic pricing"""
-        prompt = f"""
-        You are an autonomous tour guide agent named {self.guide_id} with the personality: {self.personality['name']}.
-
-        Your specialties are: {', '.join(self.personality['specialties'])}
-        Your base hourly rate is: ${base_rate}
-
-        Current market conditions:
-        - Demand: {self.market_conditions['demand']}
-        - Competition: {self.market_conditions['competition']} other guides
-        - Season: {self.market_conditions['season']}
-
-        Recent bookings: {len(self.booking_history)} in the last period
-
-        Based on these factors, what hourly rate should you charge? Consider:
-        - Market demand and competition
-        - Your unique value proposition
-        - Seasonal factors
-        - Your booking success rate
-
-        Respond with just a number (the hourly rate in dollars), no currency symbol or explanation.
-        """
-
-        if self.llm_available and self.openai_client is not None:
+        """Use LLM (if available) or heuristic to decide on dynamic pricing."""
+        prompt = (
+            f"You are an autonomous tour guide agent named {self.guide_id} with the personality: {self.personality['name']}.\n"
+            f"Specialties: {', '.join(self.personality['specialties'])}\n"
+            f"Base hourly rate: ${base_rate}\n"
+            f"Demand: {self.market_conditions['demand']} | Competition: {self.market_conditions['competition']} | Season: {self.market_conditions['season']}\n"
+            f"Recent bookings: {len(self.booking_history)}\n"
+            "Respond with just a number (hourly rate)."
+        )
+        if self.openai_client is not None:
             try:
                 client_chat = getattr(self.openai_client, "chat", None)
-                if client_chat is None:
-                    raise AttributeError("OpenAI client missing 'chat' attribute; falling back to heuristic")
-                response = await client_chat.completions.create(
-                    model=self.deployment_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=50,
-                    temperature=0.7
-                )
-                rate_text = response.choices[0].message.content.strip()
-                import re
-                rate_match = re.search(r'\d+(?:\.\d+)?', rate_text)
-                if rate_match:
-                    new_rate = float(rate_match.group())
-                    new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
-                    logger.info(f"[Guide {self.guide_id}] LLM pricing decision: ${new_rate}/hr (was ${base_rate}/hr)")
-                    return new_rate
-            except Exception as e:
-                logger.warning(f"[Guide {self.guide_id}] LLM pricing failed, using heuristic: {e}")
-
-        # Heuristic fallback: adjust by market demand
+                if client_chat is not None:
+                    response = await client_chat.completions.create(
+                        model=self.deployment_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=50,
+                        temperature=0.7,
+                    )
+                    rate_text = response.choices[0].message.content.strip()
+                    import re
+                    match = re.search(r"\d+(?:\.\d+)?", rate_text)
+                    if match:
+                        new_rate = float(match.group())
+                        new_rate = max(base_rate * 0.5, min(base_rate * 2.0, new_rate))
+                        logger.info(
+                            f"[Guide {self.guide_id}] LLM pricing decision: ${new_rate}/hr (was ${base_rate}/hr)"
+                        )
+                        return new_rate
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"[Guide {self.guide_id}] LLM pricing failed; heuristic fallback: {e}")
+        # Heuristic fallback
         multiplier = {"low": 0.8, "medium": 1.0, "high": 1.2}.get(self.market_conditions["demand"], 1.0)
-        competition_factor = max(0.8, 1.2 - 0.05 * self.market_conditions["competition"])  # fewer competitors -> higher price
+        competition_factor = max(0.8, 1.2 - 0.05 * self.market_conditions["competition"])
         season_factor = {"off-peak": 0.9, "shoulder": 1.0, "peak": 1.15}.get(self.market_conditions["season"], 1.0)
-        heuristic_rate = round(base_rate * multiplier * competition_factor * season_factor, 2)
-        logger.info(f"[Guide {self.guide_id}] Heuristic pricing decision: ${heuristic_rate}/hr (base ${base_rate}/hr)")
-        return heuristic_rate
+        rate = round(base_rate * multiplier * competition_factor * season_factor, 2)
+        logger.info(f"[Guide {self.guide_id}] Heuristic pricing decision: ${rate}/hr (base ${base_rate}/hr)")
+        return rate
 
     async def decide_availability(self) -> Window:
-        """Use LLM to decide on availability window"""
+        """Use LLM (if available) or heuristics to choose next availability window."""
         now = datetime.now()
-
-        prompt = f"""
-        You are {self.guide_id}, a {self.personality['name']} tour guide.
-        Your style is: {self.personality['style']}
-
-        It's currently {now.strftime('%A, %B %d, %Y at %I:%M %p')}.
-
-        Market conditions:
-        - Demand: {self.market_conditions['demand']}
-        - Season: {self.market_conditions['season']}
-        - Your recent bookings: {len(self.booking_history)}
-
-        When should you be available for tours today/tomorrow? Consider:
-        - Popular tour times for your specialties
-        - Your work-life balance preferences
-        - Market demand patterns
-        - Your energy levels and optimal performance times
-
-        Respond with start and end times in 24-hour format, like: "10:00-16:00"
-        """
-
-        if self.llm_available and self.openai_client is not None:
+        prompt = (
+            f"You are {self.guide_id}, a {self.personality['name']} ({self.personality['style']}).\n"
+            f"Current time: {now.isoformat()}\nDemand: {self.market_conditions['demand']} | Season: {self.market_conditions['season']} | Recent bookings: {len(self.booking_history)}\n"
+            "Return a time window in 24h format like 10:00-16:00 for tomorrow."  # concise instruction
+        )
+        if self.openai_client is not None:
             try:
                 client_chat = getattr(self.openai_client, "chat", None)
-                if client_chat is None:
-                    raise AttributeError("OpenAI client missing 'chat' attribute; falling back to heuristic")
-                response = await client_chat.completions.create(
-                    model=self.deployment_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=100,
-                    temperature=0.8
-                )
-                time_text = response.choices[0].message.content.strip()
-                import re
-                time_match = re.search(r'(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})', time_text)
-                if time_match:
-                    start_hour, start_min, end_hour, end_min = map(int, time_match.groups())
-                    tomorrow = now + timedelta(days=1)
-                    start_time = tomorrow.replace(hour=start_hour, minute=start_min, second=0, microsecond=0)
-                    end_time = tomorrow.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
-                    if end_time <= start_time:
-                        end_time += timedelta(days=1)
-                    logger.info(f"[Guide {self.guide_id}] LLM availability decision: {start_time} to {end_time}")
-                    return Window(start=start_time, end=end_time)
-            except Exception as e:
-                logger.warning(f"[Guide {self.guide_id}] LLM availability failed, using heuristic: {e}")
-
-        # Heuristic fallback: choose a window based on demand
+                if client_chat is not None:
+                    response = await client_chat.completions.create(
+                        model=self.deployment_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=50,
+                        temperature=0.8,
+                    )
+                    time_text = response.choices[0].message.content.strip()
+                    import re
+                    m = re.search(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", time_text)
+                    if m:
+                        sh, sm, eh, em = map(int, m.groups())
+                        tomorrow = now + timedelta(days=1)
+                        start_time = tomorrow.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                        end_time = tomorrow.replace(hour=eh, minute=em, second=0, microsecond=0)
+                        if end_time <= start_time:
+                            end_time = start_time + timedelta(hours=4)
+                        logger.info(
+                            f"[Guide {self.guide_id}] LLM availability decision: {start_time} to {end_time}"
+                        )
+                        return Window(start=start_time, end=end_time)
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"[Guide {self.guide_id}] LLM availability failed; heuristic fallback: {e}")
+        # Heuristic fallback window selection
         tomorrow = now + timedelta(days=1)
-        if self.market_conditions["demand"] == "high":
-            start_hour, end_hour = 9, 17
-        elif self.market_conditions["demand"] == "low":
-            start_hour, end_hour = 11, 15
-        else:
-            start_hour, end_hour = 10, 16
+        start_hour, end_hour = (9, 17) if self.market_conditions["demand"] == "high" else (11, 15) if self.market_conditions["demand"] == "low" else (10, 16)
         start_time = tomorrow.replace(hour=start_hour, minute=0, second=0, microsecond=0)
         end_time = tomorrow.replace(hour=end_hour, minute=0, second=0, microsecond=0)
         logger.info(f"[Guide {self.guide_id}] Heuristic availability: {start_time} to {end_time}")
@@ -253,23 +234,32 @@ class AutonomousGuideAgent:
                 message = create_text_message_object(content=offer.to_json())
 
                 async for response in client.send_message(message):
-                    logger.info(f"[Guide {self.guide_id}] Received response: {response}")
-
-                    # Process acknowledgment
-                    if isinstance(response, tuple):
-                        task, update = response
-                        if task.history:
-                            for msg in task.history:
-                                if msg.role.value == "agent" and msg.parts:
-                                    for part in msg.parts:
-                                        text_value = getattr(part.root, "text", None)
-                                        if text_value:
-                                            try:
-                                                data = json.loads(text_value)
-                                                if data.get("type") == "Acknowledgment":
-                                                    logger.info(f"[Guide {self.guide_id}] ✅ {data['message']}")
-                                            except json.JSONDecodeError:
-                                                pass
+                    # Normalize task extraction (streaming/non-streaming)
+                    task_obj = None
+                    if isinstance(response, Task):
+                        task_obj = response
+                    elif isinstance(response, tuple) and len(response) == 2:
+                        task_obj, _update = response
+                    elif isinstance(response, Message):
+                        logger.warning("[Guide %s] Unexpected bare Message response", self.guide_id)
+                        continue
+                    else:
+                        continue
+                    history = getattr(task_obj, "history", []) or []
+                    if not history:
+                        continue
+                    for msg in history:
+                        if getattr(msg.role, "value", None) == "agent" and getattr(msg, "parts", None):
+                            for part in msg.parts:
+                                raw = getattr(getattr(part, "root", None), "text", None)
+                                if not raw:
+                                    continue
+                                try:
+                                    data = json.loads(raw)
+                                except json.JSONDecodeError:
+                                    continue
+                                if data.get("type") == "Acknowledgment":
+                                    logger.info(f"[Guide {self.guide_id}] ✅ {data['message']}")
 
             except Exception as e:
                 logger.error(f"[Guide {self.guide_id}] Failed to send offer: {e}")

@@ -9,33 +9,40 @@ when communicating via the A2A protocol.
 """
 
 import json
-from dataclasses import dataclass
 from datetime import datetime
 from typing import List
+from pydantic import BaseModel, field_validator
 
 
-@dataclass
-class Window:
+class Window(BaseModel):
     """Time window for tourist availability."""
     start: datetime
     end: datetime
 
-    def to_dict(self):
-        return {
-            "start": self.start.isoformat(),
-            "end": self.end.isoformat()
-        }
+    @field_validator("end")
+    @classmethod
+    def end_after_start(cls, v: datetime, info):  # type: ignore[override]
+        start = info.data.get("start")
+        if start and v <= start:
+            raise ValueError("end must be after start")
+        return v
+
+    def to_dict(self):  # backward compatible API
+        return {"start": self.start.isoformat(), "end": self.end.isoformat()}
 
     @classmethod
     def from_dict(cls, d):
-        return cls(
-            start=datetime.fromisoformat(d["start"]),
-            end=datetime.fromisoformat(d["end"])
-        )
+        return cls(start=datetime.fromisoformat(d["start"]), end=datetime.fromisoformat(d["end"]))
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, s: str):
+        return cls.from_dict(json.loads(s))
 
 
-@dataclass
-class TouristRequest:
+class TouristRequest(BaseModel):
     """Message from tourist agent requesting schedule."""
     tourist_id: str
     availability: List[Window]
@@ -48,7 +55,7 @@ class TouristRequest:
             "tourist_id": self.tourist_id,
             "availability": [w.to_dict() for w in self.availability],
             "budget": self.budget,
-            "preferences": self.preferences
+            "preferences": self.preferences,
         }
 
     @classmethod
@@ -57,7 +64,7 @@ class TouristRequest:
             tourist_id=d["tourist_id"],
             availability=[Window.from_dict(w) for w in d["availability"]],
             budget=d["budget"],
-            preferences=d["preferences"]
+            preferences=d["preferences"],
         )
 
     def to_json(self) -> str:
@@ -68,8 +75,7 @@ class TouristRequest:
         return cls.from_dict(json.loads(s))
 
 
-@dataclass
-class GuideOffer:
+class GuideOffer(BaseModel):
     """Message from guide agent offering services."""
     guide_id: str
     categories: List[str]
@@ -84,11 +90,8 @@ class GuideOffer:
             "categories": self.categories,
             "available_window": self.available_window.to_dict(),
             "hourly_rate": self.hourly_rate,
-            "max_group_size": self.max_group_size
+            "max_group_size": self.max_group_size,
         }
-
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict())
 
     @classmethod
     def from_dict(cls, d):
@@ -97,16 +100,18 @@ class GuideOffer:
             categories=d["categories"],
             available_window=Window.from_dict(d["available_window"]),
             hourly_rate=d["hourly_rate"],
-            max_group_size=d["max_group_size"]
+            max_group_size=d["max_group_size"],
         )
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
     @classmethod
     def from_json(cls, s: str):
         return cls.from_dict(json.loads(s))
 
 
-@dataclass
-class Assignment:
+class Assignment(BaseModel):
     """Single tourist-guide assignment."""
     tourist_id: str
     guide_id: str
@@ -120,7 +125,7 @@ class Assignment:
             "guide_id": self.guide_id,
             "time_window": self.time_window.to_dict(),
             "categories": self.categories,
-            "total_cost": self.total_cost
+            "total_cost": self.total_cost,
         }
 
     @classmethod
@@ -130,12 +135,11 @@ class Assignment:
             guide_id=d["guide_id"],
             time_window=Window.from_dict(d["time_window"]),
             categories=d["categories"],
-            total_cost=d["total_cost"]
+            total_cost=d["total_cost"],
         )
 
 
-@dataclass
-class ScheduleProposal:
+class ScheduleProposal(BaseModel):
     """Message from scheduler agent proposing assignments."""
     proposal_id: str
     assignments: List[Assignment]
@@ -144,14 +148,14 @@ class ScheduleProposal:
         return {
             "type": "ScheduleProposal",
             "proposal_id": self.proposal_id,
-            "assignments": [a.to_dict() for a in self.assignments]
+            "assignments": [a.to_dict() for a in self.assignments],
         }
 
     @classmethod
     def from_dict(cls, d):
         return cls(
             proposal_id=d["proposal_id"],
-            assignments=[Assignment.from_dict(a) for a in d["assignments"]]
+            assignments=[Assignment.from_dict(a) for a in d["assignments"]],
         )
 
     def to_json(self) -> str:
