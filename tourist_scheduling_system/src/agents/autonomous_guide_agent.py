@@ -175,29 +175,51 @@ class AutonomousGuideAgent:
             "Return a time window in 24h format like 10:00-16:00 for tomorrow."  # concise instruction
         )
         if self.openai_client:
+            # Structured output model for availability extraction
+            from datetime import time as _time
+            class AvailabilityWindow(BaseModel):
+                start_time: _time
+                end_time: _time
             try:
-                response = await self.openai_client.chat.completions.create(
+                response = await self.openai_client.chat.completions.parse(
                     model=self.deployment_name,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=50,
                     temperature=0.8,
+                    response_format=AvailabilityWindow,
                 )
-                time_text = response.choices[0].message.content.strip()
-                import re
-                m = re.search(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", time_text)
-                if m:
-                    sh, sm, eh, em = map(int, m.groups())
-                    tomorrow = now + timedelta(days=1)
-                    start_time = tomorrow.replace(hour=sh, minute=sm, second=0, microsecond=0)
-                    end_time = tomorrow.replace(hour=eh, minute=em, second=0, microsecond=0)
-                    if end_time <= start_time:
-                        end_time = start_time + timedelta(hours=4)
-                    logger.info(
-                        f"[Guide {self.guide_id}] LLM availability decision: {start_time} to {end_time}"
-                    )
-                    return Window(start=start_time, end=end_time)
+                parsed = response.choices[0].message.parsed  # type: ignore[attr-defined]
+                tomorrow = now + timedelta(days=1)
+                start_time = tomorrow.replace(hour=parsed.start_time.hour, minute=parsed.start_time.minute, second=0, microsecond=0)
+                end_time = tomorrow.replace(hour=parsed.end_time.hour, minute=parsed.end_time.minute, second=0, microsecond=0)
+                if end_time <= start_time:
+                    end_time = start_time + timedelta(hours=4)
+                logger.info(f"[Guide {self.guide_id}] LLM availability decision (structured): {start_time} to {end_time}")
+                return Window(start=start_time, end=end_time)
             except Exception as e:  # pragma: no cover
-                logger.warning(f"[Guide {self.guide_id}] LLM availability failed; heuristic fallback: {e}")
+                logger.warning(f"[Guide {self.guide_id}] Structured availability parse failed; regex fallback: {e}")
+                # Regex fallback
+                try:
+                    response = await self.openai_client.chat.completions.create(
+                        model=self.deployment_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=50,
+                        temperature=0.8,
+                    )
+                    time_text = response.choices[0].message.content.strip()
+                    import re
+                    m = re.search(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", time_text)
+                    if m:
+                        sh, sm, eh, em = map(int, m.groups())
+                        tomorrow = now + timedelta(days=1)
+                        start_time = tomorrow.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                        end_time = tomorrow.replace(hour=eh, minute=em, second=0, microsecond=0)
+                        if end_time <= start_time:
+                            end_time = start_time + timedelta(hours=4)
+                        logger.info(f"[Guide {self.guide_id}] LLM availability decision (fallback): {start_time} to {end_time}")
+                        return Window(start=start_time, end=end_time)
+                except Exception as e2:  # pragma: no cover
+                    logger.warning(f"[Guide {self.guide_id}] LLM availability fallback failed; heuristic: {e2}")
         # Heuristic fallback window selection
         tomorrow = now + timedelta(days=1)
         start_hour, end_hour = (9, 17) if self.market_conditions["demand"] == "high" else (11, 15) if self.market_conditions["demand"] == "low" else (10, 16)
