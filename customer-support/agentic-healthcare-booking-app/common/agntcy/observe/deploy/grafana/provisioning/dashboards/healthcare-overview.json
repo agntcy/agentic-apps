@@ -1,0 +1,158 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Observability Overview",
+    "tags": ["observe", "observability", "microservice"],
+    "timezone": "browser",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "my_service",
+            "value": "my_service"
+          },
+          "hide": 0,
+          "label": "Service Name",
+          "name": "service_name",
+          "options": [],
+          "query": "SELECT DISTINCT service_name FROM observability.otel_logs ORDER BY service_name",
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Activity (Last Hour)",
+        "type": "stat",
+        "targets": [
+          {
+            "datasource": {
+              "type": "grafana-clickhouse-datasource",
+              "uid": "clickhouse"
+            },
+            "rawSql": "SELECT count() FROM observability.otel_logs WHERE service_name = '$service_name' AND timestamp >= now() - INTERVAL 1 HOUR",
+            "format": "time_series"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 10},
+                {"color": "green", "value": 50}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Transactions Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "datasource": {
+              "type": "grafana-clickhouse-datasource",
+              "uid": "clickhouse"
+            },
+            "rawSql": "SELECT toStartOfMinute(timestamp) as time, count() as transactions FROM observability.otel_logs WHERE service_name = '$service_name' AND body LIKE '%TRANSACTION_START%' AND timestamp >= now() - INTERVAL 6 HOUR GROUP BY time ORDER BY time",
+            "format": "time_series"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Operation Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "datasource": {
+              "type": "grafana-clickhouse-datasource",
+              "uid": "clickhouse"
+            },
+            "rawSql": "SELECT (countIf(body LIKE '%operation_complete%') * 100.0 / count()) as success_rate FROM observability.otel_logs WHERE service_name = '$service_name' AND timestamp >= now() - INTERVAL 24 HOUR",
+            "format": "time_series"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Recent Error Logs",
+        "type": "logs",
+        "targets": [
+          {
+            "datasource": {
+              "type": "grafana-clickhouse-datasource",
+              "uid": "clickhouse"
+            },
+            "rawSql": "SELECT timestamp, service_name, body FROM observability.otel_logs WHERE service_name = '$service_name' AND (severity_text = 'ERROR' OR body LIKE '%ERROR%' OR body LIKE '%FAILED%' OR body LIKE '%Exception%') ORDER BY timestamp DESC LIMIT 100",
+            "format": "logs"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Service Health (Errors vs. Total)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "datasource": {
+              "type": "grafana-clickhouse-datasource",
+              "uid": "clickhouse"
+            },
+            "rawSql": "SELECT toStartOfMinute(timestamp) as time, countIf(severity_text = 'ERROR' OR body LIKE '%ERROR%' OR body LIKE '%FAILED%') as errors, count() as total FROM observability.otel_logs WHERE service_name = '$service_name' AND timestamp >= now() - INTERVAL 6 HOUR GROUP BY time ORDER BY time",
+            "format": "time_series"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      }
+    ]
+  }
+}
