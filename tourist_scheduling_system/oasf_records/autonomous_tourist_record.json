@@ -1,0 +1,38 @@
+{
+  "name": "agntcy/tourist_scheduling_system/autonomous_tourist_agent",
+  "version": "v1.0.0",
+  "schema_version": "0.7.0",
+  "description": "Autonomous tourist agent formulating trip requests and evaluating proposals with LLM or heuristic fallbacks.",
+  "authors": ["AGNTCY Contributors"],
+  "created_at": "2025-11-06T12:00:00Z",
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding/contextual_comprehension"},
+    {"name": "natural_language_processing/natural_language_generation/dialogue_generation"},
+    {"name": "natural_language_processing/analytical_reasoning/problem_solving"}
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/autonomous_tourist_agent.py"},
+    {"type": "python_package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
+  ],
+  "modules": [
+    {
+      "name": "runtime/a2a",
+      "data": {
+        "protocol_version": "1.0.0",
+        "card_data": {"notes": [
+          "Persona generation (interests, budget style, personality)",
+          "Trip context modeling (purpose, duration, group size, flexibility)",
+          "Budget decision via LLM or heuristic bounds",
+          "Availability preference selection (LLM or fallback)",
+          "Schedule proposal evaluation and acceptance/decline logic",
+          "A2A request streaming to scheduler"
+        ]},
+        "capabilities": ["streaming"],
+        "input_modes": ["application/json", "text/plain"],
+        "output_modes": ["application/json"],
+        "transports": ["http"],
+        "security_schemes": ["none"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "UI Agent",
+  "description": "Real-time dashboard agent exposing web UI + A2A endpoint for monitoring tourist scheduling: aggregates requests, offers, proposals, metrics and broadcasts live updates over WebSocket.",
+  "url": "http://localhost:10002/",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {"url": "http://localhost:10002/", "transport": "JSONRPC"}
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "skills": [
+    {
+      "id": "real_time_dashboard",
+      "name": "Real-time System Dashboard",
+      "description": "Provides real-time web dashboard for multi-agent tourist scheduling system.",
+      "tags": ["dashboard", "ui", "monitoring", "real-time"],
+      "examples": [
+        "Monitor tourist requests and guide availability",
+        "Track assignment success rates and system metrics"
+      ],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json", "text/plain"]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false
+}

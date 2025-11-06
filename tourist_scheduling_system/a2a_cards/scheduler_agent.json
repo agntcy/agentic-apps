@@ -1,0 +1,45 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Scheduler Agent",
+  "description": "Central scheduling coordinator A2A server that ingests TouristRequest and GuideOffer messages, matches tourists to guides via a greedy algorithm, and emits ScheduleProposal artifacts plus acknowledgments.",
+  "url": "http://localhost:10000/",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {"url": "http://localhost:10000/", "transport": "JSONRPC"}
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "skills": [
+    {
+      "id": "tourist_matching",
+      "name": "Tourist Guide Matching",
+      "description": "Matches tourists with tour guides based on availability, budget, and preferences.",
+      "tags": ["scheduling", "matching", "tourist", "guide"],
+      "examples": [
+        "{\"type\": \"TouristRequest\", \"tourist_id\": \"t-123\", \"availability\": [{\"start\": \"2025-11-06T09:00:00\", \"end\": \"2025-11-06T17:00:00\"}], \"budget\": 150.0, \"preferences\": [\"culture\", \"history\"]}",
+        "Produces ScheduleProposal artifacts containing matched Assignment entries"
+      ],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json", "text/plain"]
+    },
+    {
+      "id": "guide_offer_collection",
+      "name": "Guide Offer Collection",
+      "description": "Receives guide offers and stores them for future tourist request matching.",
+      "tags": ["offers", "guide", "availability", "pricing"],
+      "examples": [
+        "{\"type\": \"GuideOffer\", \"guide_id\": \"g-42\", \"categories\": [\"culture\", \"art\"], \"available_window\": {\"start\": \"2025-11-07T10:00:00\", \"end\": \"2025-11-07T16:00:00\"}, \"hourly_rate\": 85.0, \"max_group_size\": 6}",
+        "Acknowledges GuideOffer with an Acknowledgment artifact"
+      ],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json", "text/plain"]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false
+}

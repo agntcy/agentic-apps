@@ -1,0 +1,38 @@
+{
+  "name": "agntcy/tourist_scheduling_system/autonomous_guide_agent",
+  "version": "v1.0.0",
+  "schema_version": "0.7.0",
+  "description": "Autonomous tour guide agent that dynamically sets pricing, availability, and offers based on market conditions and personality.",
+  "authors": ["AGNTCY Contributors"],
+  "created_at": "2025-11-06T12:00:00Z",
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding/contextual_comprehension"},
+    {"name": "natural_language_processing/information_retrieval_synthesis/knowledge_synthesis"},
+    {"name": "natural_language_processing/analytical_reasoning/problem_solving"},
+    {"name": "natural_language_processing/natural_language_generation/dialogue_generation"}
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/autonomous_guide_agent.py"},
+    {"type": "python_package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
+  ],
+  "modules": [
+    {
+      "name": "runtime/a2a",
+      "data": {
+        "protocol_version": "1.0.0",
+        "card_data": {"notes": [
+          "Dynamic pricing decision via LLM or heuristic",
+          "Availability window forecasting",
+          "Market condition adaptation (demand, competition, season)",
+          "Structured output parsing for pricing and availability",
+          "Offer construction and A2A message streaming"
+        ]},
+        "capabilities": ["streaming"],
+        "input_modes": ["application/json", "text/plain"],
+        "output_modes": ["application/json"],
+        "transports": ["http"],
+        "security_schemes": ["none"]
+      }
+    }
+  ]
+}

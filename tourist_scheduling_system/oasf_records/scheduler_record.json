@@ -1,0 +1,37 @@
+{
+  "name": "agntcy/tourist_scheduling_system/scheduler_agent",
+  "version": "v1.0.0",
+  "schema_version": "0.7.0",
+  "description": "Central scheduling coordinator matching tourist requests to guide offers and emitting schedule proposals.",
+  "authors": ["AGNTCY Contributors"],
+  "created_at": "2025-11-06T12:10:00Z",
+  "skills": [
+    {"name": "natural_language_processing/analytical_reasoning/problem_solving"},
+    {"name": "natural_language_processing/natural_language_understanding/contextual_comprehension"}
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/scheduler_agent.py"},
+    {"type": "python_package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
+  ],
+  "modules": [
+    {
+      "name": "runtime/a2a",
+      "data": {
+        "protocol_version": "1.0.0",
+        "card_data": {"notes": [
+          "Receive & store tourist requests",
+          "Receive & store guide offers",
+          "Greedy matching based on availability, preferences, budget, capacity",
+          "Emit ScheduleProposal artifacts",
+          "Emit Acknowledgment artifacts for guide registration",
+          "Async push of state updates to UI agent"
+        ]},
+        "capabilities": ["streaming", "push_notifications", "state_transition_history"],
+        "input_modes": ["application/json", "text/plain"],
+        "output_modes": ["application/json"],
+        "transports": ["http"],
+        "security_schemes": ["none"]
+      }
+    }
+  ]
+}
