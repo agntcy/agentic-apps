@@ -1,0 +1,35 @@
+{
+  "name": "agntcy/tourist_scheduling_system/ui_agent",
+  "version": "v1.0.0",
+  "schema_version": "0.7.0",
+  "description": "Real-time dashboard and A2A endpoint aggregating system state and broadcasting metrics.",
+  "authors": ["AGNTCY Contributors"],
+  "created_at": "2025-11-06T12:12:00Z",
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding/contextual_comprehension"}
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/ui_agent.py"},
+    {"type": "python_package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
+  ],
+  "modules": [
+    {
+      "name": "runtime/a2a",
+      "data": {
+        "protocol_version": "1.0.0",
+        "card_data": {"notes": [
+          "Maintain in-memory state of requests/offers/assignments",
+          "Compute live system metrics (utilization, satisfaction, avg cost)",
+          "Serve WebSocket and REST endpoints",
+          "Broadcast incremental updates to connected clients",
+          "Persist dynamic port discovery file for other agents"
+        ]},
+        "capabilities": ["streaming", "push_notifications", "state_transition_history"],
+        "input_modes": ["application/json", "text/plain"],
+        "output_modes": ["application/json", "text/html"],
+        "transports": ["http"],
+        "security_schemes": ["none"]
+      }
+    }
+  ]
+}

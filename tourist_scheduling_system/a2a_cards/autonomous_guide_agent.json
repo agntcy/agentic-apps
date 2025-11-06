@@ -1,0 +1,33 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Autonomous Guide Agent",
+  "description": "Autonomous guide server generating dynamic tour offers (pricing + availability) using LLM or heuristic decisions.",
+  "url": "http://localhost:10020/",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {"url": "http://localhost:10020/", "transport": "JSONRPC"}
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "skills": [
+    {
+      "id": "dynamic_offer_generation",
+      "name": "Dynamic Guide Offer Generation",
+      "description": "Generates a dynamic GuideOffer artifact including availability window, categories, max group size and hourly rate.",
+      "tags": ["guide", "offer", "pricing", "availability"],
+      "examples": [
+        "{\"action\": \"generate_offer\"}",
+        "Returns GuideOffer artifact with dynamic window & rate"
+      ],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json", "text/plain"]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false
+}

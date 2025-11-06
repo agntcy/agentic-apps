@@ -1,0 +1,35 @@
+{
+  "name": "agntcy/tourist_scheduling_system/tourist_agent",
+  "version": "v1.0.0",
+  "schema_version": "0.7.0",
+  "description": "Static tourist client submitting a TouristRequest and parsing ScheduleProposal artifacts.",
+  "authors": ["AGNTCY Contributors"],
+  "created_at": "2025-11-06T12:14:00Z",
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding/contextual_comprehension"},
+    {"name": "natural_language_processing/analytical_reasoning/problem_solving"}
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/tourist_agent.py"},
+    {"type": "python_package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
+  ],
+  "modules": [
+    {
+      "name": "runtime/a2a",
+      "data": {
+        "protocol_version": "1.0.0",
+        "card_data": {"notes": [
+          "Construct static TouristRequest message",
+          "Stream and inspect task artifacts/history",
+          "Extract ScheduleProposal assignments",
+          "Demonstrate DataPart vs TextPart parsing"
+        ]},
+        "capabilities": ["streaming"],
+        "input_modes": ["application/json", "text/plain"],
+        "output_modes": ["application/json"],
+        "transports": ["http"],
+        "security_schemes": ["none"]
+      }
+    }
+  ]
+}
