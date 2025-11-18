@@ -1,0 +1,45 @@
+# Environment variables (contains credentials!)
+.env
+
+# Python cache
+__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Logs
+*.log
+
+# Distribution
+build/
+dist/
+*.egg-info/
+
+# Test cache
+.pytest_cache/
+.coverage
+
+# User data (optional)

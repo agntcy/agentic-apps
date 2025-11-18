@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse:8123
+    database: observability
+    user: admin
+    # Password will be set during deployment
+    secureJsonData:
+      password: CLICKHOUSE_PASSWORD_PLACEHOLDER
+    jsonData:
+      defaultDatabase: observability
+      port: 8123
+      server: clickhouse
+      username: admin
+      timeout: 10
+      queryTimeout: 60
+    isDefault: true
+    editable: true
