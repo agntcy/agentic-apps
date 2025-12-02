@@ -5,7 +5,7 @@
 # Start Tourist Scheduling System with SLIM transport
 #
 # Prerequisites:
-#   - SLIM gateway running on localhost:46357
+#   - SLIM node running on localhost:46357
 #   - Install slim dependencies: uv pip install -e ".[slim]"
 #
 # Usage:
@@ -79,10 +79,10 @@ start_all() {
     # Clean up previous PIDs
     rm -f .slim_pids
 
-    # Check if SLIM gateway is running
+    # Check if SLIM node is running
     if ! curl -s "$SLIM_ENDPOINT" > /dev/null 2>&1; then
-        warn "SLIM gateway not reachable at $SLIM_ENDPOINT"
-        warn "Make sure to start slim-gw first: slim-gw --config slim-config.yaml"
+        warn "SLIM node not reachable at $SLIM_ENDPOINT"
+        warn "Make sure to start SLIM node first: docker run -p 46357:46357 ghcr.io/agntcy/slim:latest"
         exit 1
     fi
 

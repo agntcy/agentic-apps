@@ -360,7 +360,7 @@ class SchedulerAgentExecutor(AgentExecutor):
 @click.option("--host", default="localhost", help="Server host")
 @click.option("--port", default=10000, type=int, help="Server port")
 @click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
-@click.option("--slim-endpoint", default=None, help="SLIM gateway endpoint (default: from env or localhost:46357)")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint (default: from env or localhost:46357)")
 @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
 def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str):
     """Start the Scheduler A2A server"""

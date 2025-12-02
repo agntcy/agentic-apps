@@ -151,7 +151,7 @@ class GuideOfferExecutor(AgentExecutor):
 @click.option("--port", default=10020, type=int, help="Server port")
 @click.option("--guide-id", default="guide-ai-1", help="Guide ID")
 @click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
-@click.option("--slim-endpoint", default=None, help="SLIM gateway endpoint")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
 @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
 def main(host: str, port: int, guide_id: str, transport: str, slim_endpoint: str, slim_local_id: str):
     skill = AgentSkill(

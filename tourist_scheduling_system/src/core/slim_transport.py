@@ -62,7 +62,7 @@ class SLIMConfig:
     """Configuration for SLIM transport connection.
 
     Attributes:
-        endpoint: SLIM gateway endpoint (e.g., "http://localhost:46357")
+        endpoint: SLIM node endpoint (e.g., "http://localhost:46357")
         local_id: Local agent identifier in format "org/namespace/agent"
         shared_secret: MLS shared secret for encryption (min 32 chars)
         tls_insecure: Whether to skip TLS verification (dev only)

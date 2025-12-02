@@ -144,7 +144,7 @@ class TouristRequestExecutor(AgentExecutor):
 @click.option("--port", default=10021, type=int, help="Server port")
 @click.option("--tourist-id", default="tourist-ai-1", help="Tourist ID")
 @click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
-@click.option("--slim-endpoint", default=None, help="SLIM gateway endpoint")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
 @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
 def main(host: str, port: int, tourist_id: str, transport: str, slim_endpoint: str, slim_local_id: str):
     skill = AgentSkill(
