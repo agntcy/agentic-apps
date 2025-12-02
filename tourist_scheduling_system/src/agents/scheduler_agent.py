@@ -11,8 +11,10 @@ Multi-agent tourist scheduling coordinator that:
 4. Sends ScheduleProposals back to requesting tourists
 
 This is implemented as an A2A server using the official a2a-sdk.
+Supports both HTTP and SLIM transports via --transport option.
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -38,6 +40,13 @@ from a2a.types import (
     TaskState,
     TextPart,
     DataPart,  # Allows structured JSON parts without manual decoding
+)
+
+from core.slim_transport import (
+    SLIMConfig,
+    check_slim_available,
+    create_slim_server,
+    config_from_env,
 )
 
 from core.messages import (
@@ -350,9 +359,12 @@ class SchedulerAgentExecutor(AgentExecutor):
 @click.command()
 @click.option("--host", default="localhost", help="Server host")
 @click.option("--port", default=10000, type=int, help="Server port")
-def main(host: str, port: int):
+@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
+@click.option("--slim-endpoint", default=None, help="SLIM gateway endpoint (default: from env or localhost:46357)")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID")
+def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str):
     """Start the Scheduler A2A server"""
-    logger.info(f"[Scheduler] Starting A2A server on {host}:{port}")
+    logger.info(f"[Scheduler] Starting A2A server on {host}:{port} (transport: {transport})")
 
     # Define scheduler agent capabilities split into two focused skills
     skill_matching = AgentSkill(
@@ -392,28 +404,66 @@ def main(host: str, port: int):
         task_store=InMemoryTaskStore(),
     )
 
-    server = A2AStarletteApplication(
-        agent_card=agent_card, http_handler=request_handler
-    )
+    if transport == "slim":
+        # Start SLIM transport server
+        if not check_slim_available():
+            logger.error("[Scheduler] SLIM transport requested but slimrpc/slima2a not installed")
+            logger.error("[Scheduler] Install with: uv pip install slima2a")
+            raise SystemExit(1)
 
-    # Build underlying Starlette app and inject a lightweight /health endpoint for launcher scripts
-    app = server.build()
-    try:
-        from starlette.responses import JSONResponse  # provided by a2a-sdk[http-server] extras
-        from starlette.routing import Route
+        # Load SLIM config from env or CLI options
+        slim_config = config_from_env(prefix="SCHEDULER_")
+        if slim_endpoint:
+            slim_config.endpoint = slim_endpoint
+        if slim_local_id:
+            slim_config.local_id = slim_local_id
+        else:
+            slim_config.local_id = f"agntcy/tourist_scheduling/scheduler"
 
-        def health(request):  # type: ignore
-            return JSONResponse({"status": "ok", "timestamp": int(time.time())})
+        logger.info(f"[Scheduler] SLIM endpoint: {slim_config.endpoint}")
+        logger.info(f"[Scheduler] SLIM local ID: {slim_config.local_id}")
 
-        # Only add if not already present
-        if not any(getattr(r, "path", None) == "/health" for r in app.router.routes):
-            app.router.routes.append(Route("/health", endpoint=health, methods=["GET"]))
-            logger.info("[Scheduler] Added /health endpoint")
-    except Exception as e:
-        logger.warning(f"[Scheduler] Failed to add /health endpoint: {e}")
+        # Create SLIM server start function
+        start_server = create_slim_server(slim_config, agent_card, request_handler)
 
-    logger.info("[Scheduler] Agent card configured, starting uvicorn...")
-    uvicorn.run(app, host=host, port=port)
+        async def run_slim_server():
+            logger.info("[Scheduler] Starting SLIM transport server...")
+            server = await start_server()
+            logger.info("[Scheduler] SLIM server running, press Ctrl+C to stop")
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                pass
+
+        try:
+            asyncio.run(run_slim_server())
+        except KeyboardInterrupt:
+            logger.info("[Scheduler] Shutting down SLIM server...")
+    else:
+        # Start HTTP transport server (default)
+        server = A2AStarletteApplication(
+            agent_card=agent_card, http_handler=request_handler
+        )
+
+        # Build underlying Starlette app and inject a lightweight /health endpoint for launcher scripts
+        app = server.build()
+        try:
+            from starlette.responses import JSONResponse  # provided by a2a-sdk[http-server] extras
+            from starlette.routing import Route
+
+            def health(request):  # type: ignore
+                return JSONResponse({"status": "ok", "timestamp": int(time.time())})
+
+            # Only add if not already present
+            if not any(getattr(r, "path", None) == "/health" for r in app.router.routes):
+                app.router.routes.append(Route("/health", endpoint=health, methods=["GET"]))
+                logger.info("[Scheduler] Added /health endpoint")
+        except Exception as e:
+            logger.warning(f"[Scheduler] Failed to add /health endpoint: {e}")
+
+        logger.info("[Scheduler] Agent card configured, starting uvicorn...")
+        uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":
