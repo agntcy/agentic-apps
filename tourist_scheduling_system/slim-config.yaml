@@ -1,0 +1,28 @@
+# SLIM Gateway Configuration for Tourist Scheduling System
+#
+# This configuration file is used when running agents with SLIM transport.
+# Start the SLIM gateway first, then agents with --transport slim
+#
+# Usage:
+#   1. Start SLIM gateway: docker run -p 46357:46357 -v $(pwd)/slim-config.yaml:/config.yaml ghcr.io/agntcy/slim:latest /slim -c /config.yaml
+#   2. Start scheduler: uv run python src/agents/scheduler_agent.py --transport slim
+#   3. Start guides: uv run python src/agents/autonomous_guide_server.py --transport slim
+#   4. Start tourists: uv run python src/agents/autonomous_tourist_server.py --transport slim
+
+tracing:
+  log_level: "info"
+  opentelemetry:
+    enabled: false
+
+runtime:
+  n_cores: 4
+  thread_name: "slim-tourist"
+  drain_timeout: "15s"
+
+services:
+  slim/0:
+    dataplane:
+      servers:
+        - endpoint: "0.0.0.0:46357"
+          tls:
+            insecure: true

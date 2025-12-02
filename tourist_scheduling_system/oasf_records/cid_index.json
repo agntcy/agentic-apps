@@ -1,0 +1,73 @@
+{
+  "generated_at": "2025-11-06T00:00:00Z",
+  "schema": "agntcy.cidindex.v1",
+  "records": [
+    {
+      "logical_name": "autonomous_guide_agent",
+      "full_name": "agntcy/tourist_scheduling_system/autonomous_guide_agent",
+      "cid": "baeareidekuy4ivr4mcauc75yg2kx3ym5yzwt6624oxtsjs5o6tzxnsdjfe",
+      "version": "v1.0.0",
+      "file": "oasf_records/autonomous_guide_record.json",
+      "skills": [
+        "natural_language_processing/natural_language_understanding/contextual_comprehension",
+        "natural_language_processing/information_retrieval_synthesis/knowledge_synthesis",
+        "natural_language_processing/analytical_reasoning/problem_solving",
+        "natural_language_processing/natural_language_generation/dialogue_generation"
+      ]
+    },
+    {
+      "logical_name": "autonomous_tourist_agent",
+      "full_name": "agntcy/tourist_scheduling_system/autonomous_tourist_agent",
+      "cid": "baeareieo6q2s5fwcw3mghhtnolafkrw2nargbmv4olfzoepgfbmkulwlii",
+      "version": "v1.0.0",
+      "file": "oasf_records/autonomous_tourist_record.json",
+      "skills": [
+        "natural_language_processing/natural_language_understanding/contextual_comprehension",
+        "natural_language_processing/natural_language_generation/dialogue_generation",
+        "natural_language_processing/analytical_reasoning/problem_solving"
+      ]
+    },
+    {
+      "logical_name": "guide_agent",
+      "full_name": "agntcy/tourist_scheduling_system/guide_agent",
+      "cid": "baeareiheykmr5r52b4djjfuiz5vxuzomeq6qvj3f265k6kpl4hbyhxkxry",
+      "version": "v1.0.0",
+      "file": "oasf_records/guide_record.json",
+      "skills": [
+        "natural_language_processing/natural_language_understanding/contextual_comprehension"
+      ]
+    },
+    {
+      "logical_name": "scheduler_agent",
+      "full_name": "agntcy/tourist_scheduling_system/scheduler_agent",
+      "cid": "baeareifbycnkbbdkbstl7xem6krmbmphv2vqh7wxaagk5oedjrd7g2fneu",
+      "version": "v1.0.0",
+      "file": "oasf_records/scheduler_record.json",
+      "skills": [
+        "natural_language_processing/analytical_reasoning/problem_solving",
+        "natural_language_processing/natural_language_understanding/contextual_comprehension"
+      ]
+    },
+    {
+      "logical_name": "tourist_agent",
+      "full_name": "agntcy/tourist_scheduling_system/tourist_agent",
+      "cid": "baeareihc6wzpyy43twhawl2ednvuzdhdvjow7jx5umzqoa2vg5355zhtdq",
+      "version": "v1.0.0",
+      "file": "oasf_records/tourist_record.json",
+      "skills": [
+        "natural_language_processing/natural_language_understanding/contextual_comprehension",
+        "natural_language_processing/analytical_reasoning/problem_solving"
+      ]
+    },
+    {
+      "logical_name": "ui_agent",
+      "full_name": "agntcy/tourist_scheduling_system/ui_agent",
+      "cid": "baeareicvavrpmbbwinnsj565lxqhuphfvoqcsxbox3cdbaa6xd2zh2zm3y",
+      "version": "v1.0.0",
+      "file": "oasf_records/ui_record.json",
+      "skills": [
+        "natural_language_processing/natural_language_understanding/contextual_comprehension"
+      ]
+    }
+  ]
+}
