@@ -5,14 +5,18 @@
 # Start Tourist Scheduling System with SLIM transport
 #
 # Prerequisites:
-#   - SLIM node running on localhost:46357
+#   - Docker installed and running
 #   - Install slim dependencies: uv pip install -e ".[slim]"
 #
 # Usage:
-#   ./start_slim.sh              # Start all agents with SLIM transport
+#   ./start_slim.sh              # Start SLIM node + all agents
 #   ./start_slim.sh scheduler    # Start only the scheduler
 #   ./start_slim.sh guide 1      # Start guide with ID 1
 #   ./start_slim.sh tourist 1    # Start tourist with ID 1
+#   ./start_slim.sh node start   # Start only the SLIM node
+#   ./start_slim.sh node stop    # Stop only the SLIM node
+#   ./start_slim.sh stop         # Stop all agents (keeps SLIM node running)
+#   ./start_slim.sh clean        # Stop agents, stop and remove SLIM node
 
 set -e
 
@@ -31,10 +35,14 @@ fi
 export SLIM_ENDPOINT="${SLIM_ENDPOINT:-http://localhost:46357}"
 export SLIM_SHARED_SECRET="${SLIM_SHARED_SECRET:-demo-secret}"
 export SLIM_TLS_INSECURE="${SLIM_TLS_INSECURE:-true}"
+SLIM_CONTAINER_NAME="slim-node"
+SLIM_IMAGE="ghcr.io/agntcy/slim:latest"
+SLIM_PORT="${SLIM_PORT:-46357}"
 
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 log() {
@@ -43,6 +51,61 @@ log() {
 
 warn() {
     echo -e "${YELLOW}[SLIM]${NC} $1"
+}
+
+err() {
+    echo -e "${RED}[SLIM]${NC} $1" >&2
+}
+
+# Start SLIM node Docker container
+start_slim_node() {
+    # Check if container already exists
+    if docker ps -a --format '{{.Names}}' | grep -q "^${SLIM_CONTAINER_NAME}$"; then
+        # Container exists, check if running
+        if docker ps --format '{{.Names}}' | grep -q "^${SLIM_CONTAINER_NAME}$"; then
+            log "SLIM node already running"
+            return 0
+        else
+            log "Starting existing SLIM node container..."
+            docker start "$SLIM_CONTAINER_NAME"
+        fi
+    else
+        log "Creating and starting SLIM node container..."
+        docker run -d \
+            --name "$SLIM_CONTAINER_NAME" \
+            -p "${SLIM_PORT}:46357" \
+            -v "$(pwd)/slim-config.yaml:/config.yaml:ro" \
+            "$SLIM_IMAGE" /slim -c /config.yaml
+    fi
+
+    # Wait for SLIM node to be ready
+    log "Waiting for SLIM node to be ready..."
+    for i in {1..30}; do
+        if curl -s "$SLIM_ENDPOINT" > /dev/null 2>&1; then
+            log "SLIM node is ready at $SLIM_ENDPOINT"
+            return 0
+        fi
+        sleep 1
+    done
+
+    err "SLIM node failed to start within 30 seconds"
+    return 1
+}
+
+# Stop SLIM node Docker container
+stop_slim_node() {
+    if docker ps --format '{{.Names}}' | grep -q "^${SLIM_CONTAINER_NAME}$"; then
+        log "Stopping SLIM node container..."
+        docker stop "$SLIM_CONTAINER_NAME"
+    fi
+}
+
+# Remove SLIM node Docker container
+remove_slim_node() {
+    if docker ps -a --format '{{.Names}}' | grep -q "^${SLIM_CONTAINER_NAME}$"; then
+        log "Removing SLIM node container..."
+        docker rm -f "$SLIM_CONTAINER_NAME"
+    fi
 }
 
 start_scheduler() {
@@ -79,12 +142,8 @@ start_all() {
     # Clean up previous PIDs
     rm -f .slim_pids
 
-    # Check if SLIM node is running
-    if ! curl -s "$SLIM_ENDPOINT" > /dev/null 2>&1; then
-        warn "SLIM node not reachable at $SLIM_ENDPOINT"
-        warn "Make sure to start SLIM node first: docker run -p 46357:46357 ghcr.io/agntcy/slim:latest"
-        exit 1
-    fi
+    # Start SLIM node if not running
+    start_slim_node || exit 1
 
     # Start scheduler
     start_scheduler
@@ -103,7 +162,7 @@ start_all() {
     done
 
     log "All agents started. PIDs saved to .slim_pids"
-    log "Use 'kill \$(cat .slim_pids)' to stop all agents"
+    log "Use './start_slim.sh stop' to stop agents, './start_slim.sh node stop' to stop SLIM node"
 }
 
 stop_all() {
@@ -117,24 +176,52 @@ stop_all() {
     log "All agents stopped"
 }
 
+# Handle node subcommand
+handle_node_command() {
+    case "${1:-start}" in
+        start)
+            start_slim_node
+            ;;
+        stop)
+            stop_slim_node
+            ;;
+        *)
+            echo "Usage: $0 node {start|stop}"
+            exit 1
+            ;;
+    esac
+}
+
 case "${1:-all}" in
+    node)
+        handle_node_command "${2:-start}"
+        ;;
     scheduler)
+        start_slim_node || exit 1
         start_scheduler
         ;;
     guide)
+        start_slim_node || exit 1
         start_guide "${2:-1}"
         ;;
     tourist)
+        start_slim_node || exit 1
         start_tourist "${2:-1}"
         ;;
     stop)
         stop_all
         ;;
+    clean)
+        stop_all
+        stop_slim_node
+        remove_slim_node
+        log "Cleaned up all containers"
+        ;;
     all)
         start_all
         ;;
     *)
-        echo "Usage: $0 {all|scheduler|guide <id>|tourist <id>|stop}"
+        echo "Usage: $0 {all|node [start|stop]|scheduler|guide <id>|tourist <id>|stop|clean}"
         exit 1
         ;;
 esac
