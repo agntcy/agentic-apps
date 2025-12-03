@@ -10,6 +10,8 @@ set -euo pipefail
 HEALTH_RETRIES=${HEALTH_RETRIES:-25}
 HEALTH_INTERVAL=${HEALTH_INTERVAL:-0.4}
 
+# Transport mode: http (default) or slim
+TRANSPORT=${TRANSPORT:-http}
 SCHED_PORT=${SCHED_PORT:-10010}
 UI_WEB_PORT=${UI_WEB_PORT:-10011}
 UI_A2A_PORT=${UI_A2A_PORT:-10012}
@@ -53,6 +55,7 @@ AUTO_TOURIST_MAX_INTERVAL=${AUTO_TOURIST_MAX_INTERVAL:-40}
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --transport) TRANSPORT="$2"; shift 2 ;;
         --scheduler-port) SCHED_PORT="$2"; shift 2 ;;
         --ui-web-port) UI_WEB_PORT="$2"; shift 2 ;;
         --ui-a2a-port) UI_A2A_PORT="$2"; shift 2 ;;
@@ -74,24 +77,46 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Build transport args for agents
+TRANSPORT_ARGS=()
+if [[ "$TRANSPORT" == "slim" ]]; then
+    SLIM_ENDPOINT="${SLIM_ENDPOINT:-http://localhost:46357}"
+    SLIM_SHARED_SECRET="${SLIM_SHARED_SECRET:-tourist-scheduling-demo-secret-key-32}"
+    SLIM_TLS_INSECURE="${SLIM_TLS_INSECURE:-true}"
+    # Note: SLIM local-id will be set per-agent when launching
+    export SLIM_ENDPOINT SLIM_SHARED_SECRET SLIM_TLS_INSECURE
+fi
+
 echo "======================================================="
 echo "UI Demo Launcher"
+echo "Transport: $TRANSPORT"
 echo "Scheduler: $SCHED_PORT | UI Web: $UI_WEB_PORT | UI A2A: $UI_A2A_PORT"
+if [[ "$TRANSPORT" == "slim" ]]; then
+    echo "SLIM Endpoint: $SLIM_ENDPOINT"
+fi
 echo "Guides: $DEMO_GUIDES | Tourists: $DEMO_TOURISTS | Rounds: $DEMO_ROUNDS | Demo traffic: $([[ $NO_DEMO == true ]] && echo OFF || echo ON) | Autonomous: $([[ $AUTONOMOUS == true ]] && echo ON || echo OFF)"
 echo "======================================================="
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$PROJECT_ROOT"
 export PYTHONPATH=src
 
-if ! command -v uv >/dev/null 2>&1; then
-    echo "[fatal] 'uv' command not found. Install from https://github.com/astral-sh/uv" >&2
+# ── Virtual Environment / uv Detection ─────────────────────────────────────────
+# If a venv is already activated (by start.sh or manually), use it.
+# Otherwise, check for .venv or fall back to uv.
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+    echo "[env] Using activated virtual environment: $VIRTUAL_ENV"
+    PYTHON_CMD="python"
+elif [[ -d ".venv" ]]; then
+    echo "[env] Activating virtual environment from .venv"
+    # shellcheck source=/dev/null
+    source .venv/bin/activate
+    PYTHON_CMD="python"
+elif command -v uv >/dev/null 2>&1; then
+    echo "[env] Using uv for dependency resolution"
+    PYTHON_CMD="uv run python"
+else
+    echo "[fatal] No virtual environment or 'uv' found. Install uv from https://github.com/astral-sh/uv or create .venv" >&2
     exit 1
-fi
-
-# Pure global usage: rely on system/installed environment; uv will resolve on demand.
-echo "[env] Skipping virtual environment creation (global uv usage)"
-if [[ ! -f uv.lock ]]; then
-    echo "[env] (optional) generate lock for reproducibility: uv lock";
 fi
 
 graceful_shutdown() {
@@ -153,9 +178,20 @@ start_or_reuse() {
     fi
 }
 
-start_or_reuse "$SCHED_PORT" uv run python src/agents/scheduler_agent.py --host localhost --port "$SCHED_PORT"
+# Build scheduler command with transport args
+SCHED_CMD=($PYTHON_CMD src/agents/scheduler_agent.py --host localhost --port "$SCHED_PORT")
+if [[ "$TRANSPORT" == "slim" ]]; then
+    SCHED_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/scheduler")
+fi
+start_or_reuse "$SCHED_PORT" "${SCHED_CMD[@]}"
 sleep 1
-start_or_reuse "$UI_WEB_PORT" uv run python src/agents/ui_agent.py --host localhost --port "$UI_WEB_PORT" --a2a-port "$UI_A2A_PORT"
+
+# Build UI agent command with transport args
+UI_CMD=($PYTHON_CMD src/agents/ui_agent.py --host localhost --port "$UI_WEB_PORT" --a2a-port "$UI_A2A_PORT")
+if [[ "$TRANSPORT" == "slim" ]]; then
+    UI_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/ui-agent")
+fi
+start_or_reuse "$UI_WEB_PORT" "${UI_CMD[@]}"
 
 wait_for_health() {
     local name="$1" url="$2"; shift 2 || true
@@ -191,9 +227,13 @@ wait_for_ui_health() {
 }
 
 # Dependency fallback: ensure starlette is present (required by a2a-sdk http-server extras)
-if ! python -c "import starlette, sse_starlette" 2>/dev/null; then
-    echo "[deps] Missing starlette/sse_starlette -> running 'uv sync'"
-    uv sync || echo "[deps] uv sync failed (continuing anyway)"
+if ! $PYTHON_CMD -c "import starlette, sse_starlette" 2>/dev/null; then
+    echo "[deps] Missing starlette/sse_starlette -> checking with uv sync"
+    if command -v uv >/dev/null 2>&1; then
+        uv sync || echo "[deps] uv sync failed (continuing anyway)"
+    else
+        echo "[deps] uv not available, skipping sync"
+    fi
 fi
 
 wait_for_scheduler_health "$SCHED_PORT" || echo "[warn] scheduler health check failed (continuing)"
@@ -207,11 +247,19 @@ if [[ "$NO_DEMO" == false ]]; then
         for round in $(seq 1 "$DEMO_ROUNDS"); do
             echo "[demo] round $round guide offers"
             for gid in $DEMO_GUIDES; do
-                uv run python src/agents/guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid" || echo "guide $gid failed";
+                GUIDE_CMD=($PYTHON_CMD src/agents/guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid")
+                if [[ "$TRANSPORT" == "slim" ]]; then
+                    GUIDE_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/$gid")
+                fi
+                "${GUIDE_CMD[@]}" || echo "guide $gid failed";
             done
             echo "[demo] round $round tourist requests"
             for tid in $DEMO_TOURISTS; do
-                uv run python src/agents/tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid" || echo "tourist $tid failed";
+                TOURIST_CMD=($PYTHON_CMD src/agents/tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid")
+                if [[ "$TRANSPORT" == "slim" ]]; then
+                    TOURIST_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/$tid")
+                fi
+                "${TOURIST_CMD[@]}" || echo "tourist $tid failed";
             done
         done
     fi
@@ -225,18 +273,26 @@ if [[ "$AUTONOMOUS" == true ]]; then
     if [[ ${#_tourist_list[@]} -eq 0 ]]; then _tourist_list=("$AUTO_TOURIST_ID"); fi
 
     echo "[autonomous] launching ${#_guide_list[@]} guide agent(s) and ${#_tourist_list[@]} tourist agent(s) for ${AUTO_DURATION_MIN}m"
-    echo "[autonomous] guide intervals: ${AUTO_GUIDE_MIN_INTERVAL}-${AUTO_GUIDE_MAX_INTERVAL}s | tourist intervals: ${AUTO_TOURIST_MIN_INTERVAL}-${AUTO_TOURIST_MAX_INTERVAL}s"
+    echo "[autonomous] transport: $TRANSPORT | guide intervals: ${AUTO_GUIDE_MIN_INTERVAL}-${AUTO_GUIDE_MAX_INTERVAL}s | tourist intervals: ${AUTO_TOURIST_MIN_INTERVAL}-${AUTO_TOURIST_MAX_INTERVAL}s"
 
     for gid in "${_guide_list[@]}"; do
         log_file="autonomous_guide_${gid}.log"
         echo "[autonomous] start guide $gid -> $log_file"
-        nohup uv run python src/agents/autonomous_guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid" --duration "$AUTO_DURATION_MIN" --min-interval "$AUTO_GUIDE_MIN_INTERVAL" --max-interval "$AUTO_GUIDE_MAX_INTERVAL" > "$log_file" 2>&1 &
+        AUTO_GUIDE_CMD=($PYTHON_CMD src/agents/autonomous_guide_agent.py --scheduler-url http://localhost:$SCHED_PORT --guide-id "$gid" --duration "$AUTO_DURATION_MIN" --min-interval "$AUTO_GUIDE_MIN_INTERVAL" --max-interval "$AUTO_GUIDE_MAX_INTERVAL")
+        if [[ "$TRANSPORT" == "slim" ]]; then
+            AUTO_GUIDE_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/$gid")
+        fi
+        nohup "${AUTO_GUIDE_CMD[@]}" > "$log_file" 2>&1 &
         child=$!; STARTED_PIDS+=("$child"); pid_kind_set "$child" "auto-guide:$gid"
     done
     for tid in "${_tourist_list[@]}"; do
         log_file="autonomous_tourist_${tid}.log"
         echo "[autonomous] start tourist $tid -> $log_file"
-        nohup uv run python src/agents/autonomous_tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid" --duration "$AUTO_DURATION_MIN" --min-interval "$AUTO_TOURIST_MIN_INTERVAL" --max-interval "$AUTO_TOURIST_MAX_INTERVAL" > "$log_file" 2>&1 &
+        AUTO_TOURIST_CMD=($PYTHON_CMD src/agents/autonomous_tourist_agent.py --scheduler-url http://localhost:$SCHED_PORT --tourist-id "$tid" --duration "$AUTO_DURATION_MIN" --min-interval "$AUTO_TOURIST_MIN_INTERVAL" --max-interval "$AUTO_TOURIST_MAX_INTERVAL")
+        if [[ "$TRANSPORT" == "slim" ]]; then
+            AUTO_TOURIST_CMD+=(--transport slim --slim-endpoint "$SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/$tid")
+        fi
+        nohup "${AUTO_TOURIST_CMD[@]}" > "$log_file" 2>&1 &
         child=$!; STARTED_PIDS+=("$child"); pid_kind_set "$child" "auto-tourist:$tid"
     done
     echo -n "[autonomous] logs: "
@@ -247,6 +303,11 @@ echo "======================================================="
 echo "Dashboard: http://localhost:$UI_WEB_PORT"
 echo "Scheduler: http://localhost:$SCHED_PORT"
 echo "UI A2A:    http://localhost:$UI_A2A_PORT"
+if [[ "$TRANSPORT" == "slim" ]]; then
+    echo "Transport: SLIM (via $SLIM_ENDPOINT)"
+else
+    echo "Transport: HTTP (direct peer-to-peer)"
+fi
 echo "Logs: tail -f scheduler_agent_${SCHED_PORT}.log ui_agent_${UI_WEB_PORT}.log"
 if [[ "$AUTONOMOUS" == true ]]; then
     echo "Autonomous logs: tail -f autonomous_guide_*.log autonomous_tourist_*.log"

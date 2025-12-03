@@ -21,15 +21,66 @@ from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
 from a2a.types import TransportProtocol, Task, Message, Part, TextPart, DataPart
 
+# SLIM transport support
+try:
+    from core.slim_transport import SLIMConfig, create_slim_client_factory, minimal_slim_agent_card
+    SLIM_AVAILABLE = True
+except ImportError:
+    SLIM_AVAILABLE = False
+
 from core.messages import TouristRequest, Window
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-async def run_tourist_agent(scheduler_url: str, tourist_id: str):
+async def run_tourist_agent(
+    scheduler_url: str,
+    tourist_id: str,
+    transport: str = "http",
+    slim_endpoint: str | None = None,
+    slim_local_id: str | None = None,
+):
     """Send tourist request to scheduler agent"""
     logger.info(f"[Tourist {tourist_id}] Connecting to scheduler at {scheduler_url}")
+    if transport == "slim":
+        logger.info(f"[Tourist {tourist_id}] Using SLIM transport via {slim_endpoint}")
+
+    # Create sample tourist request
+    request = TouristRequest(
+        tourist_id=tourist_id,
+        availability=[Window(
+            start=datetime(2025, 6, 1, 9, 0),
+            end=datetime(2025, 6, 1, 17, 0),
+        )],
+        preferences=["culture", "history"],
+        budget=100,
+    )
+
+    logger.info(f"[Tourist {tourist_id}] Sending request: {request}")
+
+    # Create client based on transport
+    if transport == "slim" and SLIM_AVAILABLE:
+        if not slim_endpoint or not slim_local_id:
+            raise ValueError("SLIM transport requires --slim-endpoint and --slim-local-id")
+        slim_config = SLIMConfig(
+            endpoint=slim_endpoint,
+            local_id=slim_local_id,
+        )
+        factory = create_slim_client_factory(slim_config)
+        card = minimal_slim_agent_card(scheduler_url, slim_endpoint)
+        client = factory.create(card)
+    else:
+        card = minimal_agent_card(scheduler_url)
+        factory = ClientFactory(ClientConfig())
+        client = factory.create(card)
+
+    # Send message to scheduler
+    message = create_text_message_object(
+        content=request.to_json()
+    )
+
+    logger.info(f"[Tourist {tourist_id}] Sending A2A message...")
 
     # Create sample tourist request
     request = TouristRequest(
@@ -141,10 +192,13 @@ async def run_tourist_agent(scheduler_url: str, tourist_id: str):
 @click.command()
 @click.option("--scheduler-url", default="http://localhost:10000", help="Scheduler A2A server URL")
 @click.option("--tourist-id", default="t1", help="Tourist ID")
-def main(scheduler_url: str, tourist_id: str):
+@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint (required for SLIM transport)")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID (required for SLIM transport)")
+def main(scheduler_url: str, tourist_id: str, transport: str, slim_endpoint: str, slim_local_id: str):
     """Send tourist request to scheduler agent"""
     import asyncio
-    asyncio.run(run_tourist_agent(scheduler_url, tourist_id))
+    asyncio.run(run_tourist_agent(scheduler_url, tourist_id, transport, slim_endpoint, slim_local_id))
 
 
 if __name__ == "__main__":

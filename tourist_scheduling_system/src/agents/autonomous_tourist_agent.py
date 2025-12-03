@@ -15,7 +15,7 @@ import logging
 import os
 import random
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
 
 import click
 import httpx
@@ -26,6 +26,14 @@ except Exception:  # pragma: no cover
 from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
+
+# SLIM transport support
+try:
+    from core.slim_transport import SLIMConfig, create_slim_client_factory, minimal_slim_agent_card
+    SLIM_AVAILABLE = True
+except ImportError:
+    SLIM_AVAILABLE = False
+
 try:
     from dotenv import load_dotenv  # type: ignore
 except Exception:  # pragma: no cover
@@ -44,9 +52,19 @@ logging.basicConfig(level=logging.INFO)
 class AutonomousTouristAgent:
     """Intelligent tourist agent with LLM decision-making capabilities"""
 
-    def __init__(self, tourist_id: str, scheduler_url: str):
+    def __init__(self, tourist_id: str, scheduler_url: str,
+                 transport: str = "http", slim_endpoint: Optional[str] = None,
+                 slim_local_id: Optional[str] = None):
         self.tourist_id = tourist_id
         self.scheduler_url = scheduler_url
+        self.transport = transport
+        self.slim_endpoint = slim_endpoint or os.environ.get("SLIM_ENDPOINT", "http://localhost:46357")
+        self.slim_local_id = slim_local_id or os.environ.get("SLIM_LOCAL_ID", f"agntcy/tourist_scheduling/{tourist_id}")
+        self.slim_shared_secret = os.environ.get("SLIM_SHARED_SECRET", "tourist-scheduling-demo-secret-key-32")
+
+        # Cached SLIM client factory (created lazily, reused for all messages)
+        self._slim_client_factory = None
+
         # Use existing Azure OpenAI environment variables
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
         api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -253,37 +271,63 @@ class AutonomousTouristAgent:
 
     async def send_request_to_scheduler(self, request: TouristRequest):
         """Send the tourist request to the scheduler"""
-        logger.info(f"[Tourist {self.tourist_id}] Sending request: {request}")
+        logger.info(f"[Tourist {self.tourist_id}] Sending request via {self.transport}: {request}")
 
-        async with httpx.AsyncClient():
-            try:
-                # Create A2A client
+        try:
+            # Create A2A client based on transport mode
+            if self.transport == "slim":
+                if not SLIM_AVAILABLE:
+                    logger.error(f"[Tourist {self.tourist_id}] SLIM transport requested but not available")
+                    return
+
+                # Reuse cached client factory (Slim app connection persists)
+                if self._slim_client_factory is None:
+                    config = SLIMConfig(
+                        endpoint=self.slim_endpoint,
+                        local_id=self.slim_local_id,
+                        shared_secret=self.slim_shared_secret,
+                        tls_insecure=True,
+                    )
+                    # create_slim_client_factory is async - creates and connects the Slim app
+                    self._slim_client_factory = await create_slim_client_factory(config)
+
+                # For SLIM, use the scheduler's SLIM identity
+                scheduler_slim_id = "agntcy/tourist_scheduling/scheduler"
+                # Use minimal_slim_agent_card which sets slimrpc transport
+                client = self._slim_client_factory.create(card=minimal_slim_agent_card(scheduler_slim_id))
+            else:
+                # HTTP transport
                 client = ClientFactory(ClientConfig()).create(minimal_agent_card(self.scheduler_url))
 
-                # Send message
-                message = create_text_message_object(content=request.to_json())
+            # Send message
+            message = create_text_message_object(content=request.to_json())
 
-                async for response in client.send_message(message):
-                    logger.info(f"[Tourist {self.tourist_id}] Received response: {response}")
+            # Use asyncio.timeout context manager to prevent hanging on SLIM transport
+            try:
+                async with asyncio.timeout(5.0):
+                    async for response in client.send_message(message):
+                        logger.info(f"[Tourist {self.tourist_id}] Received response: {response}")
 
-                    # Process schedule proposal
-                    if isinstance(response, tuple):
-                        task, update = response
-                        if task.history:
-                            for msg in task.history:
-                                if msg.role.value == "agent" and msg.parts:
-                                    for part in msg.parts:
-                                        text_value = getattr(part.root, "text", None)
-                                        if text_value:
-                                            try:
-                                                data = json.loads(text_value)
-                                                if data.get("type") == "ScheduleProposal":
-                                                    await self.evaluate_proposal(data)
-                                            except json.JSONDecodeError:
-                                                pass
+                        # Process schedule proposal
+                        if isinstance(response, tuple):
+                            task, update = response
+                            if task.history:
+                                for msg in task.history:
+                                    if msg.role.value == "agent" and msg.parts:
+                                        for part in msg.parts:
+                                            text_value = getattr(part.root, "text", None)
+                                            if text_value:
+                                                try:
+                                                    data = json.loads(text_value)
+                                                    if data.get("type") == "ScheduleProposal":
+                                                        await self.evaluate_proposal(data)
+                                                except json.JSONDecodeError:
+                                                    pass
+            except asyncio.TimeoutError:
+                logger.info(f"[Tourist {self.tourist_id}] Request sent (response timeout - continuing)")
 
-            except Exception as e:
-                logger.error(f"[Tourist {self.tourist_id}] Failed to send request: {e}")
+        except Exception as e:
+            logger.error(f"[Tourist {self.tourist_id}] Failed to send request: {e}")
 
     async def evaluate_proposal(self, proposal_data: Dict):
         """Use LLM to evaluate received schedule proposal"""
@@ -370,8 +414,9 @@ class AutonomousTouristAgent:
         logger.info(f"[Tourist {self.tourist_id}] Autonomous operation completed")
 
 
-async def _async_main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int):
-    agent = AutonomousTouristAgent(tourist_id, scheduler_url)
+async def _async_main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int,
+                      transport: str = "http", slim_endpoint: str = None, slim_local_id: str = None):
+    agent = AutonomousTouristAgent(tourist_id, scheduler_url, transport, slim_endpoint, slim_local_id)
     await agent.autonomous_operation(duration, min_interval=min_interval, max_interval=max_interval)
 
 
@@ -381,9 +426,14 @@ async def _async_main(scheduler_url: str, tourist_id: str, duration: int, min_in
 @click.option("--duration", default=60, type=int, help="Operation duration in minutes")
 @click.option("--min-interval", default=60, type=int, help="Minimum seconds between requests")
 @click.option("--max-interval", default=180, type=int, help="Maximum seconds between requests")
-def main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int):
+@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID")
+def main(scheduler_url: str, tourist_id: str, duration: int, min_interval: int, max_interval: int,
+         transport: str, slim_endpoint: str, slim_local_id: str):
     """Run autonomous tourist agent (LLM optional)"""
-    asyncio.run(_async_main(scheduler_url, tourist_id, duration, min_interval, max_interval))
+    asyncio.run(_async_main(scheduler_url, tourist_id, duration, min_interval, max_interval,
+                           transport, slim_endpoint, slim_local_id))
 
 
 if __name__ == "__main__":  # pragma: no cover

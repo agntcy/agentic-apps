@@ -46,6 +46,9 @@ from core.slim_transport import (
     SLIMConfig,
     check_slim_available,
     create_slim_server,
+    create_slim_client_factory,
+    create_client_factory_from_app,
+    minimal_slim_agent_card,
     config_from_env,
 )
 
@@ -78,6 +81,14 @@ class SchedulerState:
 
 state = SchedulerState()
 
+# Global transport configuration (set in main() based on CLI args)
+_transport_config = {
+    "mode": "http",  # "http" or "slim"
+    "slim_config": None,  # SLIMConfig when mode="slim"
+    "slim_app": None,  # The slim_bindings.Slim app (shared between server and client)
+    "slim_client_factory": None,  # Cached client factory for SLIM UI notifications
+}
+
 
 def _discover_ui_ports() -> int:
     """Attempt to discover the UI agent A2A port from written ports file.
@@ -96,7 +107,18 @@ def _discover_ui_ports() -> int:
     return default_port
 
 async def send_to_ui_agent(message_data: dict):
-    """Send data to UI agent for dashboard updates (non-blocking async)."""
+    """Send data to UI agent for dashboard updates (non-blocking async).
+
+    Uses SLIM transport when in SLIM mode, otherwise HTTP.
+    """
+    if _transport_config["mode"] == "slim":
+        await _send_to_ui_agent_slim(message_data)
+    else:
+        await _send_to_ui_agent_http(message_data)
+
+
+async def _send_to_ui_agent_http(message_data: dict):
+    """Send to UI agent via HTTP transport."""
     port = _discover_ui_ports()
     url = f"http://localhost:{port}/"
     payload = {
@@ -120,6 +142,40 @@ async def send_to_ui_agent(message_data: dict):
             logger.warning(f"[Scheduler] UI agent POST returned {response.status_code} on port {port}")
     except Exception as e:  # pragma: no cover - network failures are non-fatal
         logger.warning(f"[Scheduler] Failed to send update to UI agent on port {port}: {e}")
+
+
+async def _send_to_ui_agent_slim(message_data: dict):
+    """Send to UI agent via SLIM transport.
+
+    Uses the same Slim app as the server to avoid "client already connected" errors.
+    """
+    from a2a.client.helpers import create_text_message_object
+
+    try:
+        # Get or create client factory using the shared slim_app
+        if _transport_config["slim_client_factory"] is None:
+            slim_app = _transport_config["slim_app"]
+            if slim_app is None:
+                logger.warning("[Scheduler] SLIM app not available, cannot send to UI agent")
+                return
+            # Create client factory from the existing slim_app (no new connection needed)
+            _transport_config["slim_client_factory"] = create_client_factory_from_app(slim_app)
+
+        client_factory = _transport_config["slim_client_factory"]
+
+        # UI agent's SLIM identity
+        ui_agent_slim_id = "agntcy/tourist_scheduling/ui-agent"
+        client = client_factory.create(card=minimal_slim_agent_card(ui_agent_slim_id))
+
+        # Send message
+        message = create_text_message_object(content=json.dumps(message_data))
+        async for response in client.send_message(message):
+            logger.debug(f"[Scheduler] UI agent SLIM response: {response}")
+            break  # Just need to send, don't wait for full response stream
+
+        logger.info(f"[Scheduler] Sent update to UI agent via SLIM")
+    except Exception as e:
+        logger.warning(f"[Scheduler] Failed to send update to UI agent via SLIM: {e}")
 
 
 def build_schedule(
@@ -423,18 +479,32 @@ def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id
         logger.info(f"[Scheduler] SLIM endpoint: {slim_config.endpoint}")
         logger.info(f"[Scheduler] SLIM local ID: {slim_config.local_id}")
 
+        # Set global transport config for UI agent notifications
+        _transport_config["mode"] = "slim"
+        _transport_config["slim_config"] = slim_config
+        # slim_app will be set after server starts - we share the server's Slim app
+        # slimrpc only allows ONE connected Slim app per process
+        _transport_config["slim_app"] = None
+
         # Create SLIM server start function
         start_server = create_slim_server(slim_config, agent_card, request_handler)
 
         async def run_slim_server():
             logger.info("[Scheduler] Starting SLIM transport server...")
-            server = await start_server()
-            logger.info("[Scheduler] SLIM server running, press Ctrl+C to stop")
+            # start_server() now returns (server, local_app, server_task) tuple
+            server, local_app, server_task = await start_server()
+            # Store the Slim app for reuse by UI notifier client
+            _transport_config["slim_app"] = local_app
+            logger.info("[Scheduler] SLIM server running, Slim app shared for UI notifications")
+            logger.info("[Scheduler] Press Ctrl+C to stop")
+
+            # Wait for server task - it has internal resilience so we just await it
             try:
-                while True:
-                    await asyncio.sleep(1)
+                await server_task
             except asyncio.CancelledError:
-                pass
+                logger.info("[Scheduler] SLIM server cancelled")
+            except Exception as e:
+                logger.error(f"[Scheduler] SLIM server exited with error: {e}")
 
         try:
             asyncio.run(run_slim_server())

@@ -15,7 +15,7 @@ import logging
 import os
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import click
 import httpx
@@ -26,6 +26,14 @@ except Exception:  # pragma: no cover - openai optional for demo
 from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
+
+# SLIM transport support
+try:
+    from core.slim_transport import SLIMConfig, create_slim_client_factory, minimal_slim_agent_card
+    SLIM_AVAILABLE = True
+except ImportError:
+    SLIM_AVAILABLE = False
+
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
 except Exception:  # pragma: no cover - pydantic-settings optional
@@ -71,9 +79,19 @@ logging.basicConfig(level=logging.INFO)
 class AutonomousGuideAgent:
     """Intelligent guide agent with LLM decision-making capabilities"""
 
-    def __init__(self, guide_id: str, scheduler_url: str):
+    def __init__(self, guide_id: str, scheduler_url: str,
+                 transport: str = "http", slim_endpoint: Optional[str] = None,
+                 slim_local_id: Optional[str] = None):
         self.guide_id = guide_id
         self.scheduler_url = scheduler_url
+        self.transport = transport
+        self.slim_endpoint = slim_endpoint or os.environ.get("SLIM_ENDPOINT", "http://localhost:46357")
+        self.slim_local_id = slim_local_id or os.environ.get("SLIM_LOCAL_ID", f"agntcy/tourist_scheduling/{guide_id}")
+        self.slim_shared_secret = os.environ.get("SLIM_SHARED_SECRET", "tourist-scheduling-demo-secret-key-32")
+
+        # Cached SLIM client factory (created lazily, reused for all messages)
+        self._slim_client_factory = None
+
         # Load configuration from environment/.env via pydantic-settings (fallback to direct env if unavailable)
         try:
             self.config = AgentConfig()
@@ -284,45 +302,70 @@ class AutonomousGuideAgent:
 
     async def send_offer_to_scheduler(self, offer: GuideOffer):
         """Send the guide offer to the scheduler"""
-        logger.info(f"[Guide {self.guide_id}] Sending offer: {offer}")
+        logger.info(f"[Guide {self.guide_id}] Sending offer via {self.transport}: {offer}")
 
-        async with httpx.AsyncClient() as httpx_client:
-            try:
-                # Create A2A client
-                # NOTE: prefer factory + create with minimal_card for consistency with other agents
+        try:
+            # Create A2A client based on transport mode
+            if self.transport == "slim":
+                if not SLIM_AVAILABLE:
+                    logger.error(f"[Guide {self.guide_id}] SLIM transport requested but not available")
+                    return
+
+                # Reuse cached client factory (Slim app connection persists)
+                if self._slim_client_factory is None:
+                    config = SLIMConfig(
+                        endpoint=self.slim_endpoint,
+                        local_id=self.slim_local_id,
+                        shared_secret=self.slim_shared_secret,
+                        tls_insecure=True,
+                    )
+                    # create_slim_client_factory is async - creates and connects the Slim app
+                    self._slim_client_factory = await create_slim_client_factory(config)
+
+                # For SLIM, use the scheduler's SLIM identity
+                scheduler_slim_id = "agntcy/tourist_scheduling/scheduler"
+                # Use minimal_slim_agent_card which sets slimrpc transport
+                client = self._slim_client_factory.create(card=minimal_slim_agent_card(scheduler_slim_id))
+            else:
+                # HTTP transport
                 client = ClientFactory(ClientConfig()).create(minimal_agent_card(self.scheduler_url))
 
-                # Send message
-                message = create_text_message_object(content=offer.to_json())
+            # Send message
+            message = create_text_message_object(content=offer.to_json())
 
-                async for response in client.send_message(message):
-                    # Client abstracts streaming vs non-streaming into a unified event; expect (task, update)
-                    if isinstance(response, Message):
-                        raise RuntimeError("Unexpected bare Message response from scheduler agent")
-                    task_obj = None
-                    if isinstance(response, tuple) and len(response) >= 1:
-                        task_obj = response[0]
-                    elif isinstance(response, Task):
-                        task_obj = response
-                    else:
-                        continue  # Unknown shape
-                    history = getattr(task_obj, "history", None) or []
-                    if not history:
-                        continue
-                    for msg in history:
-                        if getattr(msg.role, "value", None) == "agent" and getattr(msg, "parts", None):
-                            for part in msg.parts:
-                                raw = getattr(getattr(part, "root", None), "text", None)
-                                if not raw:
-                                    continue
-                                try:
-                                    data = json.loads(raw)
-                                except json.JSONDecodeError:
-                                    continue
-                                if data.get("type") == "Acknowledgment":
-                                    logger.info(f"[Guide {self.guide_id}] ✅ {data['message']}")
+            # Use asyncio.timeout context manager to prevent hanging on SLIM transport
+            try:
+                async with asyncio.timeout(5.0):
+                    async for response in client.send_message(message):
+                        # Client abstracts streaming vs non-streaming into a unified event; expect (task, update)
+                        if isinstance(response, Message):
+                            raise RuntimeError("Unexpected bare Message response from scheduler agent")
+                        task_obj = None
+                        if isinstance(response, tuple) and len(response) >= 1:
+                            task_obj = response[0]
+                        elif isinstance(response, Task):
+                            task_obj = response
+                        else:
+                            continue  # Unknown shape
+                        history = getattr(task_obj, "history", None) or []
+                        if not history:
+                            continue
+                        for msg in history:
+                            if getattr(msg.role, "value", None) == "agent" and getattr(msg, "parts", None):
+                                for part in msg.parts:
+                                    raw = getattr(getattr(part, "root", None), "text", None)
+                                    if not raw:
+                                        continue
+                                    try:
+                                        data = json.loads(raw)
+                                    except json.JSONDecodeError:
+                                        continue
+                                    if data.get("type") == "Acknowledgment":
+                                        logger.info(f"[Guide {self.guide_id}] ✅ {data['message']}")
+            except asyncio.TimeoutError:
+                logger.info(f"[Guide {self.guide_id}] Message sent (response timeout - continuing)")
 
-            except Exception as e:
+        except Exception as e:
                 logger.error(f"[Guide {self.guide_id}] Failed to send offer: {e}")
 
     async def update_market_conditions(self):
@@ -369,8 +412,9 @@ class AutonomousGuideAgent:
         logger.info(f"[Guide {self.guide_id}] Autonomous operation completed")
 
 
-async def _async_main(scheduler_url: str, guide_id: str, duration: int, min_interval: int, max_interval: int):
-    agent = AutonomousGuideAgent(guide_id, scheduler_url)
+async def _async_main(scheduler_url: str, guide_id: str, duration: int, min_interval: int, max_interval: int,
+                      transport: str = "http", slim_endpoint: str = None, slim_local_id: str = None):
+    agent = AutonomousGuideAgent(guide_id, scheduler_url, transport, slim_endpoint, slim_local_id)
     await agent.autonomous_operation(duration, min_interval=min_interval, max_interval=max_interval)
 
 
@@ -380,9 +424,14 @@ async def _async_main(scheduler_url: str, guide_id: str, duration: int, min_inte
 @click.option("--duration", default=60, type=int, help="Operation duration in minutes")
 @click.option("--min-interval", default=30, type=int, help="Minimum seconds between offers")
 @click.option("--max-interval", default=120, type=int, help="Maximum seconds between offers")
-def main(scheduler_url: str, guide_id: str, duration: int, min_interval: int, max_interval: int):
+@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID")
+def main(scheduler_url: str, guide_id: str, duration: int, min_interval: int, max_interval: int,
+         transport: str, slim_endpoint: str, slim_local_id: str):
     """Run autonomous guide agent (LLM optional)"""
-    asyncio.run(_async_main(scheduler_url, guide_id, duration, min_interval, max_interval))
+    asyncio.run(_async_main(scheduler_url, guide_id, duration, min_interval, max_interval,
+                           transport, slim_endpoint, slim_local_id))
 
 
 if __name__ == "__main__":  # pragma: no cover

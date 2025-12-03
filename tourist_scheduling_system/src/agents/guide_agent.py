@@ -20,15 +20,30 @@ from a2a.client import ClientFactory, ClientConfig
 from a2a.client.client_factory import minimal_agent_card
 from a2a.client.helpers import create_text_message_object
 
+# SLIM transport support
+try:
+    from core.slim_transport import SLIMConfig, create_slim_client_factory, minimal_slim_agent_card
+    SLIM_AVAILABLE = True
+except ImportError:
+    SLIM_AVAILABLE = False
+
 from core.messages import GuideOffer, Window
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-async def run_guide_agent(scheduler_url: str, guide_id: str):
+async def run_guide_agent(
+    scheduler_url: str,
+    guide_id: str,
+    transport: str = "http",
+    slim_endpoint: str | None = None,
+    slim_local_id: str | None = None,
+):
     """Send guide offer to scheduler agent"""
     logger.info(f"[Guide {guide_id}] Connecting to scheduler at {scheduler_url}")
+    if transport == "slim":
+        logger.info(f"[Guide {guide_id}] Using SLIM transport via {slim_endpoint}")
 
     # Create sample guide offer
     offer = GuideOffer(
@@ -44,10 +59,22 @@ async def run_guide_agent(scheduler_url: str, guide_id: str):
 
     logger.info(f"[Guide {guide_id}] Sending offer: {offer}")
 
-    # Build minimal agent card and explicit factory (avoids /.well-known lookup)
-    card = minimal_agent_card(scheduler_url)
-    factory = ClientFactory(ClientConfig())
-    client = factory.create(card)
+    # Create client based on transport
+    if transport == "slim" and SLIM_AVAILABLE:
+        if not slim_endpoint or not slim_local_id:
+            raise ValueError("SLIM transport requires --slim-endpoint and --slim-local-id")
+        slim_config = SLIMConfig(
+            endpoint=slim_endpoint,
+            local_id=slim_local_id,
+        )
+        factory = create_slim_client_factory(slim_config)
+        card = minimal_slim_agent_card(scheduler_url, slim_endpoint)
+        client = factory.create(card)
+    else:
+        # Build minimal agent card and explicit factory (avoids /.well-known lookup)
+        card = minimal_agent_card(scheduler_url)
+        factory = ClientFactory(ClientConfig())
+        client = factory.create(card)
 
     # Send message to scheduler
     message = create_text_message_object(
@@ -84,9 +111,12 @@ async def run_guide_agent(scheduler_url: str, guide_id: str):
 @click.command()
 @click.option("--scheduler-url", default="http://localhost:10000", help="Scheduler A2A server URL")
 @click.option("--guide-id", default="g1", help="Guide ID")
-def main(scheduler_url: str, guide_id: str):
+@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint (required for SLIM transport)")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID (required for SLIM transport)")
+def main(scheduler_url: str, guide_id: str, transport: str, slim_endpoint: str, slim_local_id: str):
     import asyncio
-    asyncio.run(run_guide_agent(scheduler_url, guide_id))
+    asyncio.run(run_guide_agent(scheduler_url, guide_id, transport, slim_endpoint, slim_local_id))
 
 if __name__ == "__main__":
     main()
