@@ -2,203 +2,217 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 """
-Tourist Agent - A2A Client
+ADK-based Tourist Agent
 
-Sends TouristRequest messages to the Scheduler Agent server
-and receives ScheduleProposal responses.
+A tourist agent that communicates with the scheduler to request tour services.
 
-This demonstrates a client using the official a2a-sdk to communicate
-with an A2A server.
+This agent can:
+1. Create and send tour requests to the scheduler
+2. Receive schedule proposals with matched guides
+3. Manage preferences and availability
+
+Uses ADK's RemoteA2aAgent to communicate with the scheduler's A2A endpoint.
 """
 
-import json
+import asyncio
 import logging
-from datetime import datetime, timedelta
+import os
+from datetime import datetime
+from typing import Optional
 
 import click
-from a2a.client import ClientFactory, ClientConfig
-from a2a.client.client_factory import minimal_agent_card
-from a2a.client.helpers import create_text_message_object
-from a2a.types import TransportProtocol, Task, Message, Part, TextPart, DataPart
 
-# SLIM transport support
-try:
-    from core.slim_transport import SLIMConfig, create_slim_client_factory, minimal_slim_agent_card
-    SLIM_AVAILABLE = True
-except ImportError:
-    SLIM_AVAILABLE = False
-
-from core.messages import TouristRequest, Window
+# ADK imports are done lazily inside functions that need them
+# to allow importing helper functions without having google.adk installed
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+
+
+def create_tourist_request_message(
+    tourist_id: str,
+    availability_start: str,
+    availability_end: str,
+    preferences: list[str],
+    budget: float,
+) -> str:
+    """Create a formatted message for the scheduler agent."""
+    return f"""Please register tourist request:
+- Tourist ID: {tourist_id}
+- Available from: {availability_start}
+- Available until: {availability_end}
+- Preferences: {', '.join(preferences)}
+- Budget: ${budget}/hour"""
+
+
+def create_tourist_agent(
+    tourist_id: str,
+    scheduler_url: str = "http://localhost:10000",
+):
+    """
+    Create an ADK-based tourist agent.
+
+    The tourist agent uses RemoteA2aAgent as a sub-agent to communicate
+    with the scheduler.
+
+    Args:
+        tourist_id: Unique identifier for this tourist
+        scheduler_url: URL of the scheduler's A2A endpoint
+
+    Returns:
+        Configured LlmAgent for the tourist
+    """
+    # Import ADK components at runtime
+    from google.adk.agents.llm_agent import LlmAgent
+    from google.adk.agents.remote_a2a_agent import RemoteA2aAgent, AGENT_CARD_WELL_KNOWN_PATH
+    from google.adk.models.lite_llm import LiteLlm
+
+    # Create remote scheduler agent reference
+    # The agent_card parameter is a URL to the scheduler's agent card
+    agent_card_url = f"{scheduler_url.rstrip('/')}/{AGENT_CARD_WELL_KNOWN_PATH.lstrip('/')}"
+    scheduler_remote = RemoteA2aAgent(
+        name="scheduler",
+        description="The tourist scheduling coordinator that handles tour requests",
+        agent_card=agent_card_url,
+    )
+
+    # Get model configuration from environment
+    # Supports Azure OpenAI via LiteLLM
+    # Environment variables: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
+    # AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT_NAME
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+    model_name = os.getenv("TOURIST_MODEL", f"azure/{deployment_name}")
+    model = LiteLlm(
+        model=model_name,
+        api_key=os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY"),
+        api_base=os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01"),
+    )
+
+    tourist_agent = LlmAgent(
+        name=f"tourist_{tourist_id}",
+        model=model,
+        description=f"Tourist {tourist_id} looking for guided tour services",
+        instruction=f"""You are Tourist {tourist_id}.
+
+Your role is to:
+1. Request tour guide services from the scheduling system
+2. Specify your preferences (e.g., culture, history, food, art)
+3. Set your availability windows
+4. Communicate your budget constraints
+
+You have access to the scheduler agent which coordinates between tourists and guides.
+When you want to request a tour, communicate with the scheduler sub-agent.
+
+After sending your request, you should receive a schedule proposal with matched guides.
+Be polite and clear in describing what kind of tour experience you're looking for.""",
+        sub_agents=[scheduler_remote],
+    )
+
+    return tourist_agent
 
 
 async def run_tourist_agent(
-    scheduler_url: str,
     tourist_id: str,
-    transport: str = "http",
-    slim_endpoint: str | None = None,
-    slim_local_id: str | None = None,
+    scheduler_url: str,
+    preferences: list[str],
+    availability_start: str,
+    availability_end: str,
+    budget: float,
 ):
-    """Send tourist request to scheduler agent"""
-    logger.info(f"[Tourist {tourist_id}] Connecting to scheduler at {scheduler_url}")
-    if transport == "slim":
-        logger.info(f"[Tourist {tourist_id}] Using SLIM transport via {slim_endpoint}")
+    """
+    Run the tourist agent to send a request to the scheduler.
 
-    # Create sample tourist request
-    request = TouristRequest(
+    Args:
+        tourist_id: Unique identifier for the tourist
+        scheduler_url: Scheduler's A2A endpoint
+        preferences: Preferred tour categories
+        availability_start: Start of availability (ISO format)
+        availability_end: End of availability (ISO format)
+        budget: Maximum hourly budget in dollars
+    """
+    # Import ADK runner at runtime
+    from google.adk.runners import InMemoryRunner
+
+    print(f"[Tourist {tourist_id}] Starting with ADK...")
+    print(f"[Tourist {tourist_id}] Connecting to scheduler at {scheduler_url}")
+
+    # Create the tourist agent
+    agent = create_tourist_agent(tourist_id, scheduler_url)
+    runner = InMemoryRunner(agent=agent)
+
+    # Create request message
+    message = create_tourist_request_message(
         tourist_id=tourist_id,
-        availability=[Window(
-            start=datetime(2025, 6, 1, 9, 0),
-            end=datetime(2025, 6, 1, 17, 0),
-        )],
-        preferences=["culture", "history"],
-        budget=100,
+        availability_start=availability_start,
+        availability_end=availability_end,
+        preferences=preferences,
+        budget=budget,
     )
 
-    logger.info(f"[Tourist {tourist_id}] Sending request: {request}")
+    print(f"[Tourist {tourist_id}] Sending request...")
 
-    # Create client based on transport
-    if transport == "slim" and SLIM_AVAILABLE:
-        if not slim_endpoint or not slim_local_id:
-            raise ValueError("SLIM transport requires --slim-endpoint and --slim-local-id")
-        slim_config = SLIMConfig(
-            endpoint=slim_endpoint,
-            local_id=slim_local_id,
-        )
-        factory = create_slim_client_factory(slim_config)
-        card = minimal_slim_agent_card(scheduler_url, slim_endpoint)
-        client = factory.create(card)
-    else:
-        card = minimal_agent_card(scheduler_url)
-        factory = ClientFactory(ClientConfig())
-        client = factory.create(card)
-
-    # Send message to scheduler
-    message = create_text_message_object(
-        content=request.to_json()
+    # Run the agent with the request
+    events = await runner.run_debug(
+        user_messages=message,
+        verbose=True,
     )
 
-    logger.info(f"[Tourist {tourist_id}] Sending A2A message...")
+    # Process response
+    for event in events:
+        if hasattr(event, 'content') and event.content:
+            for part in event.content.parts:
+                if hasattr(part, 'text'):
+                    print(f"[Tourist {tourist_id}] Response: {part.text}")
 
-    # Create sample tourist request
-    request = TouristRequest(
-        tourist_id=tourist_id,
-        availability=[Window(
-            start=datetime(2025, 6, 1, 9, 0),
-            end=datetime(2025, 6, 1, 17, 0),
-        )],
-        preferences=["culture", "history"],
-        budget=100,
+    # Ask for scheduling
+    print(f"[Tourist {tourist_id}] Requesting schedule...")
+
+    schedule_events = await runner.run_debug(
+        user_messages="Please run the scheduling algorithm and show me my assigned guide",
+        session_id="tourist_session",  # Same session to continue conversation
     )
 
-    logger.info(f"[Tourist {tourist_id}] Sending request: {request}")
+    for event in schedule_events:
+        if hasattr(event, 'content') and event.content:
+            for part in event.content.parts:
+                if hasattr(part, 'text'):
+                    print(f"[Tourist {tourist_id}] Schedule: {part.text}")
 
-    card = minimal_agent_card(scheduler_url)
-    factory = ClientFactory(ClientConfig())
-    client = factory.create(card)
-
-    # Send message to scheduler
-    message = create_text_message_object(
-        content=request.to_json()
-    )
-
-    logger.info(f"[Tourist {tourist_id}] Sending A2A message...")
-
-    # Streaming iterator (actual SDK behavior). Collect Task/Message events and parse parts.
-    schedule_found = False
-    async for event in client.send_message(message):
-        logger.debug(f"[Tourist {tourist_id}] Event type: {type(event)}")
-        task_obj = None
-        msg_obj = None
-        # Handle tuple form (task, update)
-        if isinstance(event, tuple) and len(event) == 2:
-            task_obj, _update = event
-        elif isinstance(event, Task):
-            task_obj = event
-        elif isinstance(event, Message):
-            msg_obj = event
-        else:
-            # Unknown event type; continue
-            continue
-
-        def inspect_message(message_candidate):
-            nonlocal schedule_found
-            if not message_candidate or not getattr(message_candidate, 'parts', None):
-                return
-            for part in message_candidate.parts:
-                root = getattr(part, 'root', None)
-                payload = None
-                if isinstance(root, DataPart):
-                    payload = root.data
-                elif isinstance(root, TextPart):
-                    try:
-                        payload = json.loads(root.text)
-                    except json.JSONDecodeError:
-                        continue
-                if isinstance(payload, dict) and payload.get('type') == 'ScheduleProposal':
-                    logger.info(f"[Tourist {tourist_id}] ✅ Received schedule proposal: {payload}")
-                    schedule_found = True
-                    return
-
-        if task_obj:
-            # First inspect artifacts directly (preferred structured channel)
-            artifacts = getattr(task_obj, 'artifacts', []) or []
-            for artifact in artifacts:
-                if schedule_found:
-                    break
-                for part in getattr(artifact, 'parts', []) or []:
-                    if schedule_found:
-                        break
-                    root = getattr(part, 'root', None)
-                    payload = None
-                    if isinstance(root, DataPart):
-                        payload = root.data
-                    elif isinstance(root, TextPart):
-                        try:
-                            payload = json.loads(root.text)
-                        except json.JSONDecodeError:
-                            continue
-                    if isinstance(payload, dict) and payload.get('type') == 'ScheduleProposal':
-                        assignments = payload.get('assignments', []) or []
-                        summary = ", ".join(
-                            f"{a.get('tourist_id')}→{a.get('guide_id')}(${int(a.get('total_cost',0))})" for a in assignments
-                        ) or 'no assignments'
-                        logger.info(
-                            f"[Tourist {tourist_id}] ✅ Schedule proposal artifact received ({len(assignments)} assignments): {summary}"
-                        )
-                        schedule_found = True
-                        break
-            # Fallback: inspect agent messages in history
-            if not schedule_found:
-                for history_msg in getattr(task_obj, 'history', []) or []:
-                    if schedule_found:
-                        break
-                    if getattr(history_msg.role, 'value', None) == 'agent':
-                        inspect_message(history_msg)
-        if msg_obj and not schedule_found:
-            inspect_message(msg_obj)
-
-        if schedule_found:
-            break
-
-    if not schedule_found:
-        logger.info(f"[Tourist {tourist_id}] No schedule proposal found in responses")
-
-    logger.info(f"[Tourist {tourist_id}] Done")
+    print(f"[Tourist {tourist_id}] Done")
 
 
 @click.command()
-@click.option("--scheduler-url", default="http://localhost:10000", help="Scheduler A2A server URL")
+@click.option("--scheduler-url", default="http://localhost:10000",
+              help="Scheduler A2A server URL")
 @click.option("--tourist-id", default="t1", help="Tourist ID")
-@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
-@click.option("--slim-endpoint", default=None, help="SLIM node endpoint (required for SLIM transport)")
-@click.option("--slim-local-id", default=None, help="SLIM local agent ID (required for SLIM transport)")
-def main(scheduler_url: str, tourist_id: str, transport: str, slim_endpoint: str, slim_local_id: str):
-    """Send tourist request to scheduler agent"""
-    import asyncio
-    asyncio.run(run_tourist_agent(scheduler_url, tourist_id, transport, slim_endpoint, slim_local_id))
+@click.option("--preferences", default="culture,history",
+              help="Comma-separated list of preferences")
+@click.option("--availability-start", default="2025-06-01T09:00:00",
+              help="Start of availability (ISO format)")
+@click.option("--availability-end", default="2025-06-01T17:00:00",
+              help="End of availability (ISO format)")
+@click.option("--budget", default=100.0, help="Maximum hourly budget in dollars")
+def main(
+    scheduler_url: str,
+    tourist_id: str,
+    preferences: str,
+    availability_start: str,
+    availability_end: str,
+    budget: float,
+):
+    """Run the ADK-based tourist agent."""
+    logging.basicConfig(level=logging.INFO)
+
+    preferences_list = [p.strip() for p in preferences.split(",")]
+
+    asyncio.run(run_tourist_agent(
+        tourist_id=tourist_id,
+        scheduler_url=scheduler_url,
+        preferences=preferences_list,
+        availability_start=availability_start,
+        availability_end=availability_end,
+        budget=budget,
+    ))
 
 
 if __name__ == "__main__":

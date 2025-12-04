@@ -156,6 +156,11 @@ def create_slim_server(
     # Create SRPC handler wrapping the A2A request handler
     handler = SRPCHandler(agent_card, request_handler)
 
+    # Log config for debugging
+    logger.info(f"[SLIM] Creating SLIMAppConfig for {config.local_id}")
+    logger.info(f"[SLIM] shared_secret length: {len(config.shared_secret)} chars")
+    logger.info(f"[SLIM] slim_client_config: {config.slim_config}")
+
     # Create SLIMAppConfig for the server
     app_config = slimrpc.SLIMAppConfig(
         identity=config.local_id,

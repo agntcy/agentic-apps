@@ -2,537 +2,351 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 """
-Scheduler Agent - A2A Server
+ADK-based Scheduler Agent
 
-Multi-agent tourist scheduling coordinator that:
-1. Receives TouristRequests from tourist agents
-2. Receives GuideOffers from guide agents
+Multi-agent tourist scheduling coordinator using Google ADK.
+
+This agent:
+1. Receives TouristRequests from tourist agents (via tool calls)
+2. Receives GuideOffers from guide agents (via tool calls)
 3. Runs greedy scheduling algorithm to match tourists to guides
-4. Sends ScheduleProposals back to requesting tourists
+4. Returns ScheduleProposals
 
-This is implemented as an A2A server using the official a2a-sdk.
-Supports both HTTP and SLIM transports via --transport option.
+The agent can be exposed via A2A protocol using ADK's to_a2a() utility.
+Supports both HTTP and SLIM transports.
 """
 
 import asyncio
-import json
 import logging
-import time
-from pathlib import Path
-from dataclasses import dataclass
-from datetime import datetime
+import os
+from typing import Optional
 
 import click
-import uvicorn
-import httpx
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.apps import A2AStarletteApplication
-from a2a.server.events import EventQueue
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
-from a2a.server.tasks.task_updater import TaskUpdater
-from a2a.utils.task import new_task
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
-    Part,
-    TaskState,
-    TextPart,
-    DataPart,  # Allows structured JSON parts without manual decoding
+
+# Tools for the scheduler (these don't require ADK at import time)
+from .tools import (
+    register_tourist_request,
+    register_guide_offer,
+    run_scheduling,
+    get_schedule_status,
+    clear_scheduler_state,
 )
 
-from core.slim_transport import (
-    SLIMConfig,
-    check_slim_available,
-    create_slim_server,
-    create_slim_client_factory,
-    create_client_factory_from_app,
-    minimal_slim_agent_card,
-    config_from_env,
-)
+# Set up file logging
+try:
+    from core.logging_config import setup_agent_logging
+    logger = setup_agent_logging("adk_scheduler")
+except ImportError:
+    logger = logging.getLogger(__name__)
 
-from core.messages import (
-    Assignment,
-    GuideOffer,
-    ScheduleProposal,
-    TouristRequest,
-    Window,
-)
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+# Check SLIM availability
+try:
+    from core.slim_transport import (
+        SLIMConfig,
+        check_slim_available,
+        create_slim_server,
+        config_from_env,
+    )
+    SLIM_AVAILABLE = check_slim_available()
+except ImportError:
+    SLIM_AVAILABLE = False
 
 
-# In-memory storage for scheduler state
-@dataclass
-class SchedulerState:
-    """Centralized scheduler state"""
-
-    tourist_requests: list[TouristRequest]
-    guide_offers: list[GuideOffer]
-    assignments: list[Assignment]
-
-    def __init__(self):
-        self.tourist_requests = []
-        self.guide_offers = []
-        self.assignments = []
+# Lazy-loaded scheduler agent singleton
+_scheduler_agent = None
 
 
-state = SchedulerState()
-
-# Global transport configuration (set in main() based on CLI args)
-_transport_config = {
-    "mode": "http",  # "http" or "slim"
-    "slim_config": None,  # SLIMConfig when mode="slim"
-    "slim_app": None,  # The slim_bindings.Slim app (shared between server and client)
-    "slim_client_factory": None,  # Cached client factory for SLIM UI notifications
-}
-
-
-def _discover_ui_ports() -> int:
-    """Attempt to discover the UI agent A2A port from written ports file.
-
-    Returns discovered port or default 10012. Non-fatal if file missing.
+def get_scheduler_agent():
     """
-    default_port = 10012
+    Get or create the scheduler agent.
+
+    Uses lazy initialization to avoid importing google.adk at module load time.
+
+    Returns:
+        The scheduler LlmAgent instance
+    """
+    global _scheduler_agent
+
+    if _scheduler_agent is None:
+        # Import ADK components at runtime
+        from google.adk.agents.llm_agent import LlmAgent
+        from google.adk.models.lite_llm import LiteLlm
+
+        # Get model configuration from environment
+        # Supports Azure OpenAI via LiteLLM
+        # Environment variables: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
+        # AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT_NAME
+        deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+        model_name = os.getenv("SCHEDULER_MODEL", f"azure/{deployment_name}")
+
+        # Use LiteLlm for Azure OpenAI support
+        # Pass Azure credentials explicitly from environment
+        model = LiteLlm(
+            model=model_name,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY"),
+            api_base=os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01"),
+        )
+
+        _scheduler_agent = LlmAgent(
+            name="scheduler_agent",
+            model=model,
+            description=(
+                "A tourist scheduling coordinator that matches tourists with tour guides. "
+                "It receives requests from tourists and offers from guides, then runs "
+                "a scheduling algorithm to create optimal matches."
+            ),
+            instruction="""You are a Tourist Scheduling Coordinator Agent.
+
+IMPORTANT: You MUST use the provided tools for ALL operations. Never just respond with text - always call a tool.
+
+Your job is to coordinate between tourists looking for guided tours and tour guides
+offering their services. You have access to the following tools:
+
+1. **register_tourist_request**: Register a tourist's request with their availability,
+   preferences (like "culture", "history", "food"), and budget.
+   REQUIRED parameters: tourist_id, availability_start, availability_end, preferences (list), budget
+
+2. **register_guide_offer**: Register a guide's offer with their categories of expertise,
+   availability window, hourly rate, and group capacity.
+   REQUIRED parameters: guide_id, availability_start, availability_end, categories (list), hourly_rate, max_group_size
+
+3. **run_scheduling**: Execute the scheduling algorithm to match tourists with guides
+   based on availability, budget, and preference matching.
+
+4. **get_schedule_status**: Check the current state of the scheduler including
+   pending requests, available guides, and completed assignments.
+
+When you receive a message:
+- If it mentions "register guide" or contains guide data -> CALL register_guide_offer
+- If it mentions "register tourist" or contains tourist data -> CALL register_tourist_request
+- If it mentions "schedule" or "match" or "run" -> CALL run_scheduling
+- If it mentions "status" -> CALL get_schedule_status
+
+ALWAYS call the appropriate tool. Extract parameters from the message and call the tool.
+Example: "Register guide marco" -> call register_guide_offer with guide_id="marco"
+""",
+            tools=[
+                register_tourist_request,
+                register_guide_offer,
+                run_scheduling,
+                get_schedule_status,
+                clear_scheduler_state,
+            ],
+        )
+
+    return _scheduler_agent
+
+
+# For backwards compatibility
+@property
+def scheduler_agent():
+    """Deprecated: Use get_scheduler_agent() instead."""
+    return get_scheduler_agent()
+
+
+def create_scheduler_app(host: str = "localhost", port: int = 10000):
+    """
+    Create an A2A-enabled Starlette application for the scheduler agent.
+
+    This uses ADK's to_a2a() utility to expose the agent via the A2A protocol,
+    making it compatible with existing a2a-sdk clients.
+
+    Args:
+        host: Host for the A2A RPC URL
+        port: Port for the A2A server
+
+    Returns:
+        A Starlette application configured for A2A
+    """
+    # Import ADK components at runtime
+    from google.adk.a2a.utils.agent_to_a2a import to_a2a
+
+    return to_a2a(
+        get_scheduler_agent(),
+        host=host,
+        port=port,
+        protocol="http",
+    )
+
+
+def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
+    """
+    Create A2A components for the scheduler agent (for SLIM transport).
+
+    Returns the AgentCard and DefaultRequestHandler that can be used
+    with SLIM transport.
+
+    Args:
+        host: Host for the A2A RPC URL
+        port: Port for the A2A server
+
+    Returns:
+        Tuple of (agent_card, request_handler)
+    """
+    from google.adk.runners import InMemoryRunner
+    from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
+    from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
+    from a2a.server.request_handlers import DefaultRequestHandler
+    from a2a.server.tasks import InMemoryTaskStore
+    from a2a.types import AgentCapabilities, AgentSkill
+
+    agent = get_scheduler_agent()
+
+    # Create runner for the agent
+    runner = InMemoryRunner(agent=agent)
+
+    # Create A2A executor wrapping the ADK runner
+    agent_executor = A2aAgentExecutor(runner=runner)
+
+    # Build agent card - note: agent is keyword-only, build() is async
+    rpc_url = f"http://{host}:{port}/a2a"
+    card_builder = AgentCardBuilder(agent=agent, rpc_url=rpc_url)
+
+    # Run async build in sync context
+    import asyncio
     try:
-        ports_file = Path(__file__).resolve().parent.parent / "ui_agent_ports.json"
-        if ports_file.exists():
-            data = json.loads(ports_file.read_text())
-            a2a_port = int(data.get("a2a_port", default_port))
-            return a2a_port
-    except Exception as e:
-        logger.debug(f"[Scheduler] UI ports file read failed: {e}")
-    return default_port
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
 
-async def send_to_ui_agent(message_data: dict):
-    """Send data to UI agent for dashboard updates (non-blocking async).
-
-    Uses SLIM transport when in SLIM mode, otherwise HTTP.
-    """
-    if _transport_config["mode"] == "slim":
-        await _send_to_ui_agent_slim(message_data)
+    if loop and loop.is_running():
+        # We're in an async context, create a task
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            agent_card = pool.submit(asyncio.run, card_builder.build()).result()
     else:
-        await _send_to_ui_agent_http(message_data)
+        agent_card = asyncio.run(card_builder.build())
 
-
-async def _send_to_ui_agent_http(message_data: dict):
-    """Send to UI agent via HTTP transport."""
-    port = _discover_ui_ports()
-    url = f"http://localhost:{port}/"
-    payload = {
-        "jsonrpc": "2.0",
-        "id": f"scheduler-ui-{int(time.time())}",
-        "method": "message/send",
-        "params": {
-            "message": {
-                "role": "user",
-                "parts": [{"kind": "text", "text": json.dumps(message_data)}],
-                "messageId": f"scheduler-msg-{int(time.time())}"
-            }
-        }
-    }
-    try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            response = await client.post(url, json=payload)
-        if response.status_code == 200:
-            logger.info(f"[Scheduler] Sent update to UI agent on port {port}")
-        else:
-            logger.warning(f"[Scheduler] UI agent POST returned {response.status_code} on port {port}")
-    except Exception as e:  # pragma: no cover - network failures are non-fatal
-        logger.warning(f"[Scheduler] Failed to send update to UI agent on port {port}: {e}")
-
-
-async def _send_to_ui_agent_slim(message_data: dict):
-    """Send to UI agent via SLIM transport.
-
-    Uses the same Slim app as the server to avoid "client already connected" errors.
-    """
-    from a2a.client.helpers import create_text_message_object
-
-    try:
-        # Get or create client factory using the shared slim_app
-        if _transport_config["slim_client_factory"] is None:
-            slim_app = _transport_config["slim_app"]
-            if slim_app is None:
-                logger.warning("[Scheduler] SLIM app not available, cannot send to UI agent")
-                return
-            # Create client factory from the existing slim_app (no new connection needed)
-            _transport_config["slim_client_factory"] = create_client_factory_from_app(slim_app)
-
-        client_factory = _transport_config["slim_client_factory"]
-
-        # UI agent's SLIM identity
-        ui_agent_slim_id = "agntcy/tourist_scheduling/ui-agent"
-        client = client_factory.create(card=minimal_slim_agent_card(ui_agent_slim_id))
-
-        # Send message
-        message = create_text_message_object(content=json.dumps(message_data))
-        async for response in client.send_message(message):
-            logger.debug(f"[Scheduler] UI agent SLIM response: {response}")
-            break  # Just need to send, don't wait for full response stream
-
-        logger.info(f"[Scheduler] Sent update to UI agent via SLIM")
-    except Exception as e:
-        logger.warning(f"[Scheduler] Failed to send update to UI agent via SLIM: {e}")
-
-
-def build_schedule(
-    tourist_requests: list[TouristRequest], guide_offers: list[GuideOffer]
-) -> list[Assignment]:
-    """
-    Greedy scheduling algorithm:
-    - For each tourist (sorted by earliest available time)
-    - Find guides that can accommodate them
-    - Assign to the guide with the best preference score
-    """
-    assignments = []
-    guide_capacity = {g.guide_id: g.max_group_size for g in guide_offers}
-    # Track bookings only for analytics; allow concurrent tourists per guide window up to capacity
-    guide_bookings: dict[str, list[Window]] = {g.guide_id: [] for g in guide_offers}
-
-    # Sort tourists by first available time
-    sorted_tourists = sorted(
-        tourist_requests,
-        key=lambda t: t.availability[0].start if t.availability else datetime.max
-    )
-
-    for tourist in sorted_tourists:
-        if not tourist.availability:
-            continue
-
-        best_guide = None
-        best_score = -1
-
-        for guide in guide_offers:
-            # Check capacity
-            if guide_capacity[guide.guide_id] <= 0:
-                continue
-
-            # Check budget
-            if tourist.budget < guide.hourly_rate:
-                continue
-
-            # Check if any tourist availability window overlaps with guide availability
-            has_overlap = False
-            for tourist_window in tourist.availability:
-                if (tourist_window.start <= guide.available_window.start and
-                    tourist_window.end >= guide.available_window.end):
-                    has_overlap = True
-                    break
-
-            if not has_overlap:
-                continue
-
-            # Removed conflict exclusion: allow overlapping usage while capacity>0
-
-            # Calculate preference score
-            score = sum(
-                1 for cat in tourist.preferences if cat in guide.categories
-            )
-
-            if score > best_score:
-                best_score = score
-                best_guide = guide
-
-        if best_guide:
-            assignment = Assignment(
-                tourist_id=tourist.tourist_id,
-                guide_id=best_guide.guide_id,
-                time_window=best_guide.available_window,
-                categories=best_guide.categories,
-                total_cost=best_guide.hourly_rate
-                * (
-                    (
-                        best_guide.available_window.end
-                        - best_guide.available_window.start
-                    ).total_seconds()
-                    / 3600
-                ),
-            )
-            assignments.append(assignment)
-
-            guide_capacity[best_guide.guide_id] -= 1
-            guide_bookings[best_guide.guide_id].append(best_guide.available_window)
-
-    return assignments
-
-
-class SchedulerAgentExecutor(AgentExecutor):
-    """Executes scheduler logic when messages arrive via A2A protocol"""
-
-    async def execute(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> None:
-        """Process incoming A2A messages"""
-        logger.info(f"[Scheduler] Received task: {context.task_id}")
-
-        # Create or get task
-        task = context.current_task
-        if not task:
-            if not context.message:
-                logger.error("[Scheduler] No message in context")
-                return
-            task = new_task(context.message)
-            await event_queue.enqueue_event(task)
-
-        # Create task updater for publishing events
-        updater = TaskUpdater(event_queue, task.id, task.context_id)
-
-        # Extract message content (prefer DataPart for automatic JSON decoding)
-        message_data = None
-        raw_text_fallback = None
-        if context.message and context.message.parts:
-            for part in context.message.parts:
-                try:
-                    root = part.root
-                    if isinstance(root, DataPart):
-                        # Already decoded dict provided by A2A layer
-                        message_data = root.data
-                        break
-                    if isinstance(root, TextPart):
-                        raw_text_fallback = root.text
-                        # Don't break; continue in case a DataPart also exists
-                except Exception as e:
-                    logger.debug(f"[Scheduler] Part inspection failed: {e}")
-
-        if message_data is None and raw_text_fallback is not None:
-            try:
-                message_data = json.loads(raw_text_fallback)
-            except json.JSONDecodeError as e:
-                logger.error(f"[Scheduler] Failed to decode TextPart JSON: {e}")
-                await updater.update_status(
-                    TaskState.failed,
-                    message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]),
-                )
-                return
-
-        if message_data is None:
-            logger.warning("[Scheduler] No usable DataPart or decodable TextPart in message")
-            await updater.complete()
-            return
-
-        try:
-            # Update status to working
-            await updater.update_status(
-                TaskState.working,
-                message=updater.new_agent_message([Part(root=TextPart(text="Processing message..."))])
-            )
-
-            # Message already decoded (DataPart) or parsed from TextPart fallback
-            data = message_data
-            message_type = data.get("type")
-
-            if message_type == "TouristRequest":
-                request = TouristRequest.from_dict(data)
-                state.tourist_requests.append(request)
-                logger.info(
-                    f"[Scheduler] Stored TouristRequest from {request.tourist_id}"
-                )
-
-                # Send tourist request to UI agent
-                await send_to_ui_agent(request.to_dict())
-
-                # Build schedule after receiving request
-                assignments = build_schedule(
-                    state.tourist_requests, state.guide_offers
-                )
-                state.assignments = assignments
-
-                # Send proposal back to tourist
-                tourist_assignments = [
-                    a for a in assignments if a.tourist_id == request.tourist_id
-                ]
-                proposal = ScheduleProposal(
-                    proposal_id=f"proposal-{request.tourist_id}-{int(time.time())}",
-                    assignments=tourist_assignments
-                )
-
-                # Include type field for downstream agents (UI, tourist) to identify the message
-                proposal_dict = proposal.to_dict()
-                proposal_dict["type"] = "ScheduleProposal"
-
-                # Send proposal to UI agent
-                await send_to_ui_agent(proposal_dict)
-
-                # Send response as structured DataPart artifact (avoids downstream JSON parsing)
-                await updater.add_artifact(
-                    [Part(root=DataPart(data=proposal_dict))],
-                    name="schedule_proposal"
-                )
-                logger.info(
-                    f"[Scheduler] Sent ScheduleProposal with {len(tourist_assignments)} assignments"
-                )
-
-            elif message_type == "GuideOffer":
-                offer = GuideOffer.from_dict(data)
-                state.guide_offers.append(offer)
-                logger.info(
-                    f"[Scheduler] Stored GuideOffer from {offer.guide_id}"
-                )
-
-                # Send guide offer to UI agent
-                await send_to_ui_agent(offer.to_dict())
-
-                # Acknowledge receipt
-                ack_message = {
-                    "type": "Acknowledgment",
-                    "message": f"Guide {offer.guide_id} registered",
-                    "guide_id": offer.guide_id,
-                    "timestamp": int(time.time()),
-                }
-                await updater.add_artifact(
-                    [Part(root=DataPart(data=ack_message))],
-                    name="guide_acknowledgment"
-                )
-
-            else:
-                logger.warning(f"[Scheduler] Unknown message type: {message_type}")
-
-            # Complete the task
-            await updater.complete()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"[Scheduler] JSON decode error: {e}")
-            await updater.update_status(TaskState.failed, message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]))
-        except Exception as e:
-            logger.error(f"[Scheduler] Error processing message: {e}")
-            await updater.update_status(TaskState.failed, message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]))
-
-    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        """Cancel a task (required by AgentExecutor interface)"""
-        logger.info(f"[Scheduler] Canceling task: {context.task_id}")
-
-        task = context.current_task
-        if not task:
-            return
-
-        updater = TaskUpdater(event_queue, task.id, task.context_id)
-        await updater.cancel()
-
-
-@click.command()
-@click.option("--host", default="localhost", help="Server host")
-@click.option("--port", default=10000, type=int, help="Server port")
-@click.option("--transport", default="http", type=click.Choice(["http", "slim"]), help="Transport protocol")
-@click.option("--slim-endpoint", default=None, help="SLIM node endpoint (default: from env or localhost:46357)")
-@click.option("--slim-local-id", default=None, help="SLIM local agent ID")
-def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str):
-    """Start the Scheduler A2A server"""
-    logger.info(f"[Scheduler] Starting A2A server on {host}:{port} (transport: {transport})")
-
-    # Define scheduler agent capabilities split into two focused skills
-    skill_matching = AgentSkill(
-        id="tourist_matching",
-        name="Tourist Guide Matching",
-        description="Matches tourists with tour guides based on availability, budget, and preferences",
-        tags=["scheduling", "matching", "tourist", "guide"],
-        examples=[
-            '{"type": "TouristRequest", "tourist_id": "t-123", "availability": [{"start": "2025-11-06T09:00:00", "end": "2025-11-06T17:00:00"}], "budget": 150.0, "preferences": ["culture", "history"]}',
-            "Produces ScheduleProposal artifacts containing matched Assignment entries"
-        ],
-    )
-    skill_offer_collection = AgentSkill(
-        id="guide_offer_collection",
-        name="Guide Offer Collection",
-        description="Receives guide offers and stores them for future tourist request matching",
-        tags=["offers", "guide", "availability", "pricing"],
-        examples=[
-            '{"type": "GuideOffer", "guide_id": "g-42", "categories": ["culture", "art"], "available_window": {"start": "2025-11-07T10:00:00", "end": "2025-11-07T16:00:00"}, "hourly_rate": 85.0, "max_group_size": 6}',
-            "Acknowledges GuideOffer with an Acknowledgment artifact"
-        ],
-    )
-
-    agent_card = AgentCard(
-        name="Scheduler Agent",
-        description="Multi-agent tourist scheduling coordinator using greedy algorithm",
-        url=f"http://{host}:{port}/",
-        version="1.0.0",
-        default_input_modes=["text"],
-        default_output_modes=["text"],
-        capabilities=AgentCapabilities(streaming=False),
-    skills=[skill_matching, skill_offer_collection],
-    )
-
+    # Create request handler
     request_handler = DefaultRequestHandler(
-        agent_executor=SchedulerAgentExecutor(),
+        agent_executor=agent_executor,
         task_store=InMemoryTaskStore(),
     )
 
-    if transport == "slim":
-        # Start SLIM transport server
-        if not check_slim_available():
-            logger.error("[Scheduler] SLIM transport requested but slimrpc/slima2a not installed")
-            logger.error("[Scheduler] Install with: uv pip install slima2a")
+    return agent_card, request_handler
+
+
+async def run_console_demo():
+    """Run a console demo of the scheduler agent."""
+    # Import ADK runner at runtime
+    from google.adk.runners import InMemoryRunner
+
+    print("=" * 60)
+    print("ADK Scheduler Agent - Console Demo")
+    print("=" * 60)
+
+    runner = InMemoryRunner(agent=get_scheduler_agent())
+
+    # Demo messages
+    demo_messages = [
+        "Register tourist t1 with availability from 2025-06-01T09:00:00 to 2025-06-01T17:00:00, preferences for culture and history, budget $100/hour",
+        "Register guide g1 specializing in culture and history, available 2025-06-01T10:00:00 to 2025-06-01T14:00:00, rate $50/hour, max 5 tourists",
+        "What's the current scheduler status?",
+        "Run the scheduling algorithm to match tourists with guides",
+    ]
+
+    for message in demo_messages:
+        print(f"\n>> User: {message}")
+
+        events = await runner.run_debug(
+            user_messages=message,
+            quiet=True,
+        )
+
+        # Extract agent response
+        for event in events:
+            if hasattr(event, 'content') and event.content:
+                for part in event.content.parts:
+                    if hasattr(part, 'text'):
+                        print(f"<< Agent: {part.text}")
+
+    print("\n" + "=" * 60)
+    print("Demo complete!")
+
+
+@click.command()
+@click.option("--mode", type=click.Choice(["console", "a2a"]), default="console",
+              help="Run mode: console demo or A2A server")
+@click.option("--port", default=10000, help="Port for A2A server")
+@click.option("--host", default="localhost", help="Host for A2A server")
+@click.option("--transport", type=click.Choice(["http", "slim"]), default="http",
+              help="Transport protocol: http or slim")
+@click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
+@click.option("--slim-local-id", default=None, help="SLIM local agent ID")
+def main(mode: str, port: int, host: str, transport: str, slim_endpoint: str, slim_local_id: str):
+    """Run the ADK-based scheduler agent."""
+    logging.basicConfig(level=logging.INFO)
+
+    if mode == "console":
+        asyncio.run(run_console_demo())
+    elif transport == "slim":
+        # SLIM transport mode
+        if not SLIM_AVAILABLE:
+            logger.error("[ADK Scheduler] SLIM transport requested but slimrpc/slima2a not installed")
+            logger.error("[ADK Scheduler] Install with: uv pip install slima2a")
             raise SystemExit(1)
 
-        # Load SLIM config from env or CLI options
+        # Load SLIM config
         slim_config = config_from_env(prefix="SCHEDULER_")
         if slim_endpoint:
             slim_config.endpoint = slim_endpoint
         if slim_local_id:
             slim_config.local_id = slim_local_id
         else:
-            slim_config.local_id = f"agntcy/tourist_scheduling/scheduler"
+            slim_config.local_id = "agntcy/tourist_scheduling/adk_scheduler"
 
-        logger.info(f"[Scheduler] SLIM endpoint: {slim_config.endpoint}")
-        logger.info(f"[Scheduler] SLIM local ID: {slim_config.local_id}")
+        logger.info(f"[ADK Scheduler] Starting with SLIM transport")
+        logger.info(f"[ADK Scheduler] SLIM endpoint: {slim_config.endpoint}")
+        logger.info(f"[ADK Scheduler] SLIM local ID: {slim_config.local_id}")
 
-        # Set global transport config for UI agent notifications
-        _transport_config["mode"] = "slim"
-        _transport_config["slim_config"] = slim_config
-        # slim_app will be set after server starts - we share the server's Slim app
-        # slimrpc only allows ONE connected Slim app per process
-        _transport_config["slim_app"] = None
+        # Create A2A components
+        agent_card, request_handler = create_scheduler_a2a_components(host=host, port=port)
 
-        # Create SLIM server start function
+        # Create SLIM server
         start_server = create_slim_server(slim_config, agent_card, request_handler)
 
         async def run_slim_server():
-            logger.info("[Scheduler] Starting SLIM transport server...")
-            # start_server() now returns (server, local_app, server_task) tuple
+            logger.info("[ADK Scheduler] Starting SLIM server...")
             server, local_app, server_task = await start_server()
-            # Store the Slim app for reuse by UI notifier client
-            _transport_config["slim_app"] = local_app
-            logger.info("[Scheduler] SLIM server running, Slim app shared for UI notifications")
-            logger.info("[Scheduler] Press Ctrl+C to stop")
+            logger.info("[ADK Scheduler] SLIM server running")
 
-            # Wait for server task - it has internal resilience so we just await it
+            tasks = [server_task]
+
+            # Also start HTTP server for local API access (simulation, dashboard, etc.)
+            import uvicorn
+            http_app = create_scheduler_app(host=host, port=port)
+            http_config = uvicorn.Config(
+                http_app,
+                host=host,
+                port=port,
+                log_level="warning",
+            )
+            http_server = uvicorn.Server(http_config)
+            http_task = asyncio.create_task(http_server.serve())
+            tasks.append(http_task)
+            logger.info(f"[ADK Scheduler] HTTP server also running at http://{host}:{port}")
+            logger.info("[ADK Scheduler] Press Ctrl+C to stop")
+
             try:
-                await server_task
+                await asyncio.gather(*tasks)
             except asyncio.CancelledError:
-                logger.info("[Scheduler] SLIM server cancelled")
+                logger.info("[ADK Scheduler] Servers cancelled")
             except Exception as e:
-                logger.error(f"[Scheduler] SLIM server exited with error: {e}")
+                logger.error(f"[ADK Scheduler] Server error: {e}")
 
         try:
             asyncio.run(run_slim_server())
         except KeyboardInterrupt:
-            logger.info("[Scheduler] Shutting down SLIM server...")
+            logger.info("[ADK Scheduler] Shutting down...")
     else:
-        # Start HTTP transport server (default)
-        server = A2AStarletteApplication(
-            agent_card=agent_card, http_handler=request_handler
-        )
+        # HTTP transport mode (default)
+        import uvicorn
 
-        # Build underlying Starlette app and inject a lightweight /health endpoint for launcher scripts
-        app = server.build()
-        try:
-            from starlette.responses import JSONResponse  # provided by a2a-sdk[http-server] extras
-            from starlette.routing import Route
+        print(f"Starting ADK Scheduler Agent on {host}:{port}")
+        print(f"A2A endpoint: http://{host}:{port}/")
 
-            def health(request):  # type: ignore
-                return JSONResponse({"status": "ok", "timestamp": int(time.time())})
-
-            # Only add if not already present
-            if not any(getattr(r, "path", None) == "/health" for r in app.router.routes):
-                app.router.routes.append(Route("/health", endpoint=health, methods=["GET"]))
-                logger.info("[Scheduler] Added /health endpoint")
-        except Exception as e:
-            logger.warning(f"[Scheduler] Failed to add /health endpoint: {e}")
-
-        logger.info("[Scheduler] Agent card configured, starting uvicorn...")
+        app = create_scheduler_app(host=host, port=port)
         uvicorn.run(app, host=host, port=port)
 
 

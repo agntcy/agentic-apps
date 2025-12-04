@@ -8,11 +8,25 @@
 #   2. Start scheduler: uv run python src/agents/scheduler_agent.py --transport slim
 #   3. Start guides: uv run python src/agents/autonomous_guide_server.py --transport slim
 #   4. Start tourists: uv run python src/agents/autonomous_tourist_server.py --transport slim
+#
+# To enable OpenTelemetry tracing, set the OTEL_COLLECTOR_ENDPOINT environment variable
+# and pass it to docker: docker run -e OTEL_COLLECTOR_ENDPOINT=http://host:4317 ...
 
 tracing:
   log_level: "info"
-  opentelemetry:
-    enabled: false
+  display_thread_names: true
+  display_thread_ids: false
+  # OpenTelemetry configuration - enable when collector is available
+  # opentelemetry:
+  #   enabled: true
+  #   service_name: "slim-tourist-scheduling"
+  #   service_version: "v1.0.0"
+  #   environment: "development"
+  #   metrics_interval_secs: 30
+  #   grpc:
+  #     endpoint: "http://otel-collector:4317"
+  #     tls:
+  #       insecure: true
 
 runtime:
   n_cores: 4

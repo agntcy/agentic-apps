@@ -1,44 +1,30 @@
 {
-  "name": "agntcy/tourist_scheduling_system/tourist_agent",
-  "version": "v1.0.0",
-  "schema_version": "v0.3.1",
-  "description": "Non-autonomous tourist A2A client that submits a static TouristRequest (availability, preferences, budget) and parses streamed ScheduleProposal artifacts from the scheduler.",
-  "authors": ["AGNTCY Contributors"],
-  "annotations": {"type": "a2a-client"},
-  "created_at": "2025-11-06T12:14:00Z",
+  "protocolVersion": "0.3.0",
+  "name": "Tourist Agent",
+  "description": "LLM-powered tourist agent that requests tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable preferences, budgets, and availability.",
+  "url": "dynamic",
+  "preferredTransport": "JSONRPC",
+  "version": "2.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
   "skills": [
-    {"category_name": "Natural Language Processing", "category_uid": 1, "class_name": "Contextual Comprehension", "class_uid": 10101},
-    {"category_name": "Natural Language Processing", "category_uid": 1, "class_name": "Problem Solving", "class_uid": 10702}
-  ],
-  "capabilities": [
-    "Construct static TouristRequest message",
-    "Stream and inspect task artifacts/history",
-    "Extract ScheduleProposal assignments",
-    "Demonstrate DataPart vs TextPart parsing"
-  ],
-  "locators": [
-    {"type": "source-code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/tourist_agent.py"},
-    {"type": "python-package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
-  ],
-  "extensions": [
     {
-      "name": "schema.oasf.agntcy.org/features/runtime/framework",
-      "version": "v0.0.0",
-      "data": {
-        "sbom": {
-          "name": "multi-agent-tourist-scheduling-system",
-          "packages": [
-            {"name": "a2a-sdk", "version": ">=0.3.0"},
-            {"name": "pydantic", "version": ">=2.5.0"},
-            {"name": "click", "version": ">=8.0.0"}
-          ]
-        }
-      }
-    },
-    {
-      "name": "schema.oasf.agntcy.org/features/runtime/language",
-      "version": "v0.0.0",
-      "data": {"type": "python", "version": ">=3.10,<4.0"}
+      "id": "request_tour",
+      "name": "Request Tour",
+      "description": "Submits a tour request to the scheduler with availability windows, budget constraints, and category preferences.",
+      "tags": ["tourist", "request", "booking", "preferences"],
+      "examples": [
+        "Request a culture tour for tomorrow with budget of $100/hour",
+        "Book a food and wine experience for the afternoon"
+      ],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
     }
-  ]
+  ],
+  "supportsAuthenticatedExtendedCard": false
 }

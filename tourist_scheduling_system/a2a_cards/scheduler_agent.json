@@ -1,13 +1,13 @@
 {
   "protocolVersion": "0.3.0",
-  "name": "Scheduler Agent",
-  "description": "Central scheduling coordinator A2A server that ingests TouristRequest and GuideOffer messages, matches tourists to guides via a greedy algorithm, and emits ScheduleProposal artifacts plus acknowledgments.",
-  "url": "http://localhost:10000/",
+  "name": "Tourist Scheduling Coordinator",
+  "description": "Central scheduling coordinator that matches tourists with tour guides. Built with Google ADK and Azure OpenAI via LiteLLM. Receives tourist requests and guide offers, runs a greedy matching algorithm considering preferences, budgets, and availability.",
+  "url": "http://localhost:10010/",
   "preferredTransport": "JSONRPC",
   "additionalInterfaces": [
-    {"url": "http://localhost:10000/", "transport": "JSONRPC"}
+    {"url": "http://localhost:10010/", "transport": "JSONRPC"}
   ],
-  "version": "1.0.0",
+  "version": "2.0.0",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -17,28 +17,52 @@
   "defaultOutputModes": ["application/json", "text/plain"],
   "skills": [
     {
-      "id": "tourist_matching",
-      "name": "Tourist Guide Matching",
-      "description": "Matches tourists with tour guides based on availability, budget, and preferences.",
-      "tags": ["scheduling", "matching", "tourist", "guide"],
+      "id": "register_tourist",
+      "name": "Register Tourist Request",
+      "description": "Registers a tourist's tour request with their availability windows, budget constraints, and category preferences (culture, food, history, adventure, etc.).",
+      "tags": ["tourist", "registration", "booking", "preferences"],
       "examples": [
-        "{\"type\": \"TouristRequest\", \"tourist_id\": \"t-123\", \"availability\": [{\"start\": \"2025-11-06T09:00:00\", \"end\": \"2025-11-06T17:00:00\"}], \"budget\": 150.0, \"preferences\": [\"culture\", \"history\"]}",
-        "Produces ScheduleProposal artifacts containing matched Assignment entries"
+        "Register tourist alice with availability from 2025-06-01T09:00:00 to 2025-06-01T17:00:00, preferences for culture and history, budget $80/hour",
+        "Add tourist bob interested in food and wine tours, available tomorrow morning, max budget $120/hour"
       ],
-      "inputModes": ["application/json", "text/plain"],
-      "outputModes": ["application/json", "text/plain"]
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"]
     },
     {
-      "id": "guide_offer_collection",
-      "name": "Guide Offer Collection",
-      "description": "Receives guide offers and stores them for future tourist request matching.",
-      "tags": ["offers", "guide", "availability", "pricing"],
+      "id": "register_guide",
+      "name": "Register Guide Offer",
+      "description": "Registers a tour guide's availability, hourly rate, specialization categories, and maximum group size.",
+      "tags": ["guide", "registration", "availability", "pricing"],
       "examples": [
-        "{\"type\": \"GuideOffer\", \"guide_id\": \"g-42\", \"categories\": [\"culture\", \"art\"], \"available_window\": {\"start\": \"2025-11-07T10:00:00\", \"end\": \"2025-11-07T16:00:00\"}, \"hourly_rate\": 85.0, \"max_group_size\": 6}",
-        "Acknowledges GuideOffer with an Acknowledgment artifact"
+        "Register guide marco specializing in culture and history, available 2025-06-01T08:00:00 to 2025-06-01T16:00:00, rate $50/hour, max 4 tourists",
+        "Add guide florence offering food and wine tours at $75/hour, available afternoons"
       ],
-      "inputModes": ["application/json", "text/plain"],
-      "outputModes": ["application/json", "text/plain"]
+      "inputModes": ["text/plain", "application/json"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "run_scheduling",
+      "name": "Run Scheduling Algorithm",
+      "description": "Executes the greedy matching algorithm to pair tourists with compatible guides based on preference overlap, budget constraints, time availability, and guide capacity.",
+      "tags": ["scheduling", "matching", "algorithm", "optimization"],
+      "examples": [
+        "Run the scheduling algorithm to match tourists with guides",
+        "Execute matching for all pending requests"
+      ],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"]
+    },
+    {
+      "id": "get_status",
+      "name": "Get Schedule Status",
+      "description": "Returns current system state including registered tourists, guides, completed assignments, and scheduling statistics.",
+      "tags": ["status", "reporting", "monitoring"],
+      "examples": [
+        "What's the current scheduler status?",
+        "Show me all assignments and pending requests"
+      ],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain", "application/json"]
     }
   ],
   "supportsAuthenticatedExtendedCard": false

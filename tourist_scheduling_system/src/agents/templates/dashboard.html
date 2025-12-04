@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADK Tourist Scheduling Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Dark scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #525252;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            border-bottom: 1px solid #f97316;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #f97316;
+        }
+        .header-badge {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #34d399;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .transport-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .transport-http {
+            background: rgba(107, 114, 128, 0.3);
+            border: 1px solid #6b7280;
+            color: #d1d5db;
+        }
+        .transport-slim {
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid #f97316;
+            color: #fb923c;
+        }
+        .transport-icon {
+            font-size: 1.1rem;
+        }
+        .main {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #111111 100%);
+            padding: 1.25rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid #2a2a2a;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #f97316;
+            margin-bottom: 0.25rem;
+        }
+        .metric-label {
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .section {
+            background: linear-gradient(135deg, #1a1a1a 0%, #111111 100%);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid #2a2a2a;
+            overflow: hidden;
+        }
+        .section-header {
+            background: #0d0d0d;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f97316;
+        }
+        .section-content {
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .item {
+            padding: 0.75rem;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            background: #0d0d0d;
+        }
+        .item:last-child {
+            margin-bottom: 0;
+        }
+        .item-header {
+            font-weight: 600;
+            color: #e5e7eb;
+            margin-bottom: 0.25rem;
+        }
+        .item-details {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        .assignments-section {
+            grid-column: 1 / -1;
+        }
+        .assignment {
+            background: #1a2e1a;
+            border: 1px solid #2d4a2d;
+        }
+        .comm-log-section {
+            grid-column: 1 / -1;
+        }
+        .comm-event {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-left: 3px solid #404040;
+            margin-bottom: 0.5rem;
+            background: #0d0d0d;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.85rem;
+        }
+        .comm-event.http { border-left-color: #6b7280; }
+        .comm-event.slim { border-left-color: #f97316; }
+        .comm-time {
+            font-size: 0.7rem;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+        .comm-icon {
+            font-size: 1rem;
+        }
+        .comm-content {
+            flex: 1;
+        }
+        .comm-agents {
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+        .comm-arrow { color: #6b7280; margin: 0 0.25rem; }
+        .comm-summary {
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-online {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        .status-offline {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        /* Network Topology Section */
+        .topology-section {
+            background: linear-gradient(135deg, #1a1a1a 0%, #111111 100%);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid #2a2a2a;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .topology-header {
+            background: #0d0d0d;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .topology-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f97316;
+        }
+        .topology-legend {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.8rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #9ca3af;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .legend-dot.http { background: #6b7280; }
+        .legend-dot.slim { background: #f97316; }
+        .legend-dot.scheduler { background: #fb923c; }
+        .topology-content {
+            padding: 1.5rem;
+            min-height: 200px;
+        }
+        .network-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            min-height: 280px;
+            position: relative;
+        }
+        .network-diagram.svg-topology {
+            display: block;
+            padding: 0;
+        }
+        .network-diagram.svg-topology svg {
+            display: block;
+            margin: 0 auto;
+        }
+        .svg-node {
+            transition: filter 0.2s;
+        }
+        .svg-node:hover {
+            filter: brightness(1.2) drop-shadow(0 0 8px rgba(249, 115, 22, 0.5));
+        }
+        .svg-node circle {
+            transition: stroke-width 0.15s;
+        }
+        .svg-node:hover circle {
+            stroke-width: 3;
+        }
+        .conn-line {
+            transition: stroke-width 0.15s;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center;">
+            <h1>🗺️ Tourist Scheduling Dashboard</h1>
+            <span class="header-badge">ADK Powered</span>
+        </div>
+        <div class="header-right">
+            <div id="transport-badge" class="transport-badge transport-http">
+                <span class="transport-icon">🔗</span>
+                <span id="transport-label">HTTP</span>
+            </div>
+            <div id="connection-status" class="status status-online">● Connected</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="total-tourists">0</div>
+                <div class="metric-label">Tourists</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-guides">0</div>
+                <div class="metric-label">Guides</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-assignments">0</div>
+                <div class="metric-label">Assignments</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="satisfaction-rate">0%</div>
+                <div class="metric-label">Satisfaction</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="guide-utilization">0%</div>
+                <div class="metric-label">Utilization</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="avg-cost">$0</div>
+                <div class="metric-label">Avg Cost</div>
+            </div>
+        </div>
+
+        <!-- Network Topology -->
+        <div class="topology-section">
+            <div class="topology-header">
+                <div class="topology-title">🌐 Agent Communication Network</div>
+                <div class="topology-legend" id="topology-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot http"></div>
+                        <span>HTTP/A2A</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot slim"></div>
+                        <span>SLIM (MLS)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#10b981;"></div>
+                        <span>WebSocket</span>
+                    </div>
+                </div>
+            </div>
+            <div class="topology-content">
+                <div class="network-diagram svg-topology" id="network-diagram">
+                    <!-- SVG Network topology will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Tourists -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">🧳 Tourist Requests</div>
+                </div>
+                <div class="section-content" id="tourists-list">
+                    <div class="item">No tourists yet</div>
+                </div>
+            </div>
+
+            <!-- Guides -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">🎯 Guide Offers</div>
+                </div>
+                <div class="section-content" id="guides-list">
+                    <div class="item">No guides yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communication Log -->
+        <div class="content-grid">
+            <div class="section comm-log-section">
+                <div class="section-header">
+                    <div class="section-title">📡 Communication Log</div>
+                </div>
+                <div class="section-content" id="comm-log">
+                    <div class="item" style="text-align: center; color: #9ca3af;">
+                        No communication events yet
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignments -->
+        <div class="content-grid">
+            <div class="section assignments-section">
+                <div class="section-header">
+                    <div class="section-title">✅ Current Assignments</div>
+                </div>
+                <div class="section-content" id="assignments-list">
+                    <div class="item">No assignments yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentTransport = 'http';
+        const commEvents = [];
+        const touristsState = new Map();
+        const guidesState = new Map();
+
+        // WebSocket connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        const statusEl = document.getElementById('connection-status');
+
+        ws.onopen = () => {
+            statusEl.textContent = '● Connected';
+            statusEl.className = 'status status-online';
+        };
+
+        ws.onclose = () => {
+            statusEl.textContent = '● Disconnected';
+            statusEl.className = 'status status-offline';
+            // Try to reconnect after 2 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            statusEl.textContent = '● Error';
+            statusEl.className = 'status status-offline';
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.type === 'keepalive') return;
+
+            if (message.type === 'initial_state') {
+                updateFullState(message.data);
+            } else if (message.type === 'tourist_request') {
+                addTourist(message.data);
+            } else if (message.type === 'guide_offer') {
+                addGuide(message.data);
+            } else if (message.type === 'assignment') {
+                addAssignment(message.data);
+            } else if (message.type === 'metrics') {
+                updateMetrics(message.data);
+            } else if (message.type === 'communication_event') {
+                addCommEvent(message.data);
+            }
+        };
+
+        function updateFullState(state) {
+            // Update transport mode
+            if (state.transport_mode) {
+                updateTransportBadge(state.transport_mode);
+            }
+
+            // Update tourists FIRST (before metrics so topology has data)
+            if (state.tourist_requests) {
+                state.tourist_requests.forEach(t => addTourist(t, true));
+            }
+
+            // Update guides FIRST (before metrics so topology has data)
+            if (state.guide_offers) {
+                state.guide_offers.forEach(g => addGuide(g, true));
+            }
+
+            // Update assignments
+            if (state.assignments) {
+                updateAssignmentsList(state.assignments);
+            }
+
+            // Update communication events
+            if (state.communication_events) {
+                state.communication_events.forEach(evt => addCommEvent(evt, true));
+            }
+
+            // Update metrics (this may trigger topology render)
+            updateMetrics(state.metrics || {});
+
+            // Explicitly render network topology after all state is loaded
+            renderNetworkTopology();
+        }
+
+        function updateTransportBadge(transport) {
+            currentTransport = transport;
+            const badge = document.getElementById('transport-badge');
+            const label = document.getElementById('transport-label');
+
+            if (transport === 'slim') {
+                badge.className = 'transport-badge transport-slim';
+                label.textContent = 'SLIM';
+                document.querySelector('.transport-icon').textContent = '🔄';
+            } else {
+                badge.className = 'transport-badge transport-http';
+                label.textContent = 'HTTP';
+                document.querySelector('.transport-icon').textContent = '🔗';
+            }
+        }
+
+        function addTourist(t, silent = false) {
+            if (!t || !t.tourist_id) return;
+            touristsState.set(t.tourist_id, t);
+            renderTourists();
+            if (!silent) updateMetricsFromState();
+        }
+
+        function addGuide(g, silent = false) {
+            if (!g || !g.guide_id) return;
+            guidesState.set(g.guide_id, g);
+            renderGuides();
+            if (!silent) updateMetricsFromState();
+        }
+
+        function addAssignment(a) {
+            // Append to assignments list
+            const container = document.getElementById('assignments-list');
+            if (container.querySelector('.item:not(.assignment)')) {
+                container.innerHTML = '';
+            }
+            const html = `
+                <div class="item assignment">
+                    <div class="item-header">${a.tourist_id} ↔ ${a.guide_id}</div>
+                    <div class="item-details">
+                        Cost: $${(a.total_cost || 0).toFixed(0)} |
+                        Categories: ${(a.categories || []).join(', ')} |
+                        Window: ${a.time_window ? formatWindow(a.time_window) : 'N/A'}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        function renderTourists() {
+            const container = document.getElementById('tourists-list');
+            if (touristsState.size === 0) {
+                container.innerHTML = '<div class="item">No tourists yet</div>';
+                return;
+            }
+            const items = Array.from(touristsState.values());
+            container.innerHTML = items.map(t => `
+                <div class="item">
+                    <div class="item-header">${t.tourist_id}</div>
+                    <div class="item-details">
+                        Budget: $${t.budget || 'N/A'} |
+                        Preferences: ${(t.preferences || []).join(', ')} |
+                        Window: ${t.availability ? formatWindow(t.availability) : 'N/A'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderGuides() {
+            const container = document.getElementById('guides-list');
+            if (guidesState.size === 0) {
+                container.innerHTML = '<div class="item">No guides yet</div>';
+                return;
+            }
+            const items = Array.from(guidesState.values());
+            container.innerHTML = items.map(g => `
+                <div class="item">
+                    <div class="item-header">${g.guide_id}</div>
+                    <div class="item-details">
+                        Rate: $${g.hourly_rate || 'N/A'}/hr |
+                        Categories: ${(g.categories || []).join(', ')} |
+                        Max: ${g.max_group_size || 'N/A'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateAssignmentsList(assignments) {
+            const container = document.getElementById('assignments-list');
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = '<div class="item">No assignments yet</div>';
+                return;
+            }
+            container.innerHTML = assignments.map(a => `
+                <div class="item assignment">
+                    <div class="item-header">${a.tourist_id} ↔ ${a.guide_id}</div>
+                    <div class="item-details">
+                        Cost: $${(a.total_cost || 0).toFixed(0)} |
+                        Categories: ${(a.categories || []).join(', ')} |
+                        Window: ${a.time_window ? formatWindow(a.time_window) : 'N/A'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatWindow(w) {
+            if (!w) return 'N/A';
+            if (typeof w === 'string') return w;
+            if (w.start && w.end) {
+                const start = new Date(w.start);
+                const end = new Date(w.end);
+                return `${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`;
+            }
+            return 'N/A';
+        }
+
+        function addCommEvent(evt, silent = false) {
+            commEvents.unshift(evt);
+            if (commEvents.length > 20) commEvents.pop();
+            renderCommLog();
+        }
+
+        function renderCommLog() {
+            const container = document.getElementById('comm-log');
+            if (commEvents.length === 0) {
+                container.innerHTML = '<div class="item" style="text-align: center; color: #9ca3af;">No communication events yet</div>';
+                return;
+            }
+
+            container.innerHTML = commEvents.map(evt => {
+                const time = new Date(evt.timestamp).toLocaleTimeString();
+                const icon = '📨';
+                const transportClass = evt.transport || 'http';
+
+                return `
+                    <div class="comm-event ${transportClass}">
+                        <div class="comm-time">${time}</div>
+                        <div class="comm-icon">${icon}</div>
+                        <div class="comm-content">
+                            <div class="comm-agents">
+                                ${evt.source_agent}
+                                <span class="comm-arrow">→</span>
+                                ${evt.target_agent}
+                            </div>
+                            <div class="comm-summary">${evt.summary || evt.message_type}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateMetricsFromState() {
+            const tourists = touristsState.size;
+            const guides = guidesState.size;
+            const assignments = document.querySelectorAll('#assignments-list .assignment').length;
+            updateMetrics({
+                total_tourists: tourists,
+                total_guides: guides,
+                total_assignments: assignments,
+                satisfied_tourists: assignments,
+                guide_utilization: guides ? assignments / guides : 0,
+                avg_assignment_cost: 0
+            });
+        }
+
+        function updateMetrics(metrics) {
+            document.getElementById('total-tourists').textContent = metrics.total_tourists || 0;
+            document.getElementById('total-guides').textContent = metrics.total_guides || 0;
+            document.getElementById('total-assignments').textContent = metrics.total_assignments || 0;
+
+            const satisfactionRate = metrics.total_tourists > 0
+                ? Math.round((metrics.satisfied_tourists / metrics.total_tourists) * 100)
+                : 0;
+            document.getElementById('satisfaction-rate').textContent = satisfactionRate + '%';
+
+            document.getElementById('guide-utilization').textContent =
+                Math.round((metrics.guide_utilization || 0) * 100) + '%';
+
+            document.getElementById('avg-cost').textContent =
+                '$' + (metrics.avg_assignment_cost || 0).toFixed(0);
+
+            // Update network topology
+            renderNetworkTopology();
+        }
+
+        // ===== Interactive Network Topology with Drag & Drop =====
+        const nodePositions = new Map();  // Store node positions for dragging
+        let dragState = null;  // Current drag state
+        let currentNodes = [];  // Store current nodes for drag updates
+        let currentConnections = [];  // Store current connections for drag updates
+
+        function initNodePosition(node) {
+            // Initialize or restore position from saved state
+            if (nodePositions.has(node.id)) {
+                const saved = nodePositions.get(node.id);
+                node.x = saved.x;
+                node.y = saved.y;
+            } else {
+                nodePositions.set(node.id, { x: node.x, y: node.y });
+            }
+        }
+
+        function renderNetworkTopology() {
+            const container = document.getElementById('network-diagram');
+            const tourists = Array.from(touristsState.values());
+            const guides = Array.from(guidesState.values());
+            const isSlim = currentTransport === 'slim';
+
+            const width = 600;
+            const height = 320;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Build node list with initial positions
+            const nodes = [];
+            const connections = [];
+
+            if (isSlim) {
+                // SLIM topology: central hub
+                const slimNode = { id: 'slim', type: 'slim', icon: '🔄', label: 'SLIM', x: centerX, y: centerY - 30, radius: 35, fill: '#7c2d12', stroke: '#f97316' };
+                initNodePosition(slimNode);
+                nodes.push(slimNode);
+
+                const schedulerNode = { id: 'scheduler', type: 'scheduler', icon: '📊', label: 'Scheduler', x: centerX - 100, y: centerY + 80, radius: 30, fill: '#ea580c', stroke: '#fb923c' };
+                initNodePosition(schedulerNode);
+                nodes.push(schedulerNode);
+
+                const uiNode = { id: 'ui', type: 'ui', icon: '🖥️', label: 'UI Agent', x: centerX, y: centerY + 80, radius: 28, fill: '#2563eb', stroke: '#3b82f6' };
+                initNodePosition(uiNode);
+                nodes.push(uiNode);
+
+                const browserNode = { id: 'browser', type: 'browser', icon: '🌐', label: 'You', x: centerX, y: centerY + 160, radius: 24, fill: '#059669', stroke: '#10b981' };
+                initNodePosition(browserNode);
+                nodes.push(browserNode);
+
+                connections.push({ from: 'slim', to: 'scheduler', color: '#f97316', marker: 'arrow-slim' });
+                connections.push({ from: 'slim', to: 'ui', color: '#f97316', marker: 'arrow-slim' });
+                connections.push({ from: 'ui', to: 'browser', color: '#10b981', marker: 'arrow-ws' });
+
+                // Tourists around top
+                tourists.slice(0, 4).forEach((t, i) => {
+                    const angle = Math.PI + (Math.PI / 5) * (i + 1);
+                    const node = {
+                        id: t.tourist_id, type: 'tourist', icon: '🧳', label: t.tourist_id,
+                        x: centerX + Math.cos(angle) * 120,
+                        y: centerY - 30 + Math.sin(angle) * 80,
+                        radius: 24, fill: '#1e3a5f', stroke: '#3b82f6'
+                    };
+                    initNodePosition(node);
+                    nodes.push(node);
+                    connections.push({ from: 'slim', to: t.tourist_id, color: '#f97316', marker: 'arrow-slim' });
+                });
+
+                // Guides on right
+                guides.slice(0, 4).forEach((g, i) => {
+                    const node = {
+                        id: g.guide_id, type: 'guide', icon: '🎯', label: g.guide_id,
+                        x: centerX + 150,
+                        y: centerY - 60 + i * 45,
+                        radius: 24, fill: '#14532d', stroke: '#22c55e'
+                    };
+                    initNodePosition(node);
+                    nodes.push(node);
+                    connections.push({ from: 'slim', to: g.guide_id, color: '#f97316', marker: 'arrow-slim' });
+                });
+            } else {
+                // HTTP topology: scheduler as hub
+                const schedulerNode = { id: 'scheduler', type: 'scheduler', icon: '📊', label: 'Scheduler', x: centerX, y: centerY - 50, radius: 32, fill: '#78350f', stroke: '#fb923c' };
+                initNodePosition(schedulerNode);
+                nodes.push(schedulerNode);
+
+                const uiNode = { id: 'ui', type: 'ui', icon: '🖥️', label: 'UI Agent', x: centerX, y: centerY + 40, radius: 28, fill: '#312e81', stroke: '#818cf8' };
+                initNodePosition(uiNode);
+                nodes.push(uiNode);
+
+                const browserNode = { id: 'browser', type: 'browser', icon: '🌐', label: 'You', x: centerX, y: centerY + 130, radius: 24, fill: '#1f2937', stroke: '#9ca3af' };
+                initNodePosition(browserNode);
+                nodes.push(browserNode);
+
+                connections.push({ from: 'scheduler', to: 'ui', color: '#6b7280', marker: 'arrow-http' });
+                connections.push({ from: 'ui', to: 'browser', color: '#10b981', marker: 'arrow-ws' });
+
+                // Tourists on left
+                tourists.slice(0, 4).forEach((t, i) => {
+                    const node = {
+                        id: t.tourist_id, type: 'tourist', icon: '🧳', label: t.tourist_id,
+                        x: 90, y: 60 + i * 55,
+                        radius: 24, fill: '#1e3a5f', stroke: '#3b82f6'
+                    };
+                    initNodePosition(node);
+                    nodes.push(node);
+                    connections.push({ from: 'scheduler', to: t.tourist_id, color: '#6b7280', marker: 'arrow-http' });
+                });
+
+                // Guides on right
+                guides.slice(0, 4).forEach((g, i) => {
+                    const node = {
+                        id: g.guide_id, type: 'guide', icon: '🎯', label: g.guide_id,
+                        x: width - 90, y: 60 + i * 55,
+                        radius: 24, fill: '#14532d', stroke: '#22c55e'
+                    };
+                    initNodePosition(node);
+                    nodes.push(node);
+                    connections.push({ from: 'scheduler', to: g.guide_id, color: '#6b7280', marker: 'arrow-http' });
+                });
+            }
+
+            // Store for drag updates
+            currentNodes = nodes;
+            currentConnections = connections;
+
+            // Render SVG
+            let svg = `<svg width="${width}" height="${height}" class="topology-svg" style="cursor: default;">`;
+
+            // Defs for markers (arrowheads)
+            svg += `<defs>
+                <marker id="arrow-http" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L6,3 z" fill="#6b7280" />
+                </marker>
+                <marker id="arrow-slim" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L6,3 z" fill="#f97316" />
+                </marker>
+                <marker id="arrow-ws" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L6,3 z" fill="#10b981" />
+                </marker>
+            </defs>`;
+
+            // Draw connections first (behind nodes)
+            connections.forEach(conn => {
+                const from = nodes.find(n => n.id === conn.from);
+                const to = nodes.find(n => n.id === conn.to);
+                if (from && to) {
+                    const dx = to.x - from.x;
+                    const dy = to.y - from.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 1) return;
+                    const ratio1 = from.radius / dist;
+                    const ratio2 = (dist - to.radius - 5) / dist;
+                    svg += `<line class="conn-line" data-from="${conn.from}" data-to="${conn.to}"
+                            x1="${from.x + dx * ratio1}" y1="${from.y + dy * ratio1}"
+                            x2="${from.x + dx * ratio2}" y2="${from.y + dy * ratio2}"
+                            stroke="${conn.color}" stroke-width="2" marker-end="url(#${conn.marker})" />`;
+                }
+            });
+
+            // Draw nodes
+            nodes.forEach(n => {
+                svg += `<g class="svg-node" data-node-id="${n.id}" style="cursor: grab;">
+                    <circle cx="${n.x}" cy="${n.y}" r="${n.radius}" fill="${n.fill}" stroke="${n.stroke}" stroke-width="2" />
+                    <text x="${n.x}" y="${n.y - 4}" text-anchor="middle" font-size="16" dominant-baseline="middle">${n.icon}</text>
+                    <text x="${n.x}" y="${n.y + 14}" text-anchor="middle" font-size="9" fill="#e5e7eb" dominant-baseline="middle">${n.label}</text>
+                </g>`;
+            });
+
+            // Hint text
+            svg += `<text x="${width - 10}" y="${height - 10}" text-anchor="end" font-size="9" fill="#6b7280">Drag nodes to rearrange</text>`;
+
+            svg += '</svg>';
+            container.innerHTML = svg;
+
+            // Attach drag event listeners
+            attachDragListeners(container, width, height);
+        }
+
+        function attachDragListeners(container, width, height) {
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            svg.addEventListener('mousedown', (e) => {
+                const nodeGroup = e.target.closest('.svg-node');
+                if (!nodeGroup) return;
+                const nodeId = nodeGroup.dataset.nodeId;
+                const node = currentNodes.find(n => n.id === nodeId);
+                if (!node) return;
+
+                e.preventDefault();
+                dragState = {
+                    nodeId: nodeId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: node.x,
+                    origY: node.y
+                };
+                nodeGroup.style.cursor = 'grabbing';
+                svg.style.cursor = 'grabbing';
+            });
+
+            svg.addEventListener('mousemove', (e) => {
+                if (!dragState) return;
+                e.preventDefault();
+
+                const dx = e.clientX - dragState.startX;
+                const dy = e.clientY - dragState.startY;
+                let newX = dragState.origX + dx;
+                let newY = dragState.origY + dy;
+
+                // Clamp to SVG bounds
+                newX = Math.max(30, Math.min(width - 30, newX));
+                newY = Math.max(30, Math.min(height - 30, newY));
+
+                // Update node position
+                const node = currentNodes.find(n => n.id === dragState.nodeId);
+                if (node) {
+                    node.x = newX;
+                    node.y = newY;
+                    nodePositions.set(node.id, { x: newX, y: newY });
+
+                    // Update SVG elements directly for smooth dragging
+                    const nodeGroup = svg.querySelector(`.svg-node[data-node-id="${node.id}"]`);
+                    if (nodeGroup) {
+                        const circle = nodeGroup.querySelector('circle');
+                        const texts = nodeGroup.querySelectorAll('text');
+                        if (circle) {
+                            circle.setAttribute('cx', newX);
+                            circle.setAttribute('cy', newY);
+                        }
+                        if (texts[0]) {
+                            texts[0].setAttribute('x', newX);
+                            texts[0].setAttribute('y', newY - 4);
+                        }
+                        if (texts[1]) {
+                            texts[1].setAttribute('x', newX);
+                            texts[1].setAttribute('y', newY + 14);
+                        }
+                    }
+
+                    // Update connected lines
+                    updateConnectionLines(svg);
+                }
+            });
+
+            svg.addEventListener('mouseup', () => {
+                if (dragState) {
+                    const nodeGroup = svg.querySelector(`.svg-node[data-node-id="${dragState.nodeId}"]`);
+                    if (nodeGroup) nodeGroup.style.cursor = 'grab';
+                    svg.style.cursor = 'default';
+                    dragState = null;
+                }
+            });
+
+            svg.addEventListener('mouseleave', () => {
+                if (dragState) {
+                    svg.style.cursor = 'default';
+                    dragState = null;
+                }
+            });
+        }
+
+        function updateConnectionLines(svg) {
+            currentConnections.forEach(conn => {
+                const fromNode = currentNodes.find(n => n.id === conn.from);
+                const toNode = currentNodes.find(n => n.id === conn.to);
+                const line = svg.querySelector(`.conn-line[data-from="${conn.from}"][data-to="${conn.to}"]`);
+                if (fromNode && toNode && line) {
+                    const dx = toNode.x - fromNode.x;
+                    const dy = toNode.y - fromNode.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 1) return;
+                    const ratio1 = fromNode.radius / dist;
+                    const ratio2 = (dist - toNode.radius - 5) / dist;
+                    line.setAttribute('x1', fromNode.x + dx * ratio1);
+                    line.setAttribute('y1', fromNode.y + dy * ratio1);
+                    line.setAttribute('x2', fromNode.x + dx * ratio2);
+                    line.setAttribute('y2', fromNode.y + dy * ratio2);
+                }
+            });
+        }
+
+        // Initial render
+        renderNetworkTopology();
+    </script>
+</body>
+</html>

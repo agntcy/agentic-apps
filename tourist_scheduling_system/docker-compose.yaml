@@ -1,0 +1,66 @@
+# Docker Compose for Tourist Scheduling System Infrastructure
+#
+# This file defines the container infrastructure for the tourist scheduling demo.
+# Use this for easier management of SLIM and Jaeger containers.
+#
+# Usage:
+#   docker-compose up -d                    # Start all services
+#   docker-compose up -d slim               # Start SLIM only
+#   docker-compose up -d jaeger             # Start Jaeger only
+#   docker-compose down                     # Stop all services
+#   docker-compose logs -f slim             # View SLIM logs
+#   docker-compose logs -f jaeger           # View Jaeger logs
+#
+# Then run the agents:
+#   ./start.sh --agent-type adk --transport slim --tracing
+
+version: '3.8'
+
+services:
+  # SLIM Data Plane Node
+  slim:
+    image: ghcr.io/agntcy/slim:latest
+    container_name: slim-node
+    ports:
+      - "${SLIM_PORT:-46357}:46357"
+    volumes:
+      - ./slim-config.yaml:/config.yaml:ro
+    command: ["/slim", "-c", "/config.yaml"]
+    restart: unless-stopped
+    networks:
+      - tourist-net
+
+  # SLIM with OpenTelemetry enabled
+  slim-otel:
+    image: ghcr.io/agntcy/slim:latest
+    container_name: slim-node-otel
+    ports:
+      - "${SLIM_PORT:-46357}:46357"
+    volumes:
+      - ./slim-config-otel.yaml:/config.yaml:ro
+    command: ["/slim", "-c", "/config.yaml"]
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+    networks:
+      - tourist-net
+    profiles:
+      - tracing
+
+  # Jaeger All-in-One for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger-tracing
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"      # Jaeger UI
+      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC
+      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - tourist-net
+
+networks:
+  tourist-net:
+    driver: bridge
