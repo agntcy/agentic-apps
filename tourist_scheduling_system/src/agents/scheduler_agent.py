@@ -151,6 +151,7 @@ def create_scheduler_app(host: str = "localhost", port: int = 10000):
 
     This uses ADK's to_a2a() utility to expose the agent via the A2A protocol,
     making it compatible with existing a2a-sdk clients.
+    Uses the agent card from a2a_cards/scheduler_agent.json.
 
     Args:
         host: Host for the A2A RPC URL
@@ -162,11 +163,17 @@ def create_scheduler_app(host: str = "localhost", port: int = 10000):
     # Import ADK components at runtime
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_scheduler_card
+    agent_card = get_scheduler_card(host=host, port=port)
+    logger.info(f"[ADK Scheduler] Using agent card: {agent_card.name} v{agent_card.version}")
+
     return to_a2a(
         get_scheduler_agent(),
         host=host,
         port=port,
         protocol="http",
+        agent_card=agent_card,
     )
 
 
@@ -175,7 +182,7 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
     Create A2A components for the scheduler agent (for SLIM transport).
 
     Returns the AgentCard and DefaultRequestHandler that can be used
-    with SLIM transport.
+    with SLIM transport. Uses the agent card from a2a_cards/scheduler_agent.json.
 
     Args:
         host: Host for the A2A RPC URL
@@ -186,10 +193,13 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
     """
     from google.adk.runners import InMemoryRunner
     from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
-    from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
     from a2a.server.request_handlers import DefaultRequestHandler
     from a2a.server.tasks import InMemoryTaskStore
-    from a2a.types import AgentCapabilities, AgentSkill
+
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_scheduler_card
+    agent_card = get_scheduler_card(host=host, port=port)
+    logger.info(f"[ADK Scheduler] Loaded agent card: {agent_card.name} v{agent_card.version}")
 
     agent = get_scheduler_agent()
 
@@ -198,25 +208,6 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
 
     # Create A2A executor wrapping the ADK runner
     agent_executor = A2aAgentExecutor(runner=runner)
-
-    # Build agent card - note: agent is keyword-only, build() is async
-    rpc_url = f"http://{host}:{port}/a2a"
-    card_builder = AgentCardBuilder(agent=agent, rpc_url=rpc_url)
-
-    # Run async build in sync context
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        # We're in an async context, create a task
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            agent_card = pool.submit(asyncio.run, card_builder.build()).result()
-    else:
-        agent_card = asyncio.run(card_builder.build())
 
     # Create request handler
     request_handler = DefaultRequestHandler(

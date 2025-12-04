@@ -457,6 +457,7 @@ Be helpful and provide clear, concise summaries of the scheduling system state."
 def create_ui_app(host: str = "0.0.0.0", port: int = 10011):
     """
     Create an A2A application for the UI dashboard agent.
+    Uses the agent card from a2a_cards/ui_agent.json.
 
     Args:
         host: Host to bind the server to
@@ -467,11 +468,17 @@ def create_ui_app(host: str = "0.0.0.0", port: int = 10011):
     """
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_ui_card
+    agent_card = get_ui_card(host=host, port=port)
+    logger.info(f"[ADK UI] Using agent card: {agent_card.name} v{agent_card.version}")
+
     return to_a2a(
         get_ui_agent(),
         host=host,
         port=port,
         protocol="http",
+        agent_card=agent_card,
     )
 
 
@@ -480,7 +487,7 @@ def create_ui_a2a_components(host: str = "0.0.0.0", port: int = 10011):
     Create A2A components for the UI agent (for SLIM transport).
 
     Returns the AgentCard and DefaultRequestHandler that can be used
-    with SLIM transport.
+    with SLIM transport. Uses the agent card from a2a_cards/ui_agent.json.
 
     Args:
         host: Host for the A2A RPC URL
@@ -491,9 +498,13 @@ def create_ui_a2a_components(host: str = "0.0.0.0", port: int = 10011):
     """
     from google.adk.runners import InMemoryRunner
     from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
-    from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
     from a2a.server.request_handlers import DefaultRequestHandler
     from a2a.server.tasks import InMemoryTaskStore
+
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_ui_card
+    agent_card = get_ui_card(host=host, port=port)
+    logger.info(f"[ADK UI] Loaded agent card: {agent_card.name} v{agent_card.version}")
 
     agent = get_ui_agent()
 
@@ -502,25 +513,6 @@ def create_ui_a2a_components(host: str = "0.0.0.0", port: int = 10011):
 
     # Create A2A executor wrapping the ADK runner
     agent_executor = A2aAgentExecutor(runner=runner)
-
-    # Build agent card - note: agent is keyword-only, build() is async
-    rpc_url = f"http://{host}:{port}/a2a"
-    card_builder = AgentCardBuilder(agent=agent, rpc_url=rpc_url)
-
-    # Run async build in sync context
-    import asyncio
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        # We're in an async context, create a task
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            agent_card = pool.submit(asyncio.run, card_builder.build()).result()
-    else:
-        agent_card = asyncio.run(card_builder.build())
 
     # Create request handler
     request_handler = DefaultRequestHandler(
