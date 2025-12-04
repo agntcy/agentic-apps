@@ -1,0 +1,96 @@
+{
+  "name": "Tourist Scheduling Coordinator",
+  "description": "Central scheduling coordinator that matches tourists with tour guides. Built with Google ADK and Azure OpenAI via LiteLLM. Receives tourist requests and guide offers, runs a greedy matching algorithm considering preferences, budgets, and availability.",
+  "version": "2.0.0",
+  "schema_version": "0.8.0",
+  "authors": ["AGNTCY"],
+  "created_at": "2025-01-01T00:00:00Z",
+  "domains": [
+    {"name": "hospitality_and_tourism/tourism_management"}
+  ],
+  "skills": [
+    {"name": "agent_orchestration/task_decomposition"},
+    {"name": "agent_orchestration/agent_coordination"},
+    {"name": "agent_orchestration/multi_agent_planning"}
+  ],
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "protocol_version": "0.3.0",
+        "card_data": {
+          "protocolVersion": "0.3.0",
+          "name": "Tourist Scheduling Coordinator",
+          "description": "Central scheduling coordinator that matches tourists with tour guides. Built with Google ADK and Azure OpenAI via LiteLLM. Receives tourist requests and guide offers, runs a greedy matching algorithm considering preferences, budgets, and availability.",
+          "url": "http://localhost:10010/",
+          "preferredTransport": "JSONRPC",
+          "additionalInterfaces": [
+            {"url": "http://localhost:10010/", "transport": "JSONRPC"}
+          ],
+          "version": "2.0.0",
+          "capabilities": {
+            "streaming": false,
+            "pushNotifications": false,
+            "stateTransitionHistory": false
+          },
+          "defaultInputModes": ["application/json", "text/plain"],
+          "defaultOutputModes": ["application/json", "text/plain"],
+          "skills": [
+            {
+              "id": "register_tourist",
+              "name": "Register Tourist Request",
+              "description": "Registers a tourist's tour request with their availability windows, budget constraints, and category preferences (culture, food, history, adventure, etc.).",
+              "tags": ["tourist", "registration", "booking", "preferences"],
+              "examples": [
+                "Register tourist alice with availability from 2025-06-01T09:00:00 to 2025-06-01T17:00:00, preferences for culture and history, budget $80/hour",
+                "Add tourist bob interested in food and wine tours, available tomorrow morning, max budget $120/hour"
+              ],
+              "inputModes": ["text/plain", "application/json"],
+              "outputModes": ["text/plain", "application/json"]
+            },
+            {
+              "id": "register_guide",
+              "name": "Register Guide Offer",
+              "description": "Registers a tour guide's availability, hourly rate, specialization categories, and maximum group size.",
+              "tags": ["guide", "registration", "availability", "pricing"],
+              "examples": [
+                "Register guide marco specializing in culture and history, available 2025-06-01T08:00:00 to 2025-06-01T16:00:00, rate $50/hour, max 4 tourists",
+                "Add guide florence offering food and wine tours at $75/hour, available afternoons"
+              ],
+              "inputModes": ["text/plain", "application/json"],
+              "outputModes": ["text/plain", "application/json"]
+            },
+            {
+              "id": "run_scheduling",
+              "name": "Run Scheduling Algorithm",
+              "description": "Executes the greedy matching algorithm to pair tourists with compatible guides based on preference overlap, budget constraints, time availability, and guide capacity.",
+              "tags": ["scheduling", "matching", "algorithm", "optimization"],
+              "examples": [
+                "Run the scheduling algorithm to match tourists with guides",
+                "Execute matching for all pending requests"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain", "application/json"]
+            },
+            {
+              "id": "get_status",
+              "name": "Get Schedule Status",
+              "description": "Returns current system state including registered tourists, guides, completed assignments, and scheduling statistics.",
+              "tags": ["status", "reporting", "monitoring"],
+              "examples": [
+                "What's the current scheduler status?",
+                "Show me all assignments and pending requests"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain", "application/json"]
+            }
+          ],
+          "supportsAuthenticatedExtendedCard": false
+        }
+      }
+    }
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system"}
+  ]
+}

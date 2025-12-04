@@ -1,0 +1,57 @@
+{
+  "name": "Tourist Agent",
+  "description": "LLM-powered tourist agent that requests tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable preferences, budgets, and availability.",
+  "version": "2.0.0",
+  "schema_version": "0.8.0",
+  "authors": ["AGNTCY"],
+  "created_at": "2025-01-01T00:00:00Z",
+  "domains": [
+    {"name": "hospitality_and_tourism/tourism_management"},
+    {"name": "hospitality_and_tourism/travel_services"}
+  ],
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding"},
+    {"name": "natural_language_processing/natural_language_generation/dialogue_generation"}
+  ],
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "protocol_version": "0.3.0",
+        "card_data": {
+          "protocolVersion": "0.3.0",
+          "name": "Tourist Agent",
+          "description": "LLM-powered tourist agent that requests tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable preferences, budgets, and availability.",
+          "url": "dynamic",
+          "preferredTransport": "JSONRPC",
+          "version": "2.0.0",
+          "capabilities": {
+            "streaming": false,
+            "pushNotifications": false,
+            "stateTransitionHistory": false
+          },
+          "defaultInputModes": ["text/plain"],
+          "defaultOutputModes": ["text/plain"],
+          "skills": [
+            {
+              "id": "request_tour",
+              "name": "Request Tour",
+              "description": "Submits a tour request to the scheduler with availability windows, budget constraints, and category preferences.",
+              "tags": ["tourist", "request", "booking", "preferences"],
+              "examples": [
+                "Request a culture tour for tomorrow with budget of $100/hour",
+                "Book a food and wine experience for the afternoon"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain"]
+            }
+          ],
+          "supportsAuthenticatedExtendedCard": false
+        }
+      }
+    }
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system"}
+  ]
+}

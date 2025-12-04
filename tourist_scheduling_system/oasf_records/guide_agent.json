@@ -1,0 +1,57 @@
+{
+  "name": "Tour Guide Agent",
+  "description": "LLM-powered tour guide agent that offers tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable specializations, pricing, and availability.",
+  "version": "2.0.0",
+  "schema_version": "0.8.0",
+  "authors": ["AGNTCY"],
+  "created_at": "2025-01-01T00:00:00Z",
+  "domains": [
+    {"name": "hospitality_and_tourism/tourism_management"},
+    {"name": "hospitality_and_tourism/travel_services"}
+  ],
+  "skills": [
+    {"name": "natural_language_processing/natural_language_understanding"},
+    {"name": "natural_language_processing/natural_language_generation/dialogue_generation"}
+  ],
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "protocol_version": "0.3.0",
+        "card_data": {
+          "protocolVersion": "0.3.0",
+          "name": "Tour Guide Agent",
+          "description": "LLM-powered tour guide agent that offers tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable specializations, pricing, and availability.",
+          "url": "dynamic",
+          "preferredTransport": "JSONRPC",
+          "version": "2.0.0",
+          "capabilities": {
+            "streaming": false,
+            "pushNotifications": false,
+            "stateTransitionHistory": false
+          },
+          "defaultInputModes": ["text/plain"],
+          "defaultOutputModes": ["text/plain"],
+          "skills": [
+            {
+              "id": "offer_tour",
+              "name": "Offer Tour Services",
+              "description": "Submits a tour offer to the scheduler with availability, hourly rate, specialization categories, and maximum group size.",
+              "tags": ["guide", "offer", "tour", "availability"],
+              "examples": [
+                "Offer a culture and history tour from 9am to 5pm at $50/hour",
+                "Register availability for food tours tomorrow afternoon"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain"]
+            }
+          ],
+          "supportsAuthenticatedExtendedCard": false
+        }
+      }
+    }
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system"}
+  ]
+}
