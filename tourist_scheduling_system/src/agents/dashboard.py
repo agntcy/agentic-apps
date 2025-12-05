@@ -74,21 +74,27 @@ def set_transport_mode(mode: str):
 
 async def broadcast_to_clients(message: dict):
     """Broadcast a message to all connected WebSocket clients."""
+    logger.info(f"[ADK UI] Broadcasting to {len(_ws_clients)} clients: {message.get('type', 'unknown')}")
+
     if not _ws_clients:
+        logger.warning("[ADK UI] No WebSocket clients connected, broadcast skipped")
         return
 
     data = json.dumps(message)
     disconnected = set()
+    sent_count = 0
 
     for client in _ws_clients:
         try:
             await client.send_text(data)
+            sent_count += 1
         except Exception as e:
-            logger.debug(f"Failed to send to client: {e}")
+            logger.warning(f"[ADK UI] Failed to send to client: {e}")
             disconnected.add(client)
 
     # Remove disconnected clients
     _ws_clients.difference_update(disconnected)
+    logger.info(f"[ADK UI] Broadcast complete: sent to {sent_count}, disconnected {len(disconnected)}")
 
 
 async def websocket_endpoint(websocket: WebSocket):
@@ -180,6 +186,15 @@ async def api_update_endpoint(request):
                 _dashboard_state.metrics.satisfied_tourists = body.get("satisfied_tourists", 0)
                 _dashboard_state.metrics.guide_utilization = body.get("guide_utilization", 0)
                 _dashboard_state.metrics.avg_assignment_cost = body.get("avg_assignment_cost", 0)
+            elif update_type == "communication_event":
+                # Store communication event
+                if not hasattr(_dashboard_state, 'communication_events'):
+                    _dashboard_state.communication_events = []
+                _dashboard_state.communication_events.append(body)
+                # Keep only last 50 events
+                if len(_dashboard_state.communication_events) > 50:
+                    _dashboard_state.communication_events = _dashboard_state.communication_events[-50:]
+                logger.info(f"[ADK UI] Added communication event: {body.get('source_agent')} -> {body.get('target_agent')}")
 
         # Broadcast to WebSocket clients
         await broadcast_to_clients(body)

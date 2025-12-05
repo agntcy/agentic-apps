@@ -26,6 +26,13 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from enum import Enum
 
+# Initialize tracing early
+try:
+    from core.tracing import setup_tracing, traced, create_span, add_span_event
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+
 # Set up file logging
 try:
     from core.logging_config import setup_agent_logging
@@ -113,14 +120,14 @@ class DashboardState:
         self.metrics.total_guides = len(self.guide_offers)
         self.metrics.total_assignments = len(self.assignments)
 
-        # Calculate satisfied tourists (those with assignments)
+        # Calculate satisfied tourists (unique tourists with assignments, capped at total)
         assigned_tourists = set(a.get("tourist_id") for a in self.assignments if a.get("tourist_id"))
-        self.metrics.satisfied_tourists = len(assigned_tourists)
+        self.metrics.satisfied_tourists = min(len(assigned_tourists), self.metrics.total_tourists)
 
-        # Calculate guide utilization
+        # Calculate guide utilization (unique guides with assignments, capped at 1.0)
         if self.guide_offers:
             busy_guides = set(a.get("guide_id") for a in self.assignments if a.get("guide_id"))
-            self.metrics.guide_utilization = len(busy_guides) / len(self.guide_offers)
+            self.metrics.guide_utilization = min(len(busy_guides) / len(self.guide_offers), 1.0)
 
         # Calculate average assignment cost
         if self.assignments:
@@ -131,11 +138,21 @@ class DashboardState:
 
     def to_dict(self) -> dict:
         """Convert state to dictionary"""
+        # Handle communication_events which may be dicts or objects with to_dict()
+        comm_events = []
+        for e in self.communication_events[-20:]:
+            if isinstance(e, dict):
+                comm_events.append(e)
+            elif hasattr(e, 'to_dict'):
+                comm_events.append(e.to_dict())
+            else:
+                comm_events.append(str(e))
+
         return {
             "tourist_requests": list(self.tourist_requests.values()),
             "guide_offers": list(self.guide_offers.values()),
             "assignments": self.assignments,
-            "communication_events": [e.to_dict() for e in self.communication_events[-20:]],
+            "communication_events": comm_events,
             "metrics": self.metrics.to_dict(),
         }
 
@@ -539,9 +556,20 @@ if __name__ == "__main__":
     @click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
     @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
     @click.option("--dashboard/--no-dashboard", default=True, help="Enable web dashboard UI")
-    def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str, dashboard: bool):
+    @click.option("--tracing/--no-tracing", default=False, help="Enable OpenTelemetry tracing")
+    def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str, dashboard: bool, tracing: bool):
         """Run the UI Dashboard Agent as an A2A server."""
         logging.basicConfig(level=logging.INFO)
+
+        # Initialize tracing if enabled
+        if tracing and TRACING_AVAILABLE:
+            otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+            setup_tracing(
+                service_name="ui-dashboard-agent",
+                otlp_endpoint=otlp_endpoint,
+                file_export=True,
+            )
+            logger.info("[ADK UI] OpenTelemetry tracing enabled")
 
         # Set up dashboard if enabled
         dashboard_app = None

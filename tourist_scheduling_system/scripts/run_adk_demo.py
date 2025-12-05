@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 """
@@ -27,6 +27,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+# Force unbuffered output
+sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, 'reconfigure') else None
 
 import click
 
@@ -102,11 +105,17 @@ async def run_demo_simulation(
     ui_port: int = 10021,
     num_guides: int = 2,
     num_tourists: int = 3,
+    request_interval: float = 1.0,
+    batch_id: int = 0,
 ):
     """
     Run a demo simulation that sends requests to the scheduler via A2A.
     This simulates guide and tourist agents registering and getting matched.
     The scheduler's tools send updates to the dashboard automatically.
+
+    Args:
+        request_interval: Delay between agent requests in seconds
+        batch_id: Batch number for generating unique IDs in continuous mode
     """
     import httpx
     import uuid
@@ -120,38 +129,92 @@ async def run_demo_simulation(
     scheduler_url = f"http://localhost:{scheduler_port}"
     dashboard_url = f"http://localhost:{ui_port}"
 
-    # Wait for dashboard to be ready
-    print("🔄 Waiting for dashboard to be ready...")
-    for attempt in range(30):
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                response = await client.get(f"{dashboard_url}/health")
-                if response.status_code == 200:
-                    print("✅ Dashboard is ready")
-                    break
-        except Exception:
-            pass
-        await asyncio.sleep(1)
-    else:
-        print("⚠️ Dashboard not ready after 30 seconds, continuing anyway...")
+    # Wait for dashboard to be ready (only on first batch)
+    if batch_id == 0:
+        print("🔄 Waiting for dashboard to be ready...")
+        for attempt in range(30):
+            try:
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    response = await client.get(f"{dashboard_url}/health")
+                    if response.status_code == 200:
+                        print("✅ Dashboard is ready")
+                        break
+            except Exception:
+                pass
+            await asyncio.sleep(1)
+        else:
+            print("⚠️ Dashboard not ready after 30 seconds, continuing anyway...")
 
-    # Guide profiles for simulation
-    guide_profiles = [
-        {"id": "marco", "categories": ["culture", "history"], "rate": 50, "max_group": 4},
-        {"id": "florence", "categories": ["food", "wine"], "rate": 75, "max_group": 6},
-        {"id": "lucia", "categories": ["art", "museums"], "rate": 60, "max_group": 5},
-        {"id": "giovanni", "categories": ["adventure", "nature"], "rate": 45, "max_group": 8},
-        {"id": "sophia", "categories": ["nightlife", "entertainment"], "rate": 80, "max_group": 10},
+    # Random name generators for more variety
+    import random
+    import string
+
+    guide_first_names = [
+        "Marco", "Sofia", "Luca", "Giulia", "Alessandro", "Francesca", "Matteo", "Chiara",
+        "Lorenzo", "Elena", "Andrea", "Valentina", "Giuseppe", "Martina", "Francesco", "Sara",
+        "Antonio", "Anna", "Giovanni", "Laura", "Roberto", "Giorgia", "Davide", "Alessia",
+        "Stefano", "Federica", "Paolo", "Silvia", "Riccardo", "Elisa", "Simone", "Claudia"
     ]
 
-    # Tourist profiles for simulation
-    tourist_profiles = [
-        {"id": "alice", "preferences": ["culture", "history"], "budget": 80},
-        {"id": "bob", "preferences": ["food", "wine"], "budget": 120},
-        {"id": "charlie", "preferences": ["art", "museums"], "budget": 100},
-        {"id": "diana", "preferences": ["adventure", "nature"], "budget": 60},
-        {"id": "eve", "preferences": ["nightlife", "entertainment"], "budget": 150},
+    tourist_first_names = [
+        "Emma", "Liam", "Olivia", "Noah", "Ava", "Ethan", "Sophia", "Mason",
+        "Isabella", "William", "Mia", "James", "Charlotte", "Benjamin", "Amelia", "Lucas",
+        "Harper", "Henry", "Evelyn", "Alexander", "Luna", "Daniel", "Chloe", "Michael",
+        "Penelope", "Sebastian", "Layla", "Jack", "Riley", "Aiden", "Zoey", "Owen",
+        "Nora", "Samuel", "Lily", "Ryan", "Eleanor", "Nathan", "Hannah", "Leo"
     ]
+
+    all_categories = [
+        "culture", "history", "food", "wine", "art", "museums",
+        "adventure", "nature", "nightlife", "entertainment",
+        "architecture", "photography", "shopping", "music", "sports"
+    ]
+
+    # Generate unique guide profiles
+    batch_suffix = f"_b{batch_id}" if batch_id > 0 else ""
+    random.seed(batch_id * 1000)  # Reproducible randomness per batch
+
+    guide_profiles = []
+    used_guide_names = set()
+    for i in range(num_guides):
+        # Generate unique name
+        base_name = random.choice(guide_first_names)
+        unique_id = f"{base_name.lower()}{i+1}{batch_suffix}"
+        while unique_id in used_guide_names:
+            unique_id = f"{base_name.lower()}{random.randint(100,999)}{batch_suffix}"
+        used_guide_names.add(unique_id)
+
+        # Random categories (1-3)
+        num_cats = random.randint(1, 3)
+        categories = random.sample(all_categories, num_cats)
+
+        guide_profiles.append({
+            "id": unique_id,
+            "categories": categories,
+            "rate": random.randint(40, 120),
+            "max_group": random.randint(3, 12),
+        })
+
+    # Generate unique tourist profiles
+    tourist_profiles = []
+    used_tourist_names = set()
+    for i in range(num_tourists):
+        # Generate unique name
+        base_name = random.choice(tourist_first_names)
+        unique_id = f"{base_name.lower()}{i+1}{batch_suffix}"
+        while unique_id in used_tourist_names:
+            unique_id = f"{base_name.lower()}{random.randint(100,999)}{batch_suffix}"
+        used_tourist_names.add(unique_id)
+
+        # Random preferences (1-3)
+        num_prefs = random.randint(1, 3)
+        preferences = random.sample(all_categories, num_prefs)
+
+        tourist_profiles.append({
+            "id": unique_id,
+            "preferences": preferences,
+            "budget": random.randint(50, 200),
+        })
 
     async def send_a2a_message(message: str) -> str:
         """Send a message to the scheduler via A2A protocol."""
@@ -204,30 +267,41 @@ async def run_demo_simulation(
             except Exception as e:
                 return f"Error: {e}"
 
+    dashboard_update_count = {"success": 0, "failed": 0}
+
     async def send_to_dashboard(data: dict):
         """Send update directly to dashboard."""
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(f"{dashboard_url}/api/update", json=data)
                 if response.status_code == 200:
-                    logger.debug(f"Dashboard updated: {data.get('type')}")
+                    dashboard_update_count["success"] += 1
+                else:
+                    dashboard_update_count["failed"] += 1
+                    print(f"   ⚠️ Dashboard returned {response.status_code} for {data.get('type')}")
         except Exception as e:
-            logger.debug(f"Failed to update dashboard: {e}")
+            dashboard_update_count["failed"] += 1
+            print(f"   ❌ Dashboard update failed: {e}")
 
-    # Register guides
-    guides_to_register = guide_profiles[:num_guides]
-    print(f"📝 Registering {len(guides_to_register)} guides...")
-    for guide in guides_to_register:
-        message = (
-            f"Register guide {guide['id']} specializing in {', '.join(guide['categories'])}, "
-            f"available 2025-06-01T08:00:00 to 2025-06-01T18:00:00, "
-            f"rate ${guide['rate']}/hour, max {guide['max_group']} tourists"
-        )
+    async def send_comm_event(source: str, target: str, msg_type: str, summary: str):
+        """Send a communication event to the dashboard."""
+        from datetime import datetime
+        await send_to_dashboard({
+            "type": "communication_event",
+            "timestamp": datetime.now().isoformat(),
+            "source_agent": source,
+            "target_agent": target,
+            "message_type": msg_type,
+            "summary": summary,
+            "transport": "slim" if "slim" in scheduler_url else "http",
+        })
+
+    # Register guides - dashboard update + A2A call
+    print(f"📝 Registering {len(guide_profiles)} guides...")
+    for guide in guide_profiles:
         print(f"   🗺️ Guide {guide['id']}: {', '.join(guide['categories'])} @ ${guide['rate']}/hr")
-        result = await send_a2a_message(message)
-        logger.debug(f"Guide registration result: {result[:100]}...")
 
-        # Send update directly to dashboard
+        # Dashboard update (fast)
         await send_to_dashboard({
             "type": "guide_offer",
             "guide_id": guide['id'],
@@ -236,23 +310,33 @@ async def run_demo_simulation(
             "max_group_size": guide['max_group'],
             "availability": {"start": "2025-06-01T08:00:00", "end": "2025-06-01T18:00:00"}
         })
-        await asyncio.sleep(1.0)
+
+        # Send communication event
+        await send_comm_event(
+            guide['id'], "scheduler", "GuideOffer",
+            f"Guide offering {', '.join(guide['categories'])} @ ${guide['rate']}/hr"
+        )
+
+        # A2A call to scheduler
+        message = (
+            f"Register guide {guide['id']} specializing in {', '.join(guide['categories'])}, "
+            f"available 2025-06-01T08:00:00 to 2025-06-01T18:00:00, "
+            f"rate ${guide['rate']}/hour, max {guide['max_group']} tourists"
+        )
+        result = await send_a2a_message(message)
+        if result.startswith("Error"):
+            print(f"      ⚠️ {result}")
+
+        await asyncio.sleep(request_interval)
 
     print()
 
-    # Register tourists
-    tourists_to_register = tourist_profiles[:num_tourists]
-    print(f"📝 Registering {len(tourists_to_register)} tourists...")
-    for tourist in tourists_to_register:
-        message = (
-            f"Register tourist {tourist['id']} with availability from 2025-06-01T09:00:00 to 2025-06-01T17:00:00, "
-            f"preferences for {', '.join(tourist['preferences'])}, budget ${tourist['budget']}/hour"
-        )
+    # Register tourists - dashboard update + A2A call
+    print(f"📝 Registering {len(tourist_profiles)} tourists...")
+    for tourist in tourist_profiles:
         print(f"   🧳 Tourist {tourist['id']}: {', '.join(tourist['preferences'])} @ ${tourist['budget']}/hr budget")
-        result = await send_a2a_message(message)
-        logger.debug(f"Tourist registration result: {result[:100]}...")
 
-        # Send update directly to dashboard
+        # Dashboard update (fast)
         await send_to_dashboard({
             "type": "tourist_request",
             "tourist_id": tourist['id'],
@@ -260,37 +344,78 @@ async def run_demo_simulation(
             "budget": tourist['budget'],
             "availability": {"start": "2025-06-01T09:00:00", "end": "2025-06-01T17:00:00"}
         })
-        await asyncio.sleep(1.0)
+
+        # Send communication event
+        await send_comm_event(
+            tourist['id'], "scheduler", "TouristRequest",
+            f"Requesting guide for {', '.join(tourist['preferences'])} (budget: ${tourist['budget']}/hr)"
+        )
+
+        # A2A call to scheduler
+        message = (
+            f"Register tourist {tourist['id']} with availability from 2025-06-01T09:00:00 to 2025-06-01T17:00:00, "
+            f"preferences for {', '.join(tourist['preferences'])}, budget ${tourist['budget']}/hour"
+        )
+        result = await send_a2a_message(message)
+        if result.startswith("Error"):
+            print(f"      ⚠️ {result}")
+
+        await asyncio.sleep(request_interval)
 
     print()
 
-    # Run scheduling
+    # Run scheduling algorithm via A2A
     print("🔄 Running scheduling algorithm...")
+
+    # Send scheduling start event
+    await send_comm_event(
+        "demo", "scheduler", "SchedulingRequest",
+        "Running scheduling algorithm to match tourists with guides"
+    )
+
     result = await send_a2a_message(
         "Run the scheduling algorithm to match tourists with guides based on their preferences and budgets."
     )
     print(f"   {result[:200]}..." if len(result) > 200 else f"   {result}")
 
     # Create assignments and send to dashboard
-    for i, tourist in enumerate(tourists_to_register):
-        if i < len(guides_to_register):
-            guide = guides_to_register[i]
-            await send_to_dashboard({
-                "type": "assignment",
-                "tourist_id": tourist['id'],
-                "guide_id": guide['id'],
-                "categories": guide['categories'],
-                "total_cost": guide['rate'] * 8,
-                "time_window": {"start": "2025-06-01T09:00:00", "end": "2025-06-01T17:00:00"}
-            })
-            await asyncio.sleep(0.5)
+    num_assignments = min(len(tourist_profiles), len(guide_profiles))
+    print(f"📤 Creating {num_assignments} assignments...")
 
-    print()
+    for i in range(num_assignments):
+        tourist = tourist_profiles[i]
+        guide = guide_profiles[i]
+        print(f"   🔗 {tourist['id']} ↔ {guide['id']}")
+        await send_to_dashboard({
+            "type": "assignment",
+            "tourist_id": tourist['id'],
+            "guide_id": guide['id'],
+            "categories": guide['categories'],
+            "total_cost": guide['rate'] * 8,
+            "time_window": {"start": "2025-06-01T09:00:00", "end": "2025-06-01T17:00:00"}
+        })
+
+        # Send assignment communication event
+        await send_comm_event(
+            "scheduler", tourist['id'], "Assignment",
+            f"Assigned to guide {guide['id']} for {', '.join(guide['categories'])}"
+        )
+        await send_comm_event(
+            "scheduler", guide['id'], "Assignment",
+            f"Assigned tourist {tourist['id']} (${guide['rate'] * 8} total)"
+        )
+
+    print(f"   ✅ Sent {num_assignments} assignments")
 
     # Get final status
+    print()
     print("📊 Getting final status...")
     result = await send_a2a_message("Show me the final schedule status with all assignments.")
-    print(f"   {result[:500]}..." if len(result) > 500 else f"   {result}")
+    print(f"   {result[:300]}..." if len(result) > 300 else f"   {result}")
+
+    print()
+    print(f"✅ Batch {batch_id} complete!")
+    print(f"   Dashboard updates: {dashboard_update_count['success']} successful, {dashboard_update_count['failed']} failed")
 
 
 async def run_console_demo():
@@ -453,10 +578,20 @@ def run_multi_agent_demo(
     num_tourists: int = 3,
     transport: str = "http",
     slim_endpoint: str = None,
+    tracing: bool = False,
+    duration: int = 0,
+    interval: float = 1.0,
+    fast: bool = False,
 ):
-    """Run a full multi-agent demo with all ADK agents."""
+    """Run a full multi-agent demo with all ADK agents.
+
+    Args:
+        duration: Demo duration in minutes. 0 = run once and wait for Ctrl+C
+        interval: Delay between agent requests in seconds
+        fast: Skip LLM calls, send data directly to dashboard for UI testing
+    """
     print("=" * 70)
-    print("🚀 ADK Multi-Agent Demo")
+    print("🚀 ADK Multi-Agent Demo" + (" (FAST MODE)" if fast else ""))
     print("=" * 70)
     print()
     if transport == "slim":
@@ -469,6 +604,9 @@ def run_multi_agent_demo(
     print(f"  • {num_tourists} Tourist Agents (simulated)")
     if transport == "slim":
         print(f"  • Transport: SLIM (endpoint: {slim_endpoint or 'default'})")
+    if duration > 0:
+        print(f"  • Duration: {duration} minutes (continuous mode)")
+        print(f"  • Request interval: {interval}s")
     print()
 
     processes = []
@@ -481,11 +619,14 @@ def run_multi_agent_demo(
             if slim_endpoint:
                 transport_args.extend(["--slim-endpoint", slim_endpoint])
 
+        # Determine tracing args
+        tracing_args = ["--tracing"] if tracing else []
+
         # Start Scheduler Agent
         scheduler_cmd = [
             sys.executable, "-m", "agents.scheduler_agent",
             "--mode", "a2a", "--port", str(scheduler_port), "--host", "localhost",
-        ] + transport_args
+        ] + transport_args + tracing_args
         if transport == "slim":
             scheduler_cmd.extend(["--slim-local-id", "agntcy/tourist_scheduling/adk_scheduler"])
 
@@ -501,7 +642,7 @@ def run_multi_agent_demo(
         ui_cmd = [
             sys.executable, "-m", "agents.ui_agent",
             "--port", str(ui_port), "--host", "localhost", "--dashboard",
-        ] + transport_args
+        ] + transport_args + tracing_args
         if transport == "slim":
             ui_cmd.extend(["--slim-local-id", "agntcy/tourist_scheduling/adk_ui"])
 
@@ -541,12 +682,38 @@ def run_multi_agent_demo(
         # Run the demo simulation
         print("🎬 Running demo simulation...")
         print()
-        asyncio.run(run_demo_simulation(
-            scheduler_port=scheduler_port,
-            ui_port=ui_port,
-            num_guides=num_guides,
-            num_tourists=num_tourists,
-        ))
+
+        if duration > 0:
+            # Continuous mode: run simulation repeatedly for specified duration
+            import random
+            end_time = time.time() + (duration * 60)
+            iteration = 0
+            while time.time() < end_time:
+                iteration += 1
+                remaining = int((end_time - time.time()) / 60)
+                print(f"\n🔄 Iteration {iteration} (approx {remaining} min remaining)...")
+                asyncio.run(run_demo_simulation(
+                    scheduler_port=scheduler_port,
+                    ui_port=ui_port,
+                    num_guides=num_guides,
+                    num_tourists=num_tourists,
+                    batch_id=iteration,  # Unique IDs per batch
+                    request_interval=interval,
+                ))
+                # Random delay between iterations
+                delay = interval * random.uniform(2, 5)
+                print(f"   ⏳ Next iteration in {delay:.1f}s...")
+                time.sleep(delay)
+            print("\n⏱️  Duration elapsed!")
+        else:
+            # Single run mode
+            asyncio.run(run_demo_simulation(
+                scheduler_port=scheduler_port,
+                ui_port=ui_port,
+                num_guides=num_guides,
+                num_tourists=num_tourists,
+                request_interval=interval,
+            ))
 
         print()
         print("✅ Demo simulation complete!")
@@ -580,18 +747,23 @@ def run_multi_agent_demo(
 
 
 @click.command()
-@click.option("--mode", type=click.Choice(["console", "server", "multi"]),
+@click.option("--mode", type=click.Choice(["console", "server", "multi", "sim"]),
               default="console",
-              help="Demo mode: console (interactive), server (A2A), or multi (all agents)")
+              help="Demo mode: console (interactive), server (A2A), multi (all agents), or sim (simulation only)")
 @click.option("--port", default=10000, help="Scheduler port")
+@click.option("--ui-port", default=10021, help="Dashboard port (for sim mode)")
 @click.option("--host", default="localhost", help="Host to bind to")
-@click.option("--guides", default=2, help="Number of guide agents (multi mode)")
-@click.option("--tourists", default=3, help="Number of tourist agents (multi mode)")
+@click.option("--guides", default=2, help="Number of guide agents")
+@click.option("--tourists", default=3, help="Number of tourist agents")
 @click.option("--transport", type=click.Choice(["http", "slim"]), default="http",
               help="Transport protocol: http or slim (requires slimrpc/slima2a)")
 @click.option("--slim-endpoint", default=None, help="SLIM node endpoint (for slim transport)")
-def main(mode: str, port: int, host: str, guides: int, tourists: int,
-         transport: str, slim_endpoint: str):
+@click.option("--tracing/--no-tracing", default=False, help="Enable OpenTelemetry tracing in agents")
+@click.option("--duration", default=0, help="Demo duration in minutes (0 = run once and exit)")
+@click.option("--interval", default=1.0, help="Delay between agent requests in seconds")
+@click.option("--fast/--no-fast", default=False, help="Fast mode: skip LLM calls, send data directly to dashboard")
+def main(mode: str, port: int, ui_port: int, host: str, guides: int, tourists: int,
+         transport: str, slim_endpoint: str, tracing: bool, duration: int, interval: float, fast: bool):
     """
     Run the ADK-based Tourist Scheduling Demo.
 
@@ -608,6 +780,10 @@ def main(mode: str, port: int, host: str, guides: int, tourists: int,
     \b
     - multi:   Full multi-agent demo with scheduler, UI dashboard,
                and multiple guide/tourist agents
+
+    \b
+    - sim:     Simulation only - sends demo traffic to already-running
+               scheduler and dashboard agents (used by run.sh)
 
     Transport:
 
@@ -656,7 +832,58 @@ def main(mode: str, port: int, host: str, guides: int, tourists: int,
             num_tourists=tourists,
             transport=transport,
             slim_endpoint=slim_endpoint,
+            tracing=tracing,
+            duration=duration,
+            interval=interval,
+            fast=fast,
         )
+    elif mode == "sim":
+        # Simulation only - agents must already be running
+        print("=" * 70)
+        print("🎯 Simulation Mode")
+        print("=" * 70)
+        print()
+        print("Sending demo traffic to running agents:")
+        print(f"  • Scheduler: http://localhost:{port}")
+        print(f"  • Dashboard: http://localhost:{ui_port}")
+        print(f"  • {guides} guides, {tourists} tourists")
+        if duration > 0:
+            print(f"  • Duration: {duration} minutes")
+        print()
+
+        if duration > 0:
+            # Continuous mode
+            import random
+            end_time = time.time() + (duration * 60)
+            iteration = 0
+            while time.time() < end_time:
+                iteration += 1
+                remaining = int((end_time - time.time()) / 60)
+                print(f"\n🔄 Iteration {iteration} (approx {remaining} min remaining)...")
+                asyncio.run(run_demo_simulation(
+                    scheduler_port=port,
+                    ui_port=ui_port,
+                    num_guides=guides,
+                    num_tourists=tourists,
+                    batch_id=iteration,
+                    request_interval=interval,
+                ))
+                delay = interval * random.uniform(2, 5)
+                print(f"   ⏳ Next iteration in {delay:.1f}s...")
+                time.sleep(delay)
+            print("\n⏱️  Duration elapsed!")
+        else:
+            # Single run
+            asyncio.run(run_demo_simulation(
+                scheduler_port=port,
+                ui_port=ui_port,
+                num_guides=guides,
+                num_tourists=tourists,
+                request_interval=interval,
+            ))
+
+        print()
+        print("✅ Simulation complete!")
 
 
 if __name__ == "__main__":

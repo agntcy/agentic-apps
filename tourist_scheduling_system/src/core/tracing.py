@@ -139,7 +139,10 @@ def setup_tracing(
     # Check environment for configuration
     otlp_endpoint = otlp_endpoint or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
     console_export = console_export or os.environ.get("OTEL_CONSOLE_EXPORT", "").lower() == "true"
-    service_name = os.environ.get("OTEL_SERVICE_NAME", service_name)
+    # Only use env var if explicitly set and non-empty, otherwise use passed service_name
+    env_service_name = os.environ.get("OTEL_SERVICE_NAME", "").strip()
+    if env_service_name:
+        service_name = env_service_name
 
     # Ensure OTLP endpoint has the traces path for HTTP protocol
     if otlp_endpoint and not otlp_endpoint.endswith("/v1/traces"):

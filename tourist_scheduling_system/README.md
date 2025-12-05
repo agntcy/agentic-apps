@@ -1,297 +1,300 @@
-# Multi-Agent Tourist Scheduling System
+# Tourist Scheduling System - ADK Multi-Agent Demo
 
-A multi-agent tourist scheduling system built with **Google ADK** (Agent Development Kit) and **Azure OpenAI via LiteLLM**. Features real-time dashboard, SLIM encrypted transport, and OpenTelemetry distributed tracing.
+A multi-agent scheduling system demonstrating [Agent-to-Agent (A2A)](https://github.com/google/a2a-sdk) communication
+patterns using Google's ADK framework. Tour guides and tourists are matched dynamically through an intelligent
+scheduler, with optional SLIM transport for encrypted messaging and distributed tracing via OpenTelemetry.
 
-## 🌟 Features
+<img src="docs/tss-demo.gif" alt="TSS Demo" width="800">
 
-- **Google ADK Agents**: LLM-powered agents using Google's Agent Development Kit
-- **Azure OpenAI Integration**: GPT-4o via LiteLLM for model abstraction
-- **Real-time Web Dashboard**: Live monitoring with WebSocket updates and network topology visualization
-- **A2A Protocol**: Full implementation using official A2A Python SDK
-- **SLIM Transport**: Encrypted agent-to-agent messaging via MLS protocol
-- **OpenTelemetry Tracing**: Distributed tracing with Jaeger visualization
-- **Greedy Matching Algorithm**: Intelligent tourist-guide matching based on preferences, budgets, and availability
+## 📑 Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Architecture](#-architecture)
+- [SLIM Transport](#-slim-transport)
+- [Distributed Tracing](#-distributed-tracing)
+- [Dashboard Features](#-dashboard-features)
+- [CLI Reference](#-cli-reference)
+- [Development](#-development)
+- [License](#-license)
+
+## ✨ Features
+
+- **Multi-Agent Coordination**: Scheduler, guides, and tourists working together
+- **A2A Communication**: Full A2A compliance with SLIM transport support
+- **Real-Time Dashboard**: Live monitoring with WebSocket updates
+- **Distributed Tracing**: OpenTelemetry integration with Jaeger visualization
+- **LLM-Powered Agents**: Azure OpenAI integration via LiteLLM
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.12+
+- [UV](https://github.com/astral-sh/uv) package manager
+- Docker (for SLIM transport and tracing)
+- Azure OpenAI API key
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/agntcy/agentic-apps.git
+cd agentic-apps/tourist_scheduling_system
+
+# Set up the environment
+./setup.sh install
+
+# Configure Azure OpenAI
+export AZURE_OPENAI_API_KEY="your-key"
+export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com"
+```
+
+### Run the Demo
+
+```bash
+# Start infrastructure (SLIM + Jaeger)
+./setup.sh start
+
+# Run the demo with SLIM transport
+source run.sh --transport slim --tracing
+```
+
+**Access Points**:
+- Dashboard: http://localhost:10021
+- Jaeger UI: http://localhost:16686 (when tracing is enabled)
 
 ## 📁 Project Structure
 
 ```
 tourist_scheduling_system/
 ├── src/
-│   ├── agents/                      # Agent implementations (Google ADK)
-│   │   ├── scheduler_agent.py       # Central coordinator with LiteLLM
-│   │   ├── guide_agent.py           # Tour guide agent
-│   │   ├── tourist_agent.py         # Tourist agent
-│   │   ├── ui_agent.py              # Dashboard with network topology
-│   │   ├── dashboard.py             # Web dashboard server
-│   │   ├── tools.py                 # Shared scheduling tools
-│   │   ├── models.py                # Data models
-│   │   └── templates/               # HTML templates
-│   └── core/                        # Core components
-│       ├── slim_transport.py        # SLIM transport layer
-│       ├── logging_config.py        # Centralized logging
-│       ├── tracing.py               # OpenTelemetry tracing
-│       └── messages.py              # Message schemas
+│   ├── agents/                  # Agent implementations
+│   │   ├── scheduler_agent.py   # Main scheduler (A2A server, port 10000)
+│   │   ├── ui_agent.py          # Dashboard web app (A2A server, port 10021)
+│   │   ├── guide_agent.py       # Tour guide agent (A2A client)
+│   │   ├── tourist_agent.py     # Tourist agent (A2A client)
+│   │   ├── dashboard.py         # Starlette dashboard app
+│   │   ├── a2a_cards.py         # Agent A2A card definitions
+│   │   ├── models.py            # Pydantic data models
+│   │   └── tools.py             # ADK tools (register, match, etc.)
+│   └── core/                    # Core utilities
+│       ├── slim_transport.py    # SLIM transport adapter
+│       ├── tracing.py           # OpenTelemetry setup
+│       ├── messages.py          # Message types
+│       └── logging_config.py    # Logging configuration
 ├── scripts/
-│   └── run_adk_demo.py              # Demo launcher
-├── tests/                           # Unit tests
-├── a2a_cards/                       # A2A agent cards
-├── logs/                            # Runtime logs
-├── traces/                          # OpenTelemetry traces
-├── setup.sh                         # Infrastructure management
-├── run.sh                           # Demo runner
-├── slim-config.yaml                 # SLIM configuration
-└── pyproject.toml                   # Project dependencies
+│   └── run_adk_demo.py          # Main demo runner (Python CLI)
+├── setup.sh                     # Infrastructure management
+├── run.sh                       # Demo launcher script (sourceable)
+├── slim-config.yaml             # SLIM node configuration
+└── slim-config-otel.yaml        # SLIM config with OpenTelemetry
 ```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- Docker (for SLIM and Jaeger)
-- Azure OpenAI API credentials (optional, falls back to heuristics)
-
-### Installation
-
-```bash
-# Clone and navigate
-git clone https://github.com/agntcy/agentic-apps.git
-cd agentic-apps/tourist_scheduling_system
-
-# Create virtual environment with uv
-uv venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-uv sync
-```
-
-### Configure Azure OpenAI (Optional)
-
-```bash
-# Set environment variables
-export AZURE_OPENAI_API_KEY="your-api-key"
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
-export AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
-```
-
-### Run the Demo
-
-```bash
-# HTTP transport (default)
-./run.sh --guides 2 --tourists 3
-
-# SLIM encrypted transport
-./setup.sh start                      # Start SLIM container
-./run.sh --transport slim --guides 2 --tourists 3
-
-# With OpenTelemetry tracing
-./setup.sh start --tracing            # Start SLIM + Jaeger
-./run.sh --tracing --guides 2 --tourists 3
-
-# Stop and cleanup
-./run.sh stop
-./setup.sh stop
-```
-
-### Access the Dashboard
-
-Open http://localhost:10021 to view:
-- Real-time agent activity
-- Network topology visualization
-- Matching metrics and statistics
 
 ## 🏗️ Architecture
 
-### Agent Types
+### Agent Roles
 
-| Agent | Role | Description |
-|-------|------|-------------|
-| **Scheduler** | Coordinator | Central matching engine, A2A server |
-| **Guide** | Service Provider | Offers tours with availability and pricing |
-| **Tourist** | Consumer | Requests tours with preferences and budget |
-| **UI/Dashboard** | Monitor | Real-time visualization and metrics |
+| Agent | Port | Role |
+|-------|------|------|
+| Scheduler | 10000 | Central coordinator, matches guides to tourists |
+| Dashboard | 10021 | Real-time web UI with WebSocket updates |
+| Guides | (via A2A) | LLM-powered tour guides with specializations |
+| Tourists | (via A2A) | Visitors requesting specific tour experiences |
 
 ### Communication Flow
 
 ```
-┌─────────────┐     ┌─────────────┐
-│   Guides    │────▶│  Scheduler  │◀────│  Tourists   │
-└─────────────┘     └──────┬──────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │  Dashboard  │
-                    └─────────────┘
+┌──────────────┐     A2A/SLIM      ┌──────────────┐
+│ Guide Agent  │ ◀───────────────▶ │   Scheduler  │
+└──────────────┘                   │    Agent     │
+                                   │  (port 10000)│
+┌──────────────┐     A2A/SLIM      │              │
+│ Tourist Agent│ ◀───────────────▶ │              │
+└──────────────┘                   └──────┬───────┘
+                                          │
+                                          │ HTTP/WS
+                                          ▼
+                                   ┌──────────────┐
+                                   │  Dashboard   │
+                                   │  (port 10021)│
+                                   └──────────────┘
 ```
 
-1. Guides register availability and rates
-2. Tourists submit requests with preferences and budgets
-3. Scheduler runs matching algorithm
-4. Dashboard displays real-time updates
+## 🔐 SLIM Transport
 
-### Matching Algorithm
-
-The greedy scheduler considers:
-- **Preference overlap**: Category matching (culture, food, history, etc.)
-- **Budget constraints**: Tourist budget vs guide hourly rate
-- **Time windows**: Overlapping availability
-- **Capacity limits**: Guide maximum group size
-
-## 🔌 SLIM Transport
-
-SLIM provides encrypted agent-to-agent communication via MLS protocol.
-
-### Setup
+SLIM provides encrypted, high-performance messaging:
 
 ```bash
-# Start SLIM container
-./setup.sh start
+# Start SLIM node
+./setup.sh slim
+
+# Configure SLIM endpoint
+export SLIM_ENDPOINT=http://localhost:46357
+export SLIM_SHARED_SECRET=supersecretsharedsecret123456789
+export SLIM_TLS_INSECURE=true
 
 # Run with SLIM transport
-./run.sh --transport slim
-
-# Check status
-./setup.sh status
-
-# Stop
-./setup.sh stop
+source run.sh --transport slim
 ```
 
-### Architecture
+### SLIM Configuration
 
+See `slim-config.yaml` for node configuration. Key settings:
+
+```yaml
+storage:
+  type: InMemory
+transport:
+  type: HTTP
+security:
+  shared_secret: ${SLIM_SHARED_SECRET}
 ```
-┌─────────────────────────────────────┐
-│           SLIM Gateway              │
-│        (MLS Encrypted)              │
-└─────────────────────────────────────┘
-      ▲         ▲         ▲
-      │         │         │
-┌─────┴───┐ ┌───┴───┐ ┌───┴─────┐
-│Scheduler│ │ Guide │ │ Tourist │
-└─────────┘ └───────┘ └─────────┘
-```
 
-### Environment Variables
+## 📊 Distributed Tracing
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SLIM_ENDPOINT` | `http://localhost:46357` | SLIM gateway |
-| `SLIM_SHARED_SECRET` | (32+ char key) | MLS encryption key |
-
-## 📈 OpenTelemetry Tracing
-
-Distributed tracing with Jaeger visualization.
-
-### Setup
+Full OpenTelemetry integration with Jaeger:
 
 ```bash
-# Start with tracing
-./setup.sh start --tracing
-./run.sh --tracing
+# Start Jaeger
+./setup.sh tracing
+
+# Run with tracing
+source run.sh --tracing
 
 # View traces
 open http://localhost:16686
 ```
 
-### Trace Outputs
+Trace features:
+- Request-level spans
+- Cross-agent trace propagation
+- Tool execution timing
+- Error tracking
 
-- **Jaeger UI**: http://localhost:16686
-- **File**: `traces/traces_*.jsonl`
-- **Console**: Set `OTEL_CONSOLE_EXPORT=true`
+## 🖥️ Dashboard Features
 
-## 📊 Dashboard Features
+The real-time dashboard shows:
 
-- **Real-time Metrics**: WebSocket live updates
-- **Network Topology**: Interactive agent graph (drag-and-drop)
-- **Agent Activity**: Communication timeline
-- **Matching Statistics**: Success rates, utilization, costs
+- **Guide Pool**: Available guides with specializations and ratings
+- **Tourist Queue**: Pending tourist requests with preferences
+- **Active Assignments**: Current guide-tourist matches in progress
+- **Completed Tours**: Historical data with ratings
+- **Communication Log**: Agent message history (guide/tourist/system)
 
-## 🛠️ Development
+WebSocket provides instant updates as the scheduler processes requests.
+
+## 📖 CLI Reference
+
+### `setup.sh` - Infrastructure Management
+
+```bash
+./setup.sh install        # Install Python dependencies with UV
+./setup.sh start          # Start SLIM + Jaeger containers
+./setup.sh stop           # Stop all containers
+./setup.sh clean          # Remove containers and data
+./setup.sh slim           # Start only SLIM node
+./setup.sh tracing        # Start only Jaeger
+./setup.sh status         # Show container status
+```
+
+### `run.sh` - Demo Launcher
+
+The script can be **sourced** to preserve environment variables or run directly:
+
+```bash
+# Source to inherit current shell's env vars (recommended)
+source run.sh [options]
+
+# Or run directly
+./run.sh [options]
+
+# Options
+--transport MODE          # http (default) or slim
+--tracing                 # Enable OpenTelemetry tracing
+--scheduler-port N        # Scheduler port (default: 10000)
+--ui-port N               # Dashboard port (default: 10021)
+--guides N                # Number of guides (default: 2)
+--tourists N              # Number of tourists (default: 3)
+--duration N              # Duration in minutes (0=single run)
+--interval N              # Delay between requests (default: 1.0s)
+--no-demo                 # Start servers only, no demo traffic
+
+# Control
+./run.sh stop             # Stop all agents
+./run.sh clean            # Stop agents and clean up
+```
+
+### `scripts/run_adk_demo.py` - Python Demo Runner
+
+For direct Python control:
+
+```bash
+# Interactive console demo
+.venv/bin/python scripts/run_adk_demo.py --mode console
+
+# Full multi-agent demo (spawns all processes)
+.venv/bin/python scripts/run_adk_demo.py --mode multi
+
+# Simulation only (requires agents already running)
+.venv/bin/python scripts/run_adk_demo.py --mode sim --port 10000 --ui-port 10021
+
+# With SLIM transport
+.venv/bin/python scripts/run_adk_demo.py --mode multi --transport slim
+
+# Options
+--mode MODE               # console, server, multi, or sim
+--port N                  # Scheduler port (default: 10000)
+--ui-port N               # Dashboard port (default: 10021)
+--guides N                # Number of guides (default: 2)
+--tourists N              # Number of tourists (default: 3)
+--transport MODE          # http or slim
+--slim-endpoint URL       # SLIM node URL
+--tracing/--no-tracing    # Enable OpenTelemetry
+--duration N              # Duration in minutes (0=single run)
+--interval N              # Delay between requests
+--fast/--no-fast          # Skip LLM calls for testing
+```
+
+### Environment Variables
+
+```bash
+# Required
+export AZURE_OPENAI_API_KEY="your-key"
+
+# Optional
+export AZURE_OPENAI_ENDPOINT="https://..."
+export TRANSPORT=slim                          # Default transport
+export SLIM_ENDPOINT=http://localhost:46357    # SLIM node URL
+export SLIM_SHARED_SECRET=your-secret          # SLIM auth secret
+export SCHED_PORT=10000                        # Scheduler port
+export UI_PORT=10021                           # Dashboard port
+```
+
+## 🧪 Development
 
 ### Running Tests
 
 ```bash
-uv run pytest tests/ -v
+./setup.sh install        # Ensure dependencies
+uv run pytest tests/
 ```
 
-### Code Quality
+### Adding New Agents
 
-```bash
-uv run black src/ tests/
-uv run isort src/ tests/
-uv run mypy src/
-```
+1. Create agent in `src/agents/`
+2. Define A2A card in `a2a_cards.py`
+3. Add tools in `tools.py`
+4. Update `run_adk_demo.py` to spawn agent
 
-### Project Commands
+### Logs
 
-```bash
-# Run scheduler directly
-uv run python -m agents.scheduler_agent --mode a2a --port 10010
-
-# Run UI dashboard
-uv run python -m agents.ui_agent --port 10021 --dashboard
-
-# Console demo (no dashboard)
-uv run python -m agents.scheduler_agent --mode console
-```
-
-## 📝 Logging
-
-Logs are written to `logs/` with automatic rotation:
-- `logs/system.log` - Main system log
-- `logs/scheduler.log` - Scheduler agent
-- `logs/ui_agent.log` - Dashboard agent
-
-```bash
-# Tail logs
-tail -f logs/*.log
-
-# Search errors
-grep ERROR logs/*.log
-```
-
-## 🔧 CLI Reference
-
-### run.sh
-
-```bash
-./run.sh [options]
-
-Options:
-  --transport MODE     Transport: http (default) or slim
-  --tracing            Enable OpenTelemetry tracing
-  --guides N           Number of guide agents (default: 2)
-  --tourists N         Number of tourist agents (default: 3)
-  --scheduler-port N   Scheduler port (default: 10010)
-  --ui-port N          Dashboard port (default: 10021)
-  --no-autonomous      Disable autonomous simulation
-
-Commands:
-  stop                 Stop all agents
-  clean                Stop agents and cleanup
-```
-
-### setup.sh
-
-```bash
-./setup.sh [command] [options]
-
-Commands:
-  start [--tracing]    Start infrastructure (SLIM, optionally Jaeger)
-  stop                 Stop containers
-  clean                Remove containers
-  status               Show container status
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+Logs are written to `logs/` directory:
+- `scheduler_agent.log`
+- `ui_agent.log`
+- OpenTelemetry trace files (`.json`)
 
 ## 📄 License
 
-Apache License 2.0 - see [LICENSE](../LICENSE)
+Apache 2.0 - See [LICENSE](../LICENSE)

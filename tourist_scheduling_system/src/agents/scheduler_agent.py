@@ -23,6 +23,13 @@ from typing import Optional
 
 import click
 
+# Initialize tracing early (before other imports use it)
+try:
+    from core.tracing import setup_tracing, traced, create_span, add_span_event
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
+
 # Tools for the scheduler (these don't require ADK at import time)
 from .tools import (
     register_tourist_request,
@@ -265,9 +272,20 @@ async def run_console_demo():
               help="Transport protocol: http or slim")
 @click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
 @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
-def main(mode: str, port: int, host: str, transport: str, slim_endpoint: str, slim_local_id: str):
+@click.option("--tracing/--no-tracing", default=False, help="Enable OpenTelemetry tracing")
+def main(mode: str, port: int, host: str, transport: str, slim_endpoint: str, slim_local_id: str, tracing: bool):
     """Run the ADK-based scheduler agent."""
     logging.basicConfig(level=logging.INFO)
+
+    # Initialize tracing if enabled
+    if tracing and TRACING_AVAILABLE:
+        otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+        setup_tracing(
+            service_name="scheduler-agent",
+            otlp_endpoint=otlp_endpoint,
+            file_export=True,
+        )
+        logger.info("[ADK Scheduler] OpenTelemetry tracing enabled")
 
     if mode == "console":
         asyncio.run(run_console_demo())
