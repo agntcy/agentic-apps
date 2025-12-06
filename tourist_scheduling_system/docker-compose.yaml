@@ -1,22 +1,59 @@
-# Docker Compose for Tourist Scheduling System Infrastructure
+# Docker Compose for Tourist Scheduling System
 #
-# This file defines the container infrastructure for the tourist scheduling demo.
-# Use this for easier management of SLIM and Jaeger containers.
+# This file is for building container images and local infrastructure only.
+# For runtime, deploy to Kubernetes using the manifests in deploy/k8s/
 #
 # Usage:
-#   docker-compose up -d                    # Start all services
-#   docker-compose up -d slim               # Start SLIM only
-#   docker-compose up -d jaeger             # Start Jaeger only
-#   docker-compose down                     # Stop all services
-#   docker-compose logs -f slim             # View SLIM logs
-#   docker-compose logs -f jaeger           # View Jaeger logs
+#   docker-compose build                         # Build agent images
+#   docker-compose up -d slim jaeger             # Start local infrastructure for dev
+#   docker-compose down                          # Stop infrastructure
 #
-# Then run the agents:
-#   ./start.sh --agent-type adk --transport slim --tracing
+# Build and tag for registry:
+#   docker-compose build
+#   docker tag tourist_scheduling_system-scheduler $REGISTRY/scheduler-agent:$TAG
+#   docker tag tourist_scheduling_system-ui $REGISTRY/ui-agent:$TAG
+#
+# For Kubernetes deployment, see deploy/k8s/README.md
 
 version: '3.8'
 
 services:
+  # ==========================================================================
+  # Build-only Agent Services (for creating images to push to registry)
+  # ==========================================================================
+
+  # Scheduler Agent - ADK-based coordinator (A2A server)
+  scheduler:
+    build:
+      context: .
+      dockerfile: containers/scheduler/Dockerfile
+    image: scheduler-agent:latest
+
+  # UI Dashboard Agent - Real-time monitoring dashboard (A2A server)
+  ui:
+    build:
+      context: .
+      dockerfile: containers/ui/Dockerfile
+    image: ui-agent:latest
+
+  # Guide Agent - Client that offers tour services (Job)
+  guide:
+    build:
+      context: .
+      dockerfile: containers/guide/Dockerfile
+    image: guide-agent:latest
+
+  # Tourist Agent - Client that requests tours (Job)
+  tourist:
+    build:
+      context: .
+      dockerfile: containers/tourist/Dockerfile
+    image: tourist-agent:latest
+
+  # ==========================================================================
+  # Local Infrastructure (for development/testing)
+  # ==========================================================================
+
   # SLIM Data Plane Node
   slim:
     image: ghcr.io/agntcy/slim:latest

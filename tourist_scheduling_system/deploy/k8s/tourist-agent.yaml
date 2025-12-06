@@ -1,0 +1,123 @@
+# Tourist Agent Kubernetes Manifest
+#
+# The tourist agent runs as a Job to submit requests to the scheduler.
+# Can be run multiple times with different tourist IDs and configurations.
+#
+# Usage:
+#   kubectl apply -f deploy/k8s/tourist-agent.yaml
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tourist-agent-t1
+  namespace: tourist-scheduling
+  labels:
+    app: tourist-agent
+    app.kubernetes.io/name: tourist-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    app.kubernetes.io/component: agent
+    tourist-id: t1
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: tourist-agent
+        tourist-id: t1
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tourist-agent
+          image: tourist-agent:latest
+          imagePullPolicy: Always
+          env:
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+            - name: SCHEDULER_URL
+              value: "http://scheduler-agent:10000"
+          args:
+            - "--tourist-id=t1"
+            - "--preferences=culture,history"
+            - "--availability-start=2025-06-01T09:00:00"
+            - "--availability-end=2025-06-01T17:00:00"
+            - "--budget=100"
+            - "--scheduler-url=$(SCHEDULER_URL)"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+
+---
+# Second tourist example
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tourist-agent-t2
+  namespace: tourist-scheduling
+  labels:
+    app: tourist-agent
+    app.kubernetes.io/name: tourist-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    tourist-id: t2
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: tourist-agent
+        tourist-id: t2
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tourist-agent
+          image: tourist-agent:latest
+          imagePullPolicy: Always
+          env:
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+            - name: SCHEDULER_URL
+              value: "http://scheduler-agent:10000"
+          args:
+            - "--tourist-id=t2"
+            - "--preferences=art,food"
+            - "--availability-start=2025-06-01T10:00:00"
+            - "--availability-end=2025-06-01T15:00:00"
+            - "--budget=80"
+            - "--scheduler-url=$(SCHEDULER_URL)"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

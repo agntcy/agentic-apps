@@ -1,0 +1,337 @@
+#!/bin/bash
+# SPIRE deployment script for Kubernetes
+# Usage: ./spire.sh [install|uninstall|status|clean|register-slim]
+
+set -e
+
+NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-jobs}"
+RELEASE_NAME="spire"
+CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.1}"
+TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
+CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
+
+# Use same namespace for SLIM (single namespace mode)
+SLIM_NAMESPACE="${NAMESPACE}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Add Helm repo if not exists
+add_repo() {
+    if ! helm repo list | grep -q "spiffe"; then
+        log_info "Adding SPIFFE Helm repository..."
+        helm repo add spiffe https://spiffe.github.io/helm-charts-hardened/
+    fi
+    helm repo update spiffe
+}
+
+# Install SPIRE CRDs first
+install_crds() {
+    log_info "Installing SPIRE CRDs in namespace ${NAMESPACE}..."
+    if helm list -n "${NAMESPACE}" | grep -q "spire-crds"; then
+        log_warn "SPIRE CRDs already installed, skipping..."
+    else
+        helm install spire-crds spiffe/spire-crds \
+            -n "${NAMESPACE}"
+    fi
+}
+
+# Install SPIRE
+install() {
+    log_info "Installing SPIRE in namespace ${NAMESPACE}..."
+    log_info "Trust Domain: ${TRUST_DOMAIN}"
+    log_info "Cluster Name: ${CLUSTER_NAME}"
+
+    # Add repo
+    add_repo
+
+    # Install CRDs first
+    install_crds
+
+    # Check if release already exists
+    if helm list -n "${NAMESPACE}" | grep -q "^${RELEASE_NAME}\s"; then
+        log_warn "Release ${RELEASE_NAME} already exists, upgrading..."
+        helm upgrade "${RELEASE_NAME}" spiffe/spire \
+            -n "${NAMESPACE}" \
+            --version "${CHART_VERSION}" \
+            --set global.spire.trustDomain="${TRUST_DOMAIN}" \
+            --set global.spire.clusterName="${CLUSTER_NAME}" \
+            --set global.spire.namespaces.create=false \
+            --set global.spire.namespaces.system.name="${NAMESPACE}" \
+            --set global.spire.namespaces.server.name="${NAMESPACE}" \
+            --set global.spire.recommendations.enabled=false \
+            --set spire-server.enabled=true \
+            --set spire-server.controllerManager.enabled=false \
+            --set spire-agent.enabled=true \
+            --set spiffe-csi-driver.enabled=false \
+            --set spiffe-oidc-discovery-provider.enabled=false
+    else
+        log_info "Installing new release in single namespace mode (no cluster-scoped resources)..."
+        helm install "${RELEASE_NAME}" spiffe/spire \
+            -n "${NAMESPACE}" \
+            --version "${CHART_VERSION}" \
+            --set global.spire.trustDomain="${TRUST_DOMAIN}" \
+            --set global.spire.clusterName="${CLUSTER_NAME}" \
+            --set global.spire.namespaces.create=false \
+            --set global.spire.namespaces.system.name="${NAMESPACE}" \
+            --set global.spire.namespaces.server.name="${NAMESPACE}" \
+            --set global.spire.recommendations.enabled=false \
+            --set spire-server.enabled=true \
+            --set spire-server.controllerManager.enabled=false \
+            --set spire-agent.enabled=true \
+            --set spiffe-csi-driver.enabled=false \
+            --set spiffe-oidc-discovery-provider.enabled=false
+    fi
+
+    log_info "Waiting for SPIRE Server to be ready..."
+    kubectl rollout status statefulset/spire-server -n "${NAMESPACE}" --timeout=180s || true
+
+    log_info "Waiting for SPIRE Agent to be ready..."
+    kubectl rollout status daemonset/spire-agent -n "${NAMESPACE}" --timeout=180s || true
+
+    status
+}
+
+# Uninstall SPIRE
+uninstall() {
+    log_info "Uninstalling SPIRE from namespace ${NAMESPACE}..."
+
+    if helm list -n "${NAMESPACE}" | grep -q "^${RELEASE_NAME}\s"; then
+        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" || true
+    else
+        log_warn "Release ${RELEASE_NAME} not found"
+    fi
+
+    if helm list -n "${NAMESPACE}" | grep -q "spire-crds"; then
+        helm uninstall spire-crds -n "${NAMESPACE}" || true
+    fi
+
+    log_info "SPIRE uninstalled"
+}
+
+# Force clean all SPIRE resources
+force_clean() {
+    log_warn "Force cleaning up all SPIRE resources in namespace ${NAMESPACE}..."
+
+    # Uninstall helm releases
+    helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
+    helm uninstall spire-crds -n "${NAMESPACE}" 2>/dev/null || true
+
+    # Remove helm secrets
+    for secret in $(kubectl get secrets -n "${NAMESPACE}" -o name 2>/dev/null | grep "sh.helm.release.*spire"); do
+        log_info "Deleting ${secret}..."
+        kubectl delete "${secret}" -n "${NAMESPACE}" 2>/dev/null || true
+    done
+
+    # Delete SPIRE resources in namespace (not the namespace itself)
+    log_info "Deleting SPIRE resources..."
+    kubectl delete statefulset spire-server -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete daemonset spire-agent -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete deployment spire-spiffe-csi-driver -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete deployment spire-spiffe-oidc-discovery-provider -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete deployment spire-controller-manager -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete service spire-server -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete service spire-server-bundle-endpoint -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete service spire-controller-manager-webhook -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete configmap spire-server -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete configmap spire-agent -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete configmap spire-bundle -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete serviceaccount spire-server -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete serviceaccount spire-agent -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete serviceaccount spire-controller-manager -n "${NAMESPACE}" 2>/dev/null || true
+
+    # Delete cluster-scoped resources
+    log_info "Deleting cluster-scoped SPIRE resources..."
+    kubectl delete clusterrole spire-agent spire-server spire-controller-manager 2>/dev/null || true
+    kubectl delete clusterrolebinding spire-agent spire-server spire-controller-manager 2>/dev/null || true
+    kubectl delete validatingwebhookconfiguration "${NAMESPACE}-spire-controller-manager-webhook" 2>/dev/null || true
+
+    # Delete CRDs
+    log_info "Deleting SPIRE CRDs..."
+    kubectl delete crd clusterfederatedtrustdomains.spire.spiffe.io 2>/dev/null || true
+    kubectl delete crd clusterspiffeids.spire.spiffe.io 2>/dev/null || true
+    kubectl delete crd clusterstaticentries.spire.spiffe.io 2>/dev/null || true
+    kubectl delete crd controllermanagerconfigs.spire.spiffe.io 2>/dev/null || true
+
+    log_info "Force cleanup complete"
+}
+
+# Show status
+status() {
+    log_info "SPIRE Status in namespace ${NAMESPACE}:"
+    echo ""
+
+    echo "=== Helm Releases ==="
+    helm list -n "${NAMESPACE}" | grep -E "spire|NAME" || echo "No releases found in ${NAMESPACE}"
+    echo ""
+
+    echo "=== SPIRE Server ==="
+    kubectl get pods -n "${NAMESPACE}" -l app.kubernetes.io/name=server 2>/dev/null || echo "No server pods found"
+    echo ""
+
+    echo "=== SPIRE Agent ==="
+    kubectl get pods -n "${NAMESPACE}" -l app.kubernetes.io/name=agent 2>/dev/null || echo "No agent pods found"
+    echo ""
+
+    echo "=== Trust Domain ==="
+    log_info "Trust Domain: ${TRUST_DOMAIN}"
+}
+
+# Show logs
+logs() {
+    local component="${2:-server}"
+
+    case "${component}" in
+        server)
+            log_info "Fetching SPIRE Server logs..."
+            kubectl logs -n "${NAMESPACE}" -l app.kubernetes.io/name=server --tail=100 -f
+            ;;
+        agent)
+            log_info "Fetching SPIRE Agent logs..."
+            kubectl logs -n "${NAMESPACE}" -l app.kubernetes.io/name=agent --tail=100 -f
+            ;;
+        *)
+            log_error "Unknown component: ${component}. Use 'server' or 'agent'"
+            exit 1
+            ;;
+    esac
+}
+
+# Register SLIM workloads with SPIRE
+register_slim() {
+    log_info "Registering SLIM workloads with SPIRE..."
+    log_info "Namespace: ${NAMESPACE}"
+    log_info "Trust Domain: ${TRUST_DOMAIN}"
+
+    # Get SPIRE server pod
+    SPIRE_SERVER_POD=$(kubectl get pods -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+    if [ -z "$SPIRE_SERVER_POD" ]; then
+        log_error "SPIRE Server pod not found. Is SPIRE installed?"
+        exit 1
+    fi
+
+    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD}"
+
+    # Register SLIM Controller
+    log_info "Registering SLIM Controller..."
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
+        /opt/spire/bin/spire-server entry create \
+        -spiffeID "spiffe://${TRUST_DOMAIN}/slim/controller" \
+        -parentID "spiffe://${TRUST_DOMAIN}/spire/agent/k8s_psat/${CLUSTER_NAME}" \
+        -selector "k8s:ns:${NAMESPACE}" \
+        -selector "k8s:sa:slim-control" \
+        -dns "slim-control" \
+        -dns "slim-control.${NAMESPACE}.svc.cluster.local" \
+        2>/dev/null || log_warn "Controller entry may already exist"
+
+    # Register SLIM Node
+    log_info "Registering SLIM Node..."
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
+        /opt/spire/bin/spire-server entry create \
+        -spiffeID "spiffe://${TRUST_DOMAIN}/slim/node" \
+        -parentID "spiffe://${TRUST_DOMAIN}/spire/agent/k8s_psat/${CLUSTER_NAME}" \
+        -selector "k8s:ns:${NAMESPACE}" \
+        -selector "k8s:sa:slim" \
+        -dns "slim-slim-node" \
+        -dns "slim-slim-node.${NAMESPACE}.svc.cluster.local" \
+        2>/dev/null || log_warn "Node entry may already exist"
+
+    log_info "SLIM workloads registered with SPIRE"
+
+    # List entries
+    log_info "Listing SPIRE entries..."
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
+        /opt/spire/bin/spire-server entry show
+}
+
+# List SPIRE entries
+list_entries() {
+    log_info "Listing SPIRE entries..."
+
+    SPIRE_SERVER_POD=$(kubectl get pods -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+    if [ -z "$SPIRE_SERVER_POD" ]; then
+        log_error "SPIRE Server pod not found. Is SPIRE installed?"
+        exit 1
+    fi
+
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
+        /opt/spire/bin/spire-server entry show
+}
+
+# Show help
+usage() {
+    echo "SPIRE Deployment Script (Single Namespace Mode)"
+    echo ""
+    echo "Usage: $0 <command>"
+    echo ""
+    echo "Commands:"
+    echo "  install         Install SPIRE (Server + Agent) in single namespace"
+    echo "  uninstall       Uninstall SPIRE"
+    echo "  force-clean     Force clean all SPIRE resources"
+    echo "  status          Show deployment status"
+    echo "  logs [server|agent]  Stream SPIRE logs (default: server)"
+    echo "  register-slim   Register SLIM workloads with SPIRE"
+    echo "  list-entries    List all SPIRE workload entries"
+    echo ""
+    echo "Environment variables:"
+    echo "  SPIRE_NAMESPACE       Target namespace (default: lumuscar-jobs)"
+    echo "  SPIRE_TRUST_DOMAIN    Trust domain (default: example.org)"
+    echo "  SPIRE_CLUSTER_NAME    Cluster name (default: slim-cluster)"
+    echo "  SPIRE_CHART_VERSION   Helm chart version (default: 0.27.1)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 install"
+    echo "  SPIRE_TRUST_DOMAIN=mycompany.org $0 install"
+    echo "  $0 register-slim"
+    echo "  $0 logs agent"
+    echo "  $0 force-clean"
+}
+
+# Main
+case "${1:-}" in
+    install)
+        install
+        ;;
+    uninstall)
+        uninstall
+        ;;
+    force-clean)
+        force_clean
+        ;;
+    status)
+        status
+        ;;
+    logs)
+        logs "$@"
+        ;;
+    register-slim)
+        register_slim
+        ;;
+    list-entries)
+        list_entries
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

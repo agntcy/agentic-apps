@@ -1,0 +1,90 @@
+# UI Dashboard Agent Kubernetes Manifest
+#
+# Prerequisites:
+#   - namespace.yaml applied
+#   - Container image built and pushed
+#
+# Usage:
+#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_TAG=latest
+#   envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
+#
+# Verify:
+#   kubectl get pods -l app=ui-dashboard-agent -n tourist-scheduling
+#   kubectl get svc ui-dashboard-agent -n tourist-scheduling
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui-dashboard-agent
+  namespace: tourist-scheduling
+  labels:
+    app: ui-dashboard-agent
+    app.kubernetes.io/name: ui-dashboard-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    app.kubernetes.io/component: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui-dashboard-agent
+  template:
+    metadata:
+      labels:
+        app: ui-dashboard-agent
+        app.kubernetes.io/name: ui-dashboard-agent
+        app.kubernetes.io/part-of: tourist-scheduling
+    spec:
+      containers:
+        - name: ui-dashboard-agent
+          image: ${IMAGE_REGISTRY}/ui-agent:${IMAGE_TAG:-latest}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 10021
+              protocol: TCP
+              name: http
+          env:
+            - name: PORT
+              value: "10021"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 10021
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 10021
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui-dashboard-agent
+  namespace: tourist-scheduling
+  labels:
+    app: ui-dashboard-agent
+    app.kubernetes.io/name: ui-dashboard-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 10021
+      protocol: TCP
+      name: http
+  selector:
+    app: ui-dashboard-agent

@@ -1,0 +1,116 @@
+# Scheduler Agent Kubernetes Manifest
+#
+# Prerequisites:
+#   - namespace.yaml applied
+#   - azure-openai-credentials secret created
+#   - Container image built and pushed
+#
+# Usage:
+#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_TAG=latest
+#   envsubst < deploy/k8s/scheduler-agent.yaml | kubectl apply -f -
+#
+# Verify:
+#   kubectl get pods -l app=scheduler-agent -n tourist-scheduling
+#   kubectl logs -l app=scheduler-agent -n tourist-scheduling
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-agent
+  namespace: tourist-scheduling
+  labels:
+    app: scheduler-agent
+    app.kubernetes.io/name: scheduler-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    app.kubernetes.io/component: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler-agent
+  template:
+    metadata:
+      labels:
+        app: scheduler-agent
+        app.kubernetes.io/name: scheduler-agent
+        app.kubernetes.io/part-of: tourist-scheduling
+    spec:
+      containers:
+        - name: scheduler-agent
+          image: ${IMAGE_REGISTRY}/scheduler-agent:${IMAGE_TAG:-latest}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 10000
+              protocol: TCP
+              name: http
+          env:
+            - name: PORT
+              value: "10000"
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: AZURE_OPENAI_API_VERSION
+            - name: UI_A2A_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: UI_A2A_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /.well-known/agent.json
+              port: 10000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /.well-known/agent.json
+              port: 10000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-agent
+  namespace: tourist-scheduling
+  labels:
+    app: scheduler-agent
+    app.kubernetes.io/name: scheduler-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+spec:
+  type: ClusterIP
+  ports:
+    - port: 10000
+      targetPort: 10000
+      protocol: TCP
+      name: http
+  selector:
+    app: scheduler-agent
