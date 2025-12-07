@@ -60,7 +60,7 @@ install() {
 
     # Add SPIRE values if enabled
     if [[ "${SPIRE_ENABLED}" == "true" ]]; then
-        log_info "SPIRE mode enabled - configuring mTLS..."
+        log_info "SPIRE mode enabled - configuring mTLS (hostPath mode)..."
         HELM_VALUES+=(
             --set spire.enabled=true
             --set spire.agentSocketPath="${SPIRE_SOCKET_PATH}"

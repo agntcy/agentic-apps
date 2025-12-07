@@ -9,6 +9,9 @@ RELEASE_NAME="spire"
 CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.1}"
 TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
 CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
+CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-false}"
+# MicroK8s uses a different kubelet path
+KUBELET_PATH="${SPIRE_KUBELET_PATH:-/var/snap/microk8s/common/var/lib/kubelet}"
 
 # Use same namespace for SLIM (single namespace mode)
 SLIM_NAMESPACE="${NAMESPACE}"
@@ -76,9 +79,10 @@ install() {
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
             --set spire-server.enabled=true \
-            --set spire-server.controllerManager.enabled=false \
+            --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
-            --set spiffe-csi-driver.enabled=false \
+            --set spiffe-csi-driver.enabled="${CSI_DRIVER_ENABLED}" \
+            --set spiffe-csi-driver.kubeletPath="${KUBELET_PATH}" \
             --set spiffe-oidc-discovery-provider.enabled=false
     else
         log_info "Installing new release in single namespace mode (no cluster-scoped resources)..."
@@ -92,9 +96,10 @@ install() {
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
             --set spire-server.enabled=true \
-            --set spire-server.controllerManager.enabled=false \
+            --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
-            --set spiffe-csi-driver.enabled=false \
+            --set spiffe-csi-driver.enabled="${CSI_DRIVER_ENABLED}" \
+            --set spiffe-csi-driver.kubeletPath="${KUBELET_PATH}" \
             --set spiffe-oidc-discovery-provider.enabled=false
     fi
 
