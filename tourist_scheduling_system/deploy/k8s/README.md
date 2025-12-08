@@ -7,19 +7,30 @@ Kubernetes manifests for deploying the Tourist Scheduling System agents.
 1. **Container images** built and pushed to a registry
 2. **Kubernetes cluster** with access configured
 3. **kubectl** configured to access your cluster
-4. **Infrastructure deployed separately**:
-   - SLIM: Use the [SLIM Helm chart](https://github.com/agntcy/slim/tree/main/helm)
-   - Jaeger: Use the [Jaeger Operator](https://www.jaegertracing.io/docs/latest/operator/)
+4. **envsubst** installed (usually comes with gettext)
+5. **Azure OpenAI** credentials
+
+## Transport Modes
+
+The system supports two transport modes:
+
+| Mode | Description | Requirements |
+|------|-------------|--------------|
+| **HTTP** | Direct HTTP communication between agents | None (default) |
+| **SLIM** | Secure communication via SLIM gateway with mTLS | SLIM infrastructure deployed |
 
 ## Manifests
 
-| File | Agent | Type | Description |
-|------|-------|------|-------------|
-| `namespace.yaml` | - | Namespace | Creates `tourist-scheduling` namespace |
-| `scheduler-agent.yaml` | scheduler | Deployment | A2A server for coordination |
-| `ui-agent.yaml` | ui | Deployment | Dashboard A2A server |
-| `guide-agent.yaml` | guide | Job | Submits guide offers |
-| `tourist-agent.yaml` | tourist | Job | Submits tour requests |
+| File | Description |
+|------|-------------|
+| `namespace.yaml` | Namespace and shared ConfigMap |
+| `scheduler-agent.yaml` | A2A server for coordination |
+| `ui-agent.yaml` | Dashboard A2A server |
+| `guide-agent.yaml` | Sample guide agent jobs (2 guides) |
+| `tourist-agent.yaml` | Sample tourist agent jobs (2 tourists) |
+| `deploy.sh` | Deployment script |
+| `spawn-agents.sh` | Scale multiple guides/tourists |
+| `templates/` | Job templates for dynamic generation |
 
 ## Quick Start
 
@@ -28,115 +39,239 @@ Kubernetes manifests for deploying the Tourist Scheduling System agents.
 ```bash
 cd tourist_scheduling_system
 
-# Build all images
+export IMAGE_REGISTRY=ghcr.io/your-org
+export IMAGE_TAG=latest
+
+# Build and push images
 docker-compose build
-
-# Tag and push to your registry
-export REGISTRY=ghcr.io/your-org  # or gcr.io/your-project
-export TAG=latest
-
-docker tag scheduler-agent:latest $REGISTRY/scheduler-agent:$TAG
-docker tag ui-agent:latest $REGISTRY/ui-agent:$TAG
-docker tag guide-agent:latest $REGISTRY/guide-agent:$TAG
-docker tag tourist-agent:latest $REGISTRY/tourist-agent:$TAG
-
-docker push $REGISTRY/scheduler-agent:$TAG
-docker push $REGISTRY/ui-agent:$TAG
-docker push $REGISTRY/guide-agent:$TAG
-docker push $REGISTRY/tourist-agent:$TAG
+docker tag scheduler-agent:latest $IMAGE_REGISTRY/scheduler-agent:$IMAGE_TAG
+docker tag ui-agent:latest $IMAGE_REGISTRY/ui-agent:$IMAGE_TAG
+docker push $IMAGE_REGISTRY/scheduler-agent:$IMAGE_TAG
+docker push $IMAGE_REGISTRY/ui-agent:$IMAGE_TAG
 ```
 
-### 2. Create Namespace and Secrets
+### 2. Deploy with HTTP Transport (Default)
 
 ```bash
-# Create namespace
-kubectl apply -f deploy/k8s/namespace.yaml
+export NAMESPACE=lumuscar-jobs
+export IMAGE_REGISTRY=ghcr.io/your-org
+export IMAGE_TAG=latest
+
+# Create namespace and deploy
+./deploy/k8s/deploy.sh http
 
 # Create Azure OpenAI credentials secret
 kubectl create secret generic azure-openai-credentials \
   --from-literal=api-key=$AZURE_OPENAI_API_KEY \
   --from-literal=endpoint=$AZURE_OPENAI_ENDPOINT \
   --from-literal=deployment-name=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \
-  -n tourist-scheduling
+  -n $NAMESPACE
 ```
 
-### 3. Deploy Infrastructure (Separately)
+### 3. Deploy with SLIM Transport
 
-Deploy SLIM and Jaeger using their official Helm charts:
+For secure mTLS communication between agents, first install SLIM infrastructure:
 
 ```bash
-# SLIM (example)
-helm repo add agntcy https://agntcy.github.io/slim
-helm install slim agntcy/slim -n tourist-scheduling
+# Install SPIRE and SLIM (see scripts/ folder)
+./scripts/spire.sh install
+./scripts/slim-controller.sh install
+./scripts/slim-node.sh install
 
-# Jaeger (example)
-helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
-helm install jaeger jaegertracing/jaeger -n tourist-scheduling
+# Deploy agents with SLIM transport
+export NAMESPACE=lumuscar-jobs
+export TRANSPORT_MODE=slim
+export SLIM_GATEWAY_HOST=slim-slim-node
+export SLIM_GATEWAY_PORT=46357
+
+./deploy/k8s/deploy.sh slim
 ```
 
-### 4. Deploy Agents
+### 4. Deploy Client Agents (Jobs)
 
 ```bash
-# Deploy server agents (long-running Deployments)
-kubectl apply -f deploy/k8s/scheduler-agent.yaml
-kubectl apply -f deploy/k8s/ui-agent.yaml
+export NAMESPACE=lumuscar-jobs
+export IMAGE_REGISTRY=ghcr.io/your-org
 
-# Wait for servers to be ready
-kubectl wait --for=condition=available deployment/scheduler-agent -n tourist-scheduling --timeout=120s
-kubectl wait --for=condition=available deployment/ui-dashboard-agent -n tourist-scheduling --timeout=120s
-
-# Run client agents (one-time Jobs)
-kubectl apply -f deploy/k8s/guide-agent.yaml
-kubectl apply -f deploy/k8s/tourist-agent.yaml
+# Deploy sample guide and tourist agents (2 each)
+envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
+envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -
 ```
 
-### 5. Verify
+## Scaling Multiple Agents
+
+Use `spawn-agents.sh` to deploy many guides and tourists with randomized configurations:
 
 ```bash
-# Check deployments
-kubectl get deployments -n tourist-scheduling
+cd deploy/k8s
 
-# Check jobs
-kubectl get jobs -n tourist-scheduling
+# Spawn 10 guide agents
+./spawn-agents.sh guides 10
 
-# Get dashboard URL
-kubectl get svc ui-dashboard-agent -n tourist-scheduling
+# Spawn 20 tourist agents
+./spawn-agents.sh tourists 20
+
+# Spawn both: 5 guides and 15 tourists
+./spawn-agents.sh both 5 15
+
+# Check status
+./spawn-agents.sh status
+
+# View logs for a specific agent
+./spawn-agents.sh logs guide 3
+./spawn-agents.sh logs tourist 5
+
+# Clean up all agent jobs
+./spawn-agents.sh clean
+```
+
+Each spawned agent gets:
+- **Guides**: Random categories, availability windows, hourly rates, group sizes
+- **Tourists**: Random preferences, availability windows, budgets
+
+### Custom Agent Configuration
+
+For fine-grained control, use the templates directly:
+
+```bash
+# Single guide with specific config
+export GUIDE_ID=expert1
+export GUIDE_CATEGORIES="art,history,architecture"
+export GUIDE_START="2025-06-01T08:00:00"
+export GUIDE_END="2025-06-01T18:00:00"
+export GUIDE_RATE=150
+export GUIDE_MAX_GROUP=3
+
+envsubst < deploy/k8s/templates/guide-agent.yaml.tpl | kubectl apply -f -
+
+# Single tourist with specific preferences
+export TOURIST_ID=vip1
+export TOURIST_PREFERENCES="art,wine,fine-dining"
+export TOURIST_START="2025-06-01T10:00:00"
+export TOURIST_END="2025-06-01T16:00:00"
+export TOURIST_BUDGET=500
+
+envsubst < deploy/k8s/templates/tourist-agent.yaml.tpl | kubectl apply -f -
+```
+
+### 5. Verify Deployment
+
+```bash
+# Check status
+./deploy/k8s/deploy.sh status
+
+# Or manually:
+kubectl get pods -l app.kubernetes.io/part-of=tourist-scheduling -n $NAMESPACE
+kubectl get svc -l app.kubernetes.io/part-of=tourist-scheduling -n $NAMESPACE
+kubectl get jobs -l app.kubernetes.io/part-of=tourist-scheduling -n $NAMESPACE
 
 # View logs
-kubectl logs -l app=scheduler-agent -n tourist-scheduling
-kubectl logs -l app=guide-agent -n tourist-scheduling
+kubectl logs -l app=scheduler-agent -n $NAMESPACE
+kubectl logs -l app=guide-agent -n $NAMESPACE
 ```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NAMESPACE` | `lumuscar-jobs` | Target Kubernetes namespace |
+| `IMAGE_REGISTRY` | `ghcr.io/agntcy` | Container image registry |
+| `IMAGE_TAG` | `latest` | Container image tag |
+| `TRANSPORT_MODE` | `http` | Transport mode: `http` or `slim` |
+| `SLIM_GATEWAY_HOST` | `slim-slim-node` | SLIM gateway service name |
+| `SLIM_GATEWAY_PORT` | `46357` | SLIM gateway port |
 
 ## Architecture
 
+### HTTP Mode
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ tourist-scheduling namespace                                    │
+│ ${NAMESPACE} namespace                                          │
 │                                                                 │
-│  ┌─────────────────┐           ┌─────────────────────┐         │
-│  │ scheduler-agent │◄──────────│  ui-dashboard-agent │         │
-│  │  (Deployment)   │           │    (Deployment)     │         │
-│  │  Port: 10000    │           │    Port: 10021      │         │
-│  └────────▲────────┘           └─────────────────────┘         │
+│  ┌─────────────────┐    HTTP    ┌─────────────────────┐        │
+│  │ scheduler-agent │◄──────────►│  ui-dashboard-agent │        │
+│  │  (Deployment)   │            │    (Deployment)     │        │
+│  │  Port: 10000    │            │    Port: 10021      │        │
+│  └────────▲────────┘            └─────────────────────┘        │
 │           │                                                     │
-│           │ A2A Protocol                                        │
+│           │ HTTP A2A Protocol                                   │
 │           │                                                     │
-│  ┌────────┴────────┐           ┌─────────────────────┐         │
-│  │   guide-agent   │           │   tourist-agent     │         │
-│  │     (Job)       │           │      (Job)          │         │
-│  └─────────────────┘           └─────────────────────┘         │
+│  ┌────────┴────────┐            ┌─────────────────────┐        │
+│  │   guide-agent   │            │   tourist-agent     │        │
+│  │     (Job)       │            │      (Job)          │        │
+│  └─────────────────┘            └─────────────────────┘        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### SLIM Mode (mTLS)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ ${NAMESPACE} namespace                                          │
 │                                                                 │
-│  Infrastructure (deployed separately):                          │
-│  ┌─────────────────┐           ┌─────────────────────┐         │
-│  │      SLIM       │           │      Jaeger         │         │
-│  │  (Helm Chart)   │           │   (Helm Chart)      │         │
-│  └─────────────────┘           └─────────────────────┘         │
+│  ┌─────────────────┐            ┌─────────────────────┐        │
+│  │ scheduler-agent │            │  ui-dashboard-agent │        │
+│  │  (Deployment)   │            │    (Deployment)     │        │
+│  └────────▲────────┘            └──────────▲──────────┘        │
+│           │                                │                    │
+│           │ mTLS via SLIM Gateway          │                    │
+│           │                                │                    │
+│  ┌────────┴────────────────────────────────┴──────────┐        │
+│  │              SLIM Gateway (slim-slim-node)         │        │
+│  │                    Port: 46357                      │        │
+│  └────────▲────────────────────────────────▲──────────┘        │
+│           │                                │                    │
+│  ┌────────┴────────┐            ┌──────────┴──────────┐        │
+│  │   guide-agent   │            │   tourist-agent     │        │
+│  │     (Job)       │            │      (Job)          │        │
+│  └─────────────────┘            └─────────────────────┘        │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────┐       │
+│  │ SPIRE Agent (CSI Driver)                            │       │
+│  │ Provides workload identities & mTLS certificates    │       │
+│  └─────────────────────────────────────────────────────┘       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Cleanup
 
 ```bash
-# Delete all resources
-kubectl delete namespace tourist-scheduling
+# Remove deployed resources (preserves namespace and secrets)
+./deploy/k8s/deploy.sh clean
+
+# Or delete entire namespace
+kubectl delete namespace $NAMESPACE
+```
+
+## Troubleshooting
+
+### Pods not starting
+
+```bash
+# Check pod events
+kubectl describe pod -l app=scheduler-agent -n $NAMESPACE
+
+# Check if secret exists
+kubectl get secret azure-openai-credentials -n $NAMESPACE
+```
+
+### SLIM connection issues
+
+```bash
+# Check SLIM node is running
+kubectl get pods -l app.kubernetes.io/name=slim-node -n $NAMESPACE
+
+# Check SLIM node logs
+kubectl logs -l app.kubernetes.io/name=slim-node -n $NAMESPACE
+
+# Verify SPIRE agent
+kubectl get pods -l app.kubernetes.io/name=spire-agent -n lumuscar-spire
+```
+
+### ConfigMap values
+
+```bash
+# View current configuration
+kubectl get configmap agent-config -n $NAMESPACE -o yaml
 ```

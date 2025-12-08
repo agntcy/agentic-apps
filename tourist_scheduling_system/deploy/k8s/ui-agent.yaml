@@ -7,18 +7,25 @@
 # Usage:
 #   export IMAGE_REGISTRY=ghcr.io/agntcy
 #   export IMAGE_TAG=latest
+#   export NAMESPACE=lumuscar-jobs
+#   envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
+#
+# For SLIM transport mode:
+#   export TRANSPORT_MODE=slim
+#   export SLIM_GATEWAY_HOST=slim-slim-node
+#   export SLIM_GATEWAY_PORT=46357
 #   envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
 #
 # Verify:
-#   kubectl get pods -l app=ui-dashboard-agent -n tourist-scheduling
-#   kubectl get svc ui-dashboard-agent -n tourist-scheduling
+#   kubectl get pods -l app=ui-dashboard-agent -n ${NAMESPACE:-lumuscar-jobs}
+#   kubectl get svc ui-dashboard-agent -n ${NAMESPACE:-lumuscar-jobs}
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ui-dashboard-agent
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: ui-dashboard-agent
     app.kubernetes.io/name: ui-dashboard-agent
@@ -47,6 +54,31 @@ spec:
           env:
             - name: PORT
               value: "10021"
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
+            - name: SCHEDULER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
           resources:
             requests:
               memory: "128Mi"
@@ -74,7 +106,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ui-dashboard-agent
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: ui-dashboard-agent
     app.kubernetes.io/name: ui-dashboard-agent
@@ -88,3 +120,4 @@ spec:
       name: http
   selector:
     app: ui-dashboard-agent
+

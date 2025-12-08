@@ -13,6 +13,7 @@ scheduler, with optional SLIM transport for encrypted messaging and distributed 
 - [Project Structure](#-project-structure)
 - [Architecture](#-architecture)
 - [SLIM Transport](#-slim-transport)
+- [Kubernetes Deployment](#-kubernetes-deployment)
 - [Distributed Tracing](#-distributed-tracing)
 - [Dashboard Features](#-dashboard-features)
 - [CLI Reference](#-cli-reference)
@@ -84,9 +85,24 @@ tourist_scheduling_system/
 │       ├── tracing.py           # OpenTelemetry setup
 │       ├── messages.py          # Message types
 │       └── logging_config.py    # Logging configuration
-├── scripts/
+├── scripts/                     # Shell scripts for infrastructure
+│   ├── spire.sh                 # SPIRE server/agent deployment
+│   ├── slim-controller.sh       # SLIM controller deployment
+│   ├── slim-node.sh             # SLIM data plane node deployment
+│   ├── directory.sh             # Agent Directory deployment
 │   └── run_adk_demo.py          # Main demo runner (Python CLI)
-├── setup.sh                     # Infrastructure management
+├── deploy/
+│   └── k8s/                     # Kubernetes manifests
+│       ├── namespace.yaml       # Namespace and ConfigMap
+│       ├── scheduler-agent.yaml # Scheduler Deployment
+│       ├── ui-agent.yaml        # UI Dashboard Deployment
+│       ├── guide-agent.yaml     # Sample guide agent Jobs
+│       ├── tourist-agent.yaml   # Sample tourist agent Jobs
+│       ├── deploy.sh            # Deployment helper script
+│       ├── spawn-agents.sh      # Scale multiple guides/tourists
+│       ├── templates/           # Job templates for dynamic generation
+│       └── README.md            # K8s deployment docs
+├── setup.sh                     # Local infrastructure management
 ├── run.sh                       # Demo launcher script (sourceable)
 ├── slim-config.yaml             # SLIM node configuration
 └── slim-config-otel.yaml        # SLIM config with OpenTelemetry
@@ -151,6 +167,107 @@ transport:
 security:
   shared_secret: ${SLIM_SHARED_SECRET}
 ```
+
+## ☸️ Kubernetes Deployment
+
+Deploy the Tourist Scheduling System to Kubernetes with support for both HTTP and SLIM transport modes.
+
+### Prerequisites
+
+- Kubernetes cluster (MicroK8s, GKE, EKS, etc.)
+- `kubectl` configured
+- `envsubst` (comes with gettext)
+- Container images pushed to registry
+
+### Quick Deploy
+
+```bash
+cd deploy/k8s
+
+# Set environment
+export NAMESPACE=lumuscar-jobs
+export IMAGE_REGISTRY=ghcr.io/your-org
+export IMAGE_TAG=latest
+
+# Deploy with HTTP transport (default)
+./deploy.sh http
+
+# Or deploy with SLIM transport (requires SLIM infrastructure)
+./deploy.sh slim
+
+# Create secrets
+kubectl create secret generic azure-openai-credentials \
+  --from-literal=api-key=$AZURE_OPENAI_API_KEY \
+  --from-literal=endpoint=$AZURE_OPENAI_ENDPOINT \
+  --from-literal=deployment-name=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \
+  -n $NAMESPACE
+
+# Check status
+./deploy.sh status
+```
+
+### SLIM Infrastructure Setup
+
+For SLIM transport with mTLS authentication:
+
+```bash
+# Install SPIRE (identity provider)
+./scripts/spire.sh install
+
+# Install SLIM controller and node
+./scripts/slim-controller.sh install
+./scripts/slim-node.sh install
+
+# Install Agent Directory (optional)
+./scripts/directory.sh install
+
+# Verify
+./scripts/spire.sh status
+./scripts/slim-controller.sh status
+./scripts/slim-node.sh status
+```
+
+### Manual Deployment
+
+```bash
+# Using envsubst for variable substitution
+export NAMESPACE=lumuscar-jobs
+export IMAGE_REGISTRY=ghcr.io/agntcy
+export IMAGE_TAG=latest
+export TRANSPORT_MODE=http  # or slim
+
+# Apply manifests
+envsubst < deploy/k8s/namespace.yaml | kubectl apply -f -
+envsubst < deploy/k8s/scheduler-agent.yaml | kubectl apply -f -
+envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
+
+# Run client agents (Jobs)
+envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
+envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -
+```
+
+### Scaling Multiple Agents
+
+Spawn many guides and tourists with randomized configurations:
+
+```bash
+cd deploy/k8s
+
+# Spawn 10 guides and 50 tourists
+./spawn-agents.sh guides 10
+./spawn-agents.sh tourists 50
+
+# Or spawn both at once
+./spawn-agents.sh both 10 50
+
+# Check status
+./spawn-agents.sh status
+
+# Clean up
+./spawn-agents.sh clean
+```
+
+See [deploy/k8s/README.md](deploy/k8s/README.md) for full documentation.
 
 ## 📊 Distributed Tracing
 

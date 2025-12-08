@@ -4,14 +4,22 @@
 # Can be run multiple times with different guide IDs and configurations.
 #
 # Usage:
-#   kubectl apply -f deploy/k8s/guide-agent.yaml
+#   export NAMESPACE=lumuscar-jobs
+#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
+#
+# For SLIM transport mode:
+#   export TRANSPORT_MODE=slim
+#   export SLIM_GATEWAY_HOST=slim-slim-node
+#   export SLIM_GATEWAY_PORT=46357
+#   envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
 
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: guide-agent-g1
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: guide-agent
     app.kubernetes.io/name: guide-agent
@@ -29,7 +37,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: guide-agent:latest
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -48,7 +56,30 @@ spec:
                   name: azure-openai-credentials
                   key: deployment-name
             - name: SCHEDULER_URL
-              value: "http://scheduler-agent:10000"
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
           args:
             - "--guide-id=g1"
             - "--categories=culture,history,food"
@@ -56,7 +87,6 @@ spec:
             - "--available-end=2025-06-01T14:00:00"
             - "--hourly-rate=50"
             - "--max-group-size=5"
-            - "--scheduler-url=$(SCHEDULER_URL)"
           resources:
             requests:
               memory: "128Mi"
@@ -71,7 +101,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: guide-agent-g2
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: guide-agent
     app.kubernetes.io/name: guide-agent
@@ -88,7 +118,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: guide-agent:latest
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -107,7 +137,30 @@ spec:
                   name: azure-openai-credentials
                   key: deployment-name
             - name: SCHEDULER_URL
-              value: "http://scheduler-agent:10000"
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
           args:
             - "--guide-id=g2"
             - "--categories=art,architecture"
@@ -115,7 +168,6 @@ spec:
             - "--available-end=2025-06-01T13:00:00"
             - "--hourly-rate=75"
             - "--max-group-size=3"
-            - "--scheduler-url=$(SCHEDULER_URL)"
           resources:
             requests:
               memory: "128Mi"
@@ -123,3 +175,4 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+

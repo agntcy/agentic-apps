@@ -1,0 +1,211 @@
+#!/bin/bash
+# Deploy Tourist Scheduling System to Kubernetes
+#
+# Usage:
+#   ./deploy.sh                    # Deploy with HTTP transport
+#   ./deploy.sh slim               # Deploy with SLIM transport
+#   ./deploy.sh clean              # Remove all resources
+#
+# Environment variables:
+#   NAMESPACE          - Target namespace (default: lumuscar-jobs)
+#   IMAGE_REGISTRY     - Container registry (default: ghcr.io/agntcy)
+#   IMAGE_TAG          - Image tag (default: latest)
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+show_usage() {
+    echo "Usage: $0 [http|slim|clean|status]"
+    echo ""
+    echo "Commands:"
+    echo "  http    Deploy with HTTP transport (default)"
+    echo "  slim    Deploy with SLIM transport (requires SLIM infrastructure)"
+    echo "  clean   Remove all deployed resources"
+    echo "  status  Show deployment status"
+    echo ""
+    echo "Environment Variables:"
+    echo "  NAMESPACE        Target namespace (default: lumuscar-jobs)"
+    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy)"
+    echo "  IMAGE_TAG        Image tag (default: latest)"
+    echo ""
+    echo "Required secrets (create before deploying):"
+    echo "  kubectl create secret generic azure-openai-credentials \\"
+    echo "    --from-literal=api-key=\$AZURE_OPENAI_API_KEY \\"
+    echo "    --from-literal=endpoint=\$AZURE_OPENAI_ENDPOINT \\"
+    echo "    --from-literal=deployment-name=\${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \\"
+    echo "    -n $NAMESPACE"
+}
+
+deploy_http() {
+    log_info "Deploying Tourist Scheduling System with HTTP transport..."
+    log_info "Namespace: $NAMESPACE"
+    log_info "Image Registry: $IMAGE_REGISTRY"
+    log_info "Image Tag: $IMAGE_TAG"
+
+    # Set transport mode to HTTP
+    export TRANSPORT_MODE=http
+    export SCHEDULER_URL="http://scheduler-agent:10000"
+    export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
+
+    # Deploy namespace and configmap
+    log_info "Creating namespace and configuration..."
+    envsubst < "$SCRIPT_DIR/namespace.yaml" | kubectl apply -f -
+
+    # Check for secret
+    if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
+        log_warn "Secret 'azure-openai-credentials' not found in namespace '$NAMESPACE'"
+        log_warn "Please create it before deploying agents:"
+        echo "  kubectl create secret generic azure-openai-credentials \\"
+        echo "    --from-literal=api-key=\$AZURE_OPENAI_API_KEY \\"
+        echo "    --from-literal=endpoint=\$AZURE_OPENAI_ENDPOINT \\"
+        echo "    --from-literal=deployment-name=\${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \\"
+        echo "    -n $NAMESPACE"
+    fi
+
+    # Deploy scheduler agent
+    log_info "Deploying scheduler agent..."
+    envsubst < "$SCRIPT_DIR/scheduler-agent.yaml" | kubectl apply -f -
+
+    # Deploy UI dashboard agent
+    log_info "Deploying UI dashboard agent..."
+    envsubst < "$SCRIPT_DIR/ui-agent.yaml" | kubectl apply -f -
+
+    log_info "Deployment complete!"
+    log_info ""
+    log_info "To deploy guide agents:"
+    log_info "  NAMESPACE=$NAMESPACE IMAGE_REGISTRY=$IMAGE_REGISTRY envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -"
+    log_info ""
+    log_info "To deploy tourist agents:"
+    log_info "  NAMESPACE=$NAMESPACE IMAGE_REGISTRY=$IMAGE_REGISTRY envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -"
+}
+
+deploy_slim() {
+    log_info "Deploying Tourist Scheduling System with SLIM transport..."
+    log_info "Namespace: $NAMESPACE"
+    log_info "Image Registry: $IMAGE_REGISTRY"
+    log_info "Image Tag: $IMAGE_TAG"
+
+    # Check if SLIM is installed
+    if ! kubectl get pods -l app.kubernetes.io/name=slim-node -n "$NAMESPACE" &>/dev/null; then
+        log_warn "SLIM node not found in namespace '$NAMESPACE'"
+        log_warn "Please install SLIM infrastructure first."
+        log_warn "See scripts/slim-node.sh for installation."
+    fi
+
+    # Set transport mode to SLIM
+    export TRANSPORT_MODE=slim
+    export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
+    export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
+    # For SLIM mode, agents communicate via gateway, not direct HTTP
+    export SCHEDULER_URL="http://scheduler-agent:10000"
+    export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
+
+    # Deploy namespace and configmap
+    log_info "Creating namespace and configuration..."
+    envsubst < "$SCRIPT_DIR/namespace.yaml" | kubectl apply -f -
+
+    # Check for secret
+    if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
+        log_warn "Secret 'azure-openai-credentials' not found in namespace '$NAMESPACE'"
+        log_warn "Please create it before deploying agents."
+    fi
+
+    # Deploy scheduler agent
+    log_info "Deploying scheduler agent..."
+    envsubst < "$SCRIPT_DIR/scheduler-agent.yaml" | kubectl apply -f -
+
+    # Deploy UI dashboard agent
+    log_info "Deploying UI dashboard agent..."
+    envsubst < "$SCRIPT_DIR/ui-agent.yaml" | kubectl apply -f -
+
+    log_info "Deployment complete with SLIM transport!"
+    log_info ""
+    log_info "Agents will communicate via SLIM gateway at:"
+    log_info "  Host: $SLIM_GATEWAY_HOST"
+    log_info "  Port: $SLIM_GATEWAY_PORT"
+}
+
+clean() {
+    log_info "Removing Tourist Scheduling System resources from $NAMESPACE..."
+
+    # Delete jobs first
+    kubectl delete jobs -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" --ignore-not-found
+
+    # Delete deployments
+    kubectl delete deployments -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" --ignore-not-found
+
+    # Delete services
+    kubectl delete services -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" --ignore-not-found
+
+    # Delete configmap
+    kubectl delete configmap agent-config -n "$NAMESPACE" --ignore-not-found
+
+    log_info "Resources removed. Namespace and secrets preserved."
+    log_info "To delete namespace: kubectl delete namespace $NAMESPACE"
+}
+
+status() {
+    log_info "Tourist Scheduling System Status in $NAMESPACE"
+    echo ""
+
+    echo "=== Pods ==="
+    kubectl get pods -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" -o wide 2>/dev/null || echo "No pods found"
+    echo ""
+
+    echo "=== Services ==="
+    kubectl get svc -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" 2>/dev/null || echo "No services found"
+    echo ""
+
+    echo "=== Jobs ==="
+    kubectl get jobs -l app.kubernetes.io/part-of=tourist-scheduling -n "$NAMESPACE" 2>/dev/null || echo "No jobs found"
+    echo ""
+
+    echo "=== ConfigMap ==="
+    kubectl get configmap agent-config -n "$NAMESPACE" -o yaml 2>/dev/null | grep -A20 "^data:" || echo "ConfigMap not found"
+}
+
+# Main
+case "${1:-http}" in
+    http)
+        deploy_http
+        ;;
+    slim)
+        deploy_slim
+        ;;
+    clean)
+        clean
+        ;;
+    status)
+        status
+        ;;
+    -h|--help|help)
+        show_usage
+        ;;
+    *)
+        log_error "Unknown command: $1"
+        show_usage
+        exit 1
+        ;;
+esac

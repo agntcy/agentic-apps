@@ -4,14 +4,22 @@
 # Can be run multiple times with different tourist IDs and configurations.
 #
 # Usage:
-#   kubectl apply -f deploy/k8s/tourist-agent.yaml
+#   export NAMESPACE=lumuscar-jobs
+#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -
+#
+# For SLIM transport mode:
+#   export TRANSPORT_MODE=slim
+#   export SLIM_GATEWAY_HOST=slim-slim-node
+#   export SLIM_GATEWAY_PORT=46357
+#   envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -
 
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: tourist-agent-t1
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: tourist-agent
     app.kubernetes.io/name: tourist-agent
@@ -29,7 +37,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: tourist-agent:latest
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/tourist-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -48,14 +56,36 @@ spec:
                   name: azure-openai-credentials
                   key: deployment-name
             - name: SCHEDULER_URL
-              value: "http://scheduler-agent:10000"
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
           args:
             - "--tourist-id=t1"
             - "--preferences=culture,history"
             - "--availability-start=2025-06-01T09:00:00"
             - "--availability-end=2025-06-01T17:00:00"
             - "--budget=100"
-            - "--scheduler-url=$(SCHEDULER_URL)"
           resources:
             requests:
               memory: "128Mi"
@@ -70,7 +100,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: tourist-agent-t2
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app: tourist-agent
     app.kubernetes.io/name: tourist-agent
@@ -87,7 +117,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: tourist-agent:latest
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/tourist-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -106,14 +136,36 @@ spec:
                   name: azure-openai-credentials
                   key: deployment-name
             - name: SCHEDULER_URL
-              value: "http://scheduler-agent:10000"
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
           args:
             - "--tourist-id=t2"
             - "--preferences=art,food"
             - "--availability-start=2025-06-01T10:00:00"
             - "--availability-end=2025-06-01T15:00:00"
             - "--budget=80"
-            - "--scheduler-url=$(SCHEDULER_URL)"
           resources:
             requests:
               memory: "128Mi"
@@ -121,3 +173,4 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
+

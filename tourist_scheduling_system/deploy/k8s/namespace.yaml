@@ -1,20 +1,27 @@
 # Kubernetes Namespace and Shared Resources
 #
 # Apply first:
-#   kubectl apply -f deploy/k8s/namespace.yaml
+#   export NAMESPACE=lumuscar-jobs  # or your preferred namespace
+#   envsubst < deploy/k8s/namespace.yaml | kubectl apply -f -
 #
 # Then create the secret:
 #   kubectl create secret generic azure-openai-credentials \
 #     --from-literal=api-key=$AZURE_OPENAI_API_KEY \
 #     --from-literal=endpoint=$AZURE_OPENAI_ENDPOINT \
 #     --from-literal=deployment-name=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \
-#     -n tourist-scheduling
+#     -n ${NAMESPACE:-lumuscar-jobs}
+#
+# Environment Variables:
+#   NAMESPACE          - Target namespace (default: lumuscar-jobs)
+#   TRANSPORT_MODE     - Transport mode: "slim" or "http" (default: http)
+#   SLIM_GATEWAY_HOST  - SLIM gateway host (default: slim-slim-node)
+#   SLIM_GATEWAY_PORT  - SLIM gateway port (default: 46357)
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: tourist-scheduling
+  name: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app.kubernetes.io/part-of: tourist-scheduling
 
@@ -24,10 +31,27 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: agent-config
-  namespace: tourist-scheduling
+  namespace: ${NAMESPACE:-lumuscar-jobs}
   labels:
     app.kubernetes.io/part-of: tourist-scheduling
 data:
+  # Azure OpenAI configuration
   AZURE_OPENAI_API_VERSION: "2024-02-01"
+
+  # Agent ports
   UI_A2A_PORT: "10021"
   SCHEDULER_PORT: "10000"
+
+  # Transport configuration
+  # Options: "slim" for SLIM transport, "http" for direct HTTP
+  TRANSPORT_MODE: "${TRANSPORT_MODE:-http}"
+
+  # SLIM configuration (used when TRANSPORT_MODE=slim)
+  SLIM_GATEWAY_HOST: "${SLIM_GATEWAY_HOST:-slim-slim-node}"
+  SLIM_GATEWAY_PORT: "${SLIM_GATEWAY_PORT:-46357}"
+
+  # Service URLs (computed based on transport mode)
+  # For HTTP mode: http://scheduler-agent:10000
+  # For SLIM mode: configured via SLIM_GATEWAY
+  SCHEDULER_URL: "${SCHEDULER_URL:-http://scheduler-agent:10000}"
+  UI_DASHBOARD_URL: "${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
