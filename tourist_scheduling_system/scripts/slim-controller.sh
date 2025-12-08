@@ -95,7 +95,9 @@ install() {
         HELM_VALUES+=(
             --set spire.enabled=true
             --set spire.useCSIDriver=true
+            --set spire.socketPath="/run/spire/agent-sockets/spire-agent.sock"
             --set config.southbound.tls.useSpiffe=true
+            --set config.southbound.spire.socketPath="unix:///run/spire/agent-sockets/spire-agent.sock"
         )
     else
         log_info "SPIRE mode disabled - using insecure mode"

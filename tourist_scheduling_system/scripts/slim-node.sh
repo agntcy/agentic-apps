@@ -110,6 +110,7 @@ install() {
             --set slim.config.services.slim/0.controller.clients[0].tls.useSpiffe=true
             --set spire.enabled=true
             --set spire.useCSIDriver=true
+            --set spire.socketPath="/run/spire/agent-sockets/spire-agent.sock"
         )
     else
         HELM_VALUES+=(
