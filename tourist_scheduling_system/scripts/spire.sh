@@ -112,26 +112,9 @@ install() {
     status
 }
 
-# Uninstall SPIRE
-uninstall() {
-    log_info "Uninstalling SPIRE from namespace ${NAMESPACE}..."
-
-    if helm list -n "${NAMESPACE}" | grep -q "^${RELEASE_NAME}\s"; then
-        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" || true
-    else
-        log_warn "Release ${RELEASE_NAME} not found"
-    fi
-
-    if helm list -n "${NAMESPACE}" | grep -q "spire-crds"; then
-        helm uninstall spire-crds -n "${NAMESPACE}" || true
-    fi
-
-    log_info "SPIRE uninstalled"
-}
-
-# Force clean all SPIRE resources
-force_clean() {
-    log_warn "Force cleaning up all SPIRE resources in namespace ${NAMESPACE}..."
+# Clean all SPIRE resources
+clean() {
+    log_warn "Cleaning up all SPIRE resources in namespace ${NAMESPACE}..."
 
     # Uninstall helm releases
     helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
@@ -139,26 +122,17 @@ force_clean() {
 
     # Remove helm secrets
     for secret in $(kubectl get secrets -n "${NAMESPACE}" -o name 2>/dev/null | grep "sh.helm.release.*spire"); do
-        log_info "Deleting ${secret}..."
         kubectl delete "${secret}" -n "${NAMESPACE}" 2>/dev/null || true
     done
 
-    # Delete SPIRE resources in namespace (not the namespace itself)
+    # Delete SPIRE resources in namespace
     log_info "Deleting SPIRE resources..."
     kubectl delete statefulset spire-server -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete daemonset spire-agent -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete deployment spire-spiffe-csi-driver -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete deployment spire-spiffe-oidc-discovery-provider -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete daemonset spire-agent spire-spiffe-csi-driver -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete deployment spire-controller-manager -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete service spire-server -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete service spire-server-bundle-endpoint -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete service spire-controller-manager-webhook -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete configmap spire-server -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete configmap spire-agent -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete configmap spire-bundle -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete serviceaccount spire-server -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete serviceaccount spire-agent -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete serviceaccount spire-controller-manager -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete service spire-server spire-server-bundle-endpoint spire-controller-manager-webhook -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete configmap spire-server spire-agent spire-bundle -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete serviceaccount spire-server spire-agent spire-controller-manager -n "${NAMESPACE}" 2>/dev/null || true
 
     # Delete cluster-scoped resources
     log_info "Deleting cluster-scoped SPIRE resources..."
@@ -173,7 +147,7 @@ force_clean() {
     kubectl delete crd clusterstaticentries.spire.spiffe.io 2>/dev/null || true
     kubectl delete crd controllermanagerconfigs.spire.spiffe.io 2>/dev/null || true
 
-    log_info "Force cleanup complete"
+    log_info "Cleanup complete"
 }
 
 # Show status
@@ -282,31 +256,30 @@ list_entries() {
 
 # Show help
 usage() {
-    echo "SPIRE Deployment Script (Single Namespace Mode)"
+    echo "SPIRE Deployment Script"
     echo ""
     echo "Usage: $0 <command>"
     echo ""
     echo "Commands:"
-    echo "  install         Install SPIRE (Server + Agent) in single namespace"
-    echo "  uninstall       Uninstall SPIRE"
-    echo "  force-clean     Force clean all SPIRE resources"
+    echo "  install         Install SPIRE (Server + Agent + CSI driver)"
+    echo "  clean           Remove all SPIRE resources"
     echo "  status          Show deployment status"
-    echo "  logs [server|agent]  Stream SPIRE logs (default: server)"
+    echo "  logs [component]  Stream logs (server|agent, default: server)"
     echo "  register-slim   Register SLIM workloads with SPIRE"
     echo "  list-entries    List all SPIRE workload entries"
     echo ""
     echo "Environment variables:"
-    echo "  SPIRE_NAMESPACE       Target namespace (default: lumuscar-jobs)"
-    echo "  SPIRE_TRUST_DOMAIN    Trust domain (default: example.org)"
-    echo "  SPIRE_CLUSTER_NAME    Cluster name (default: slim-cluster)"
-    echo "  SPIRE_CHART_VERSION   Helm chart version (default: 0.27.1)"
+    echo "  SPIRE_NAMESPACE           Target namespace (default: lumuscar-jobs)"
+    echo "  SPIRE_TRUST_DOMAIN        Trust domain (default: example.org)"
+    echo "  SPIRE_CLUSTER_NAME        Cluster name (default: slim-cluster)"
+    echo "  SPIRE_CHART_VERSION       Helm chart version (default: 0.27.1)"
+    echo "  SPIRE_CSI_DRIVER_ENABLED  Enable SPIFFE CSI driver (default: false)"
     echo ""
     echo "Examples:"
     echo "  $0 install"
-    echo "  SPIRE_TRUST_DOMAIN=mycompany.org $0 install"
+    echo "  SPIRE_CSI_DRIVER_ENABLED=true $0 install"
     echo "  $0 register-slim"
     echo "  $0 logs agent"
-    echo "  $0 force-clean"
 }
 
 # Main
@@ -314,11 +287,8 @@ case "${1:-}" in
     install)
         install
         ;;
-    uninstall)
-        uninstall
-        ;;
-    force-clean)
-        force_clean
+    clean)
+        clean
         ;;
     status)
         status

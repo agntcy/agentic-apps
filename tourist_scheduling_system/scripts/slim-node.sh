@@ -142,43 +142,15 @@ install() {
     status
 }
 
-# Uninstall SLIM node
-uninstall() {
-    log_info "Uninstalling SLIM node '${NODE_NAME}' from namespace ${NAMESPACE}..."
-
-    if helm list -n "${NAMESPACE}" | grep -q "${RELEASE_NAME}"; then
-        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" || true
-    else
-        log_warn "Release ${RELEASE_NAME} not found"
-    fi
-
-    log_info "SLIM node uninstalled"
-}
-
-# Clean up stuck releases and resources
+# Clean all SLIM node resources
 clean() {
-    log_warn "Cleaning up SLIM node '${NODE_NAME}' resources in namespace ${NAMESPACE}..."
+    log_warn "Cleaning up all SLIM node '${NODE_NAME}' resources in namespace ${NAMESPACE}..."
 
-    # Remove helm release secrets (for stuck releases)
-    log_info "Removing Helm release secrets..."
-    for secret in $(kubectl get secrets -n "${NAMESPACE}" -o name 2>/dev/null | grep "sh.helm.release.v1.${RELEASE_NAME}"); do
-        log_info "Deleting ${secret}..."
-        kubectl delete "${secret}" -n "${NAMESPACE}" 2>/dev/null || true
-    done
-
-    # Remove slim node resources directly
-    log_info "Removing SLIM node resources..."
-    kubectl delete statefulset "${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete service "${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete configmap "${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete serviceaccount "${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
-
-    log_info "Cleanup complete"
-}
-
-# Force clean without prompts (for CI/CD)
-force_clean() {
-    log_warn "Force cleaning up SLIM node '${NODE_NAME}' resources in namespace ${NAMESPACE}..."
+    # Uninstall helm release
+    if helm list -n "${NAMESPACE}" | grep -q "${RELEASE_NAME}"; then
+        log_info "Uninstalling Helm release ${RELEASE_NAME}..."
+        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" --wait 2>/dev/null || true
+    fi
 
     # Remove helm release secrets (try multiple patterns)
     log_info "Removing Helm release secrets..."
@@ -196,20 +168,18 @@ force_clean() {
     kubectl delete serviceaccount "${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
 
     # Pattern 2: slim-NODE_NAME (helm release naming)
-    log_info "Removing resources with name 'slim-${NODE_NAME}'..."
     kubectl delete statefulset "slim-${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete service "slim-${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete configmap "slim-${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete serviceaccount "slim-${NODE_NAME}" -n "${NAMESPACE}" 2>/dev/null || true
 
     # Pattern 3: default 'slim' (chart default name)
-    log_info "Removing resources with default name 'slim'..."
     kubectl delete statefulset "slim" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete service "slim" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete configmap "slim" -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete serviceaccount "slim" -n "${NAMESPACE}" 2>/dev/null || true
 
-    log_info "Force cleanup complete"
+    log_info "Cleanup complete"
 }
 
 # Show status
@@ -276,9 +246,7 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  install [name]      Install or upgrade SLIM node (default: slim-node)"
-    echo "  uninstall [name]    Uninstall SLIM node"
-    echo "  clean [name]        Clean up all resources (interactive)"
-    echo "  force-clean [name]  Force clean all resources (non-interactive)"
+    echo "  clean [name]        Remove all SLIM node resources"
     echo "  status [name]       Show deployment status"
     echo "  logs [name]         Stream SLIM node logs"
     echo "  port-forward [name] Set up port forwarding for local access"
@@ -289,18 +257,15 @@ usage() {
     echo "  SLIM_CONTROLLER_HOST  Controller hostname (default: slim-control)"
     echo "  SLIM_CONTROLLER_PORT  Controller port (default: 50052)"
     echo "  SPIRE_ENABLED         Enable SPIRE mTLS (default: false)"
-    echo "  SPIRE_SOCKET_PATH     SPIRE agent socket (default: unix:///run/spire/agent-sockets/spire-agent.sock)"
+    echo "  SPIRE_SOCKET_PATH     SPIRE agent socket path"
     echo "  SPIRE_TRUST_DOMAIN    SPIRE trust domain (default: example.org)"
     echo "  SPIRE_CLUSTER_NAME    SPIRE cluster name (default: slim-cluster)"
     echo ""
     echo "Examples:"
-    echo "  $0 install                                  # Install default node"
-    echo "  $0 install scheduler-node                   # Install node for scheduler agent"
-    echo "  SPIRE_ENABLED=true $0 install               # Install with SPIRE mTLS"
-    echo "  SPIRE_ENABLED=true $0 install scheduler     # Install scheduler node with mTLS"
-    echo "  SLIM_NAMESPACE=prod $0 install              # Install in prod namespace"
-    echo "  $0 list                                     # List all nodes"
-    echo "  $0 force-clean scheduler-node               # Clean up specific node"
+    echo "  $0 install"
+    echo "  $0 install scheduler-node"
+    echo "  SPIRE_ENABLED=true $0 install"
+    echo "  $0 list"
 }
 
 # Main
@@ -308,14 +273,8 @@ case "${1:-}" in
     install)
         install
         ;;
-    uninstall)
-        uninstall
-        ;;
     clean)
         clean
-        ;;
-    force-clean)
-        force_clean
         ;;
     status)
         status

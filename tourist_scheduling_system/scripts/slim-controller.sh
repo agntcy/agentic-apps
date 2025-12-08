@@ -127,69 +127,32 @@ install() {
     status
 }
 
-# Uninstall SLIM controller
-uninstall() {
-    log_info "Uninstalling SLIM controller from namespace ${NAMESPACE}..."
+# Clean all SLIM controller resources
+clean() {
+    log_warn "Cleaning up all SLIM controller resources in namespace ${NAMESPACE}..."
 
+    # Uninstall helm release
     if helm list -n "${NAMESPACE}" | grep -q "${RELEASE_NAME}"; then
-        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" || true
-    else
-        log_warn "Release ${RELEASE_NAME} not found"
+        log_info "Uninstalling Helm release ${RELEASE_NAME}..."
+        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}" --wait 2>/dev/null || true
     fi
 
-    log_info "SLIM controller uninstalled"
-}
-
-# Clean up stuck releases and resources
-clean() {
-    log_warn "Cleaning up SLIM controller resources in namespace ${NAMESPACE}..."
-
-    # Remove helm release secrets (for stuck releases)
+    # Remove helm release secrets
     log_info "Removing Helm release secrets..."
-    kubectl delete secret -n "${NAMESPACE}" -l "name=${RELEASE_NAME},owner=helm" 2>/dev/null || true
-
-    # Also try the specific secret pattern
     for secret in $(kubectl get secrets -n "${NAMESPACE}" -o name 2>/dev/null | grep "sh.helm.release.v1.${RELEASE_NAME}"); do
         log_info "Deleting ${secret}..."
         kubectl delete "${secret}" -n "${NAMESPACE}" 2>/dev/null || true
     done
 
-    # Remove slim-control resources directly
-    log_info "Removing SLIM controller resources..."
-    kubectl delete deployment slim-control -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete service slim-control -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete configmap slim-control -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete serviceaccount slim-control -n "${NAMESPACE}" 2>/dev/null || true
-
-    # Optionally remove PVC (data will be lost)
-    read -p "Delete PersistentVolumeClaim slim-control-db? This will delete all data! (y/N): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        kubectl delete pvc slim-control-db -n "${NAMESPACE}" 2>/dev/null || true
-        log_info "PVC deleted"
-    else
-        log_info "PVC preserved"
-    fi
-
-    log_info "Cleanup complete"
-}
-
-# Force clean without prompts (for CI/CD)
-force_clean() {
-    log_warn "Force cleaning up all SLIM controller resources in namespace ${NAMESPACE}..."
-
-    # Remove helm release secrets
-    for secret in $(kubectl get secrets -n "${NAMESPACE}" -o name 2>/dev/null | grep "sh.helm.release.v1.${RELEASE_NAME}"); do
-        kubectl delete "${secret}" -n "${NAMESPACE}" 2>/dev/null || true
-    done
-
     # Remove all resources
+    log_info "Removing SLIM controller resources..."
     kubectl delete deployment slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete service slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete configmap slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete serviceaccount slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete pvc slim-control-db -n "${NAMESPACE}" 2>/dev/null || true
 
-    log_info "Force cleanup complete"
+    log_info "Cleanup complete"
 }
 
 # Show status
@@ -243,9 +206,7 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  install      Install or upgrade SLIM controller"
-    echo "  uninstall    Uninstall SLIM controller (keeps PVC)"
-    echo "  clean        Clean up all resources (interactive)"
-    echo "  force-clean  Force clean all resources (non-interactive)"
+    echo "  clean        Remove all SLIM controller resources"
     echo "  status       Show deployment status"
     echo "  logs         Stream SLIM controller logs"
     echo "  port-forward Set up port forwarding for local access"
@@ -253,15 +214,14 @@ usage() {
     echo "Environment variables:"
     echo "  SLIM_NAMESPACE       Target namespace (default: lumuscar-jobs)"
     echo "  SPIRE_ENABLED        Enable SPIRE mTLS (default: false)"
-    echo "  SPIRE_SOCKET_PATH    SPIRE agent socket (default: unix:///run/spire/agent-sockets/spire-agent.sock)"
+    echo "  SPIRE_SOCKET_PATH    SPIRE agent socket path"
     echo "  SPIRE_TRUST_DOMAIN   SPIRE trust domain (default: example.org)"
     echo "  SPIRE_CLUSTER_NAME   SPIRE cluster name (default: slim-cluster)"
     echo ""
     echo "Examples:"
-    echo "  $0 install                          # Install without SPIRE"
-    echo "  SPIRE_ENABLED=true $0 install       # Install with SPIRE mTLS"
-    echo "  SLIM_NAMESPACE=my-namespace $0 install"
-    echo "  $0 clean"
+    echo "  $0 install"
+    echo "  SPIRE_ENABLED=true $0 install"
+    echo "  $0 port-forward"
 }
 
 # Main
@@ -269,14 +229,8 @@ case "${1:-}" in
     install)
         install
         ;;
-    uninstall)
-        uninstall
-        ;;
     clean)
         clean
-        ;;
-    force-clean)
-        force_clean
         ;;
     status)
         status
