@@ -15,6 +15,7 @@ CHART_FILE="slim-control-plane-${CHART_VERSION}.tgz"
 SPIRE_ENABLED="${SPIRE_ENABLED:-false}"
 SPIRE_SOCKET_PATH="${SPIRE_SOCKET_PATH:-unix:///run/spire/agent-sockets/spire-agent.sock}"
 SPIRE_TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
+SPIRE_CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,6 +45,36 @@ download_chart() {
     fi
 }
 
+# Register SLIM controller workload with SPIRE
+register_with_spire() {
+    log_info "Registering SLIM controller workload with SPIRE..."
+
+    # Check if SPIRE server is available
+    if ! kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o name | grep -q "pod/"; then
+        log_warn "SPIRE server not found in namespace ${NAMESPACE}, skipping registration"
+        return 0
+    fi
+
+    local SPIRE_SERVER_POD
+    SPIRE_SERVER_POD=$(kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
+
+    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD}"
+
+    # Register SLIM Controller
+    log_info "Registering SLIM Controller..."
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -c spire-server -- \
+        /opt/spire/bin/spire-server entry create \
+        -spiffeID "spiffe://${SPIRE_TRUST_DOMAIN}/slim/controller" \
+        -parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent/k8s_psat/${SPIRE_CLUSTER_NAME}" \
+        -selector "k8s:ns:${NAMESPACE}" \
+        -selector "k8s:sa:slim-control" \
+        -dns "slim-control" \
+        -dns "slim-control.${NAMESPACE}.svc.cluster.local" \
+        2>/dev/null || log_warn "Controller entry may already exist"
+
+    log_info "SPIRE registration complete"
+}
+
 # Install SLIM controller
 install() {
     log_info "Installing SLIM controller in namespace ${NAMESPACE}..."
@@ -60,9 +91,10 @@ install() {
 
     # Add SPIRE values if enabled
     if [[ "${SPIRE_ENABLED}" == "true" ]]; then
-        log_info "SPIRE mode enabled - configuring mTLS (hostPath mode)..."
+        log_info "SPIRE mode enabled - configuring mTLS (CSI driver)..."
         HELM_VALUES+=(
             --set spire.enabled=true
+            --set spire.useCSIDriver=true
             --set spire.agentSocketPath="${SPIRE_SOCKET_PATH}"
             --set config.southbound.tls.useSpiffe=true
             --set config.southbound.spire.socketPath="${SPIRE_SOCKET_PATH}"
@@ -82,6 +114,11 @@ install() {
         helm install "${RELEASE_NAME}" "${CHART_FILE}" \
             -n "${NAMESPACE}" \
             "${HELM_VALUES[@]}"
+    fi
+
+    # Register with SPIRE if enabled
+    if [[ "${SPIRE_ENABLED}" == "true" ]]; then
+        register_with_spire
     fi
 
     log_info "Waiting for SLIM controller to be ready..."
@@ -218,6 +255,7 @@ usage() {
     echo "  SPIRE_ENABLED        Enable SPIRE mTLS (default: false)"
     echo "  SPIRE_SOCKET_PATH    SPIRE agent socket (default: unix:///run/spire/agent-sockets/spire-agent.sock)"
     echo "  SPIRE_TRUST_DOMAIN   SPIRE trust domain (default: example.org)"
+    echo "  SPIRE_CLUSTER_NAME   SPIRE cluster name (default: slim-cluster)"
     echo ""
     echo "Examples:"
     echo "  $0 install                          # Install without SPIRE"

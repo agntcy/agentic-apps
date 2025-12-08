@@ -20,6 +20,7 @@ CONTROLLER_PORT="${SLIM_CONTROLLER_PORT:-50052}"
 SPIRE_ENABLED="${SPIRE_ENABLED:-false}"
 SPIRE_SOCKET_PATH="${SPIRE_SOCKET_PATH:-unix:///run/spire/agent-sockets/spire-agent.sock}"
 SPIRE_TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
+SPIRE_CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,6 +48,36 @@ download_chart() {
     else
         log_info "Chart file ${CHART_FILE} already exists"
     fi
+}
+
+# Register SLIM node workload with SPIRE
+register_with_spire() {
+    log_info "Registering SLIM node workload with SPIRE..."
+
+    # Check if SPIRE server is available
+    if ! kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o name | grep -q "pod/"; then
+        log_warn "SPIRE server not found in namespace ${NAMESPACE}, skipping registration"
+        return 0
+    fi
+
+    local SPIRE_SERVER_POD
+    SPIRE_SERVER_POD=$(kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
+
+    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD}"
+
+    # Register SLIM Node
+    log_info "Registering SLIM Node '${NODE_NAME}'..."
+    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -c spire-server -- \
+        /opt/spire/bin/spire-server entry create \
+        -spiffeID "spiffe://${SPIRE_TRUST_DOMAIN}/slim/node/${NODE_NAME}" \
+        -parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent/k8s_psat/${SPIRE_CLUSTER_NAME}" \
+        -selector "k8s:ns:${NAMESPACE}" \
+        -selector "k8s:sa:slim" \
+        -dns "${NODE_NAME}" \
+        -dns "${NODE_NAME}.${NAMESPACE}.svc.cluster.local" \
+        2>/dev/null || log_warn "Node entry may already exist"
+
+    log_info "SPIRE registration complete"
 }
 
 # Install SLIM node
@@ -78,6 +109,7 @@ install() {
             --set slim.config.services.slim/0.controller.clients[0].tls.insecure=false
             --set slim.config.services.slim/0.controller.clients[0].tls.useSpiffe=true
             --set spire.enabled=true
+            --set spire.useCSIDriver=true
             --set spire.agentSocketPath="${SPIRE_SOCKET_PATH}"
         )
     else
@@ -97,6 +129,11 @@ install() {
         helm install "${RELEASE_NAME}" "${CHART_FILE}" \
             -n "${NAMESPACE}" \
             "${HELM_VALUES[@]}"
+    fi
+
+    # Register with SPIRE if enabled
+    if [[ "${SPIRE_ENABLED}" == "true" ]]; then
+        register_with_spire
     fi
 
     log_info "Waiting for SLIM node to be ready..."
@@ -254,6 +291,7 @@ usage() {
     echo "  SPIRE_ENABLED         Enable SPIRE mTLS (default: false)"
     echo "  SPIRE_SOCKET_PATH     SPIRE agent socket (default: unix:///run/spire/agent-sockets/spire-agent.sock)"
     echo "  SPIRE_TRUST_DOMAIN    SPIRE trust domain (default: example.org)"
+    echo "  SPIRE_CLUSTER_NAME    SPIRE cluster name (default: slim-cluster)"
     echo ""
     echo "Examples:"
     echo "  $0 install                                  # Install default node"
