@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPIRE deployment script for Kubernetes
-# Usage: ./spire.sh [install|uninstall|status|clean|register-slim]
+# Usage: ./spire.sh [install|clean|status|logs|list-entries]
 
 set -e
 
@@ -14,9 +14,6 @@ CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-false}"
 # MicroK8s uses a different kubelet path
 KUBELET_PATH="${SPIRE_KUBELET_PATH:-/var/snap/microk8s/common/var/lib/kubelet}"
-
-# Use same namespace for SLIM (single namespace mode)
-SLIM_NAMESPACE="${NAMESPACE}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -197,54 +194,6 @@ logs() {
     esac
 }
 
-# Register SLIM workloads with SPIRE
-register_slim() {
-    log_info "Registering SLIM workloads with SPIRE..."
-    log_info "Namespace: ${NAMESPACE}"
-    log_info "Trust Domain: ${TRUST_DOMAIN}"
-
-    # Get SPIRE server pod
-    SPIRE_SERVER_POD=$(kubectl get pods -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
-    if [ -z "$SPIRE_SERVER_POD" ]; then
-        log_error "SPIRE Server pod not found. Is SPIRE installed?"
-        exit 1
-    fi
-
-    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD}"
-
-    # Register SLIM Controller
-    log_info "Registering SLIM Controller..."
-    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
-        /opt/spire/bin/spire-server entry create \
-        -spiffeID "spiffe://${TRUST_DOMAIN}/slim/controller" \
-        -parentID "spiffe://${TRUST_DOMAIN}/spire/agent/k8s_psat/${CLUSTER_NAME}" \
-        -selector "k8s:ns:${NAMESPACE}" \
-        -selector "k8s:sa:slim-control" \
-        -dns "slim-control" \
-        -dns "slim-control.${NAMESPACE}.svc.cluster.local" \
-        2>/dev/null || log_warn "Controller entry may already exist"
-
-    # Register SLIM Node
-    log_info "Registering SLIM Node..."
-    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
-        /opt/spire/bin/spire-server entry create \
-        -spiffeID "spiffe://${TRUST_DOMAIN}/slim/node" \
-        -parentID "spiffe://${TRUST_DOMAIN}/spire/agent/k8s_psat/${CLUSTER_NAME}" \
-        -selector "k8s:ns:${NAMESPACE}" \
-        -selector "k8s:sa:slim" \
-        -dns "slim-slim-node" \
-        -dns "slim-slim-node.${NAMESPACE}.svc.cluster.local" \
-        2>/dev/null || log_warn "Node entry may already exist"
-
-    log_info "SLIM workloads registered with SPIRE"
-
-    # List entries
-    log_info "Listing SPIRE entries..."
-    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -- \
-        /opt/spire/bin/spire-server entry show
-}
-
 # List SPIRE entries
 list_entries() {
     log_info "Listing SPIRE entries..."
@@ -271,20 +220,20 @@ usage() {
     echo "  clean           Remove all SPIRE resources"
     echo "  status          Show deployment status"
     echo "  logs [component]  Stream logs (server|agent, default: server)"
-    echo "  register-slim   Register SLIM workloads with SPIRE"
     echo "  list-entries    List all SPIRE workload entries"
     echo ""
     echo "Environment variables:"
     echo "  SPIRE_NAMESPACE           Target namespace (default: lumuscar-jobs)"
     echo "  SPIRE_TRUST_DOMAIN        Trust domain (default: example.org)"
     echo "  SPIRE_CLUSTER_NAME        Cluster name (default: slim-cluster)"
-    echo "  SPIRE_CHART_VERSION       Helm chart version (default: 0.27.1)"
+    echo "  SPIRE_CHART_VERSION       Helm chart version (default: 0.27.0)"
+    echo "  SPIRE_VERSION             SPIRE version (default: 1.13.0)"
+    echo "  SPIRE_KUBECTL_VERSION     kubectl image version (default: 1.28.0)"
     echo "  SPIRE_CSI_DRIVER_ENABLED  Enable SPIFFE CSI driver (default: false)"
     echo ""
     echo "Examples:"
     echo "  $0 install"
     echo "  SPIRE_CSI_DRIVER_ENABLED=true $0 install"
-    echo "  $0 register-slim"
     echo "  $0 logs agent"
 }
 
@@ -301,9 +250,6 @@ case "${1:-}" in
         ;;
     logs)
         logs "$@"
-        ;;
-    register-slim)
-        register_slim
         ;;
     list-entries)
         list_entries
