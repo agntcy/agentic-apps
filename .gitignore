@@ -186,6 +186,7 @@ Thumbs.db
 # Project specific
 .langgraph_api/
 logs/
+traces/
 header.txt
 # Tourist Scheduling System generated artifacts
 tourist_scheduling_system/*.log

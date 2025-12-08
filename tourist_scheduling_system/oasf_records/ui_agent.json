@@ -1,0 +1,84 @@
+{
+  "name": "Dashboard Monitor",
+  "description": "Real-time monitoring dashboard for the tourist scheduling system. Provides WebSocket-based live updates, network topology visualization, and system metrics. Built with Google ADK.",
+  "version": "2.0.0",
+  "schema_version": "0.8.0",
+  "authors": ["AGNTCY"],
+  "created_at": "2025-01-01T00:00:00Z",
+  "domains": [
+    {"name": "hospitality_and_tourism/tourism_management"}
+  ],
+  "skills": [
+    {"name": "evaluation_monitoring/performance_monitoring"},
+    {"name": "evaluation_monitoring/anomaly_detection"}
+  ],
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "protocol_version": "0.3.0",
+        "card_data": {
+          "protocolVersion": "0.3.0",
+          "name": "Dashboard Monitor",
+          "description": "Real-time monitoring dashboard for the tourist scheduling system. Provides WebSocket-based live updates, network topology visualization, and system metrics. Built with Google ADK.",
+          "url": "http://localhost:10021/",
+          "preferredTransport": "JSONRPC",
+          "additionalInterfaces": [
+            {"url": "http://localhost:10021/", "transport": "JSONRPC"},
+            {"url": "ws://localhost:10021/ws", "transport": "WebSocket"}
+          ],
+          "version": "2.0.0",
+          "capabilities": {
+            "streaming": true,
+            "pushNotifications": true,
+            "stateTransitionHistory": false
+          },
+          "defaultInputModes": ["application/json", "text/plain"],
+          "defaultOutputModes": ["application/json", "text/plain"],
+          "skills": [
+            {
+              "id": "dashboard_summary",
+              "name": "Get Dashboard Summary",
+              "description": "Returns comprehensive dashboard state including tourists, guides, assignments, and computed metrics like utilization rates and satisfaction scores.",
+              "tags": ["dashboard", "metrics", "summary", "monitoring"],
+              "examples": [
+                "Show dashboard summary",
+                "What are the current system metrics?"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain", "application/json"]
+            },
+            {
+              "id": "recent_events",
+              "name": "Get Recent Events",
+              "description": "Returns the most recent communication events in the system, useful for activity monitoring and debugging.",
+              "tags": ["events", "activity", "logging", "monitoring"],
+              "examples": [
+                "Show recent events",
+                "What happened in the last 10 minutes?"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["text/plain", "application/json"]
+            },
+            {
+              "id": "network_topology",
+              "name": "Network Topology",
+              "description": "Provides agent network topology data showing connections between scheduler, guides, tourists, and UI agents.",
+              "tags": ["network", "topology", "visualization", "agents"],
+              "examples": [
+                "Show network topology",
+                "Display agent connections"
+              ],
+              "inputModes": ["text/plain"],
+              "outputModes": ["application/json"]
+            }
+          ],
+          "supportsAuthenticatedExtendedCard": false
+        }
+      }
+    }
+  ],
+  "locators": [
+    {"type": "source_code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system"}
+  ]
+}

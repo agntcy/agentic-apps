@@ -1,0 +1,178 @@
+# Guide Agent Kubernetes Manifest
+#
+# The guide agent runs as a Job to submit offers to the scheduler.
+# Can be run multiple times with different guide IDs and configurations.
+#
+# Usage:
+#   export NAMESPACE=lumuscar-jobs
+#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
+#
+# For SLIM transport mode:
+#   export TRANSPORT_MODE=slim
+#   export SLIM_GATEWAY_HOST=slim-slim-node
+#   export SLIM_GATEWAY_PORT=46357
+#   envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guide-agent-g1
+  namespace: ${NAMESPACE:-lumuscar-jobs}
+  labels:
+    app: guide-agent
+    app.kubernetes.io/name: guide-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    app.kubernetes.io/component: agent
+    guide-id: g1
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: guide-agent
+        guide-id: g1
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: guide-agent
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
+          imagePullPolicy: Always
+          env:
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+            - name: SCHEDULER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
+          args:
+            - "--guide-id=g1"
+            - "--categories=culture,history,food"
+            - "--available-start=2025-06-01T10:00:00"
+            - "--available-end=2025-06-01T14:00:00"
+            - "--hourly-rate=50"
+            - "--max-group-size=5"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+
+---
+# Second guide example
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guide-agent-g2
+  namespace: ${NAMESPACE:-lumuscar-jobs}
+  labels:
+    app: guide-agent
+    app.kubernetes.io/name: guide-agent
+    app.kubernetes.io/part-of: tourist-scheduling
+    guide-id: g2
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: guide-agent
+        guide-id: g2
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: guide-agent
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
+          imagePullPolicy: Always
+          env:
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+            - name: SCHEDULER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_URL
+                  optional: true
+            # Transport configuration
+            - name: TRANSPORT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: TRANSPORT_MODE
+                  optional: true
+            - name: SLIM_GATEWAY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_HOST
+                  optional: true
+            - name: SLIM_GATEWAY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_GATEWAY_PORT
+                  optional: true
+          args:
+            - "--guide-id=g2"
+            - "--categories=art,architecture"
+            - "--available-start=2025-06-01T09:00:00"
+            - "--available-end=2025-06-01T13:00:00"
+            - "--hourly-rate=75"
+            - "--max-group-size=3"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+

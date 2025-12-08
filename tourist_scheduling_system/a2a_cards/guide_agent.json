@@ -1,43 +1,30 @@
 {
-  "name": "agntcy/tourist_scheduling_system/guide_agent",
-  "version": "v1.0.0",
-  "schema_version": "v0.3.1",
-  "description": "Non-autonomous guide A2A client that registers a static GuideOffer (fixed categories, availability, rate, capacity) with the scheduler and processes acknowledgment responses.",
-  "authors": ["AGNTCY Contributors"],
-  "annotations": {"type": "a2a-client"},
-  "created_at": "2025-11-06T12:13:00Z",
+  "protocolVersion": "0.3.0",
+  "name": "Tour Guide Agent",
+  "description": "LLM-powered tour guide agent that offers tour services. Uses RemoteA2aAgent to communicate with the scheduler. Supports configurable specializations, pricing, and availability.",
+  "url": "dynamic",
+  "preferredTransport": "JSONRPC",
+  "version": "2.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
   "skills": [
-    {"category_name": "Natural Language Processing", "category_uid": 1, "class_name": "Contextual Comprehension", "class_uid": 10101}
-  ],
-  "capabilities": [
-    "Construct static GuideOffer message",
-    "Send A2A text message to scheduler",
-    "Stream response events and extract Acknowledgment",
-    "Demonstrate minimal client factory usage"
-  ],
-  "locators": [
-    {"type": "source-code", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/src/agents/guide_agent.py"},
-    {"type": "python-package", "url": "https://github.com/agntcy/agentic-apps/tree/main/tourist_scheduling_system/pyproject.toml"}
-  ],
-  "extensions": [
     {
-      "name": "schema.oasf.agntcy.org/features/runtime/framework",
-      "version": "v0.0.0",
-      "data": {
-        "sbom": {
-          "name": "multi-agent-tourist-scheduling-system",
-          "packages": [
-            {"name": "a2a-sdk", "version": ">=0.3.0"},
-            {"name": "pydantic", "version": ">=2.5.0"},
-            {"name": "click", "version": ">=8.0.0"}
-          ]
-        }
-      }
-    },
-    {
-      "name": "schema.oasf.agntcy.org/features/runtime/language",
-      "version": "v0.0.0",
-      "data": {"type": "python", "version": ">=3.10,<4.0"}
+      "id": "offer_tour",
+      "name": "Offer Tour Services",
+      "description": "Submits a tour offer to the scheduler with availability, hourly rate, specialization categories, and maximum group size.",
+      "tags": ["guide", "offer", "tour", "availability"],
+      "examples": [
+        "Offer a culture and history tour from 9am to 5pm at $50/hour",
+        "Register availability for food tours tomorrow afternoon"
+      ],
+      "inputModes": ["text/plain"],
+      "outputModes": ["text/plain"]
     }
-  ]
+  ],
+  "supportsAuthenticatedExtendedCard": false
 }

@@ -1,0 +1,41 @@
+# SLIM Node Configuration with OpenTelemetry enabled
+#
+# Use this configuration when you have a Jaeger/OTEL collector running.
+# This is automatically used when running with --tracing flag.
+#
+# Usage:
+#   ./start.sh --transport slim --tracing
+#
+# Or manually:
+#   docker run -p 46357:46357 \
+#     -v $(pwd)/slim-config-otel.yaml:/config.yaml:ro \
+#     ghcr.io/agntcy/slim:latest /slim -c /config.yaml
+
+tracing:
+  log_level: "info"
+  display_thread_names: true
+  display_thread_ids: false
+  opentelemetry:
+    enabled: true
+    service_name: "slim-tourist-scheduling"
+    service_version: "v1.0.0"
+    environment: "development"
+    metrics_interval_secs: 30
+    grpc:
+      # Use host.docker.internal to reach Jaeger on the host from within Docker
+      endpoint: "http://host.docker.internal:4317"
+      tls:
+        insecure: true
+
+runtime:
+  n_cores: 4
+  thread_name: "slim-tourist"
+  drain_timeout: "15s"
+
+services:
+  slim/0:
+    dataplane:
+      servers:
+        - endpoint: "0.0.0.0:46357"
+          tls:
+            insecure: true

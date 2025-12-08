@@ -1,0 +1,35 @@
+# ConfigMap for agent configuration
+# Use this when namespace already exists
+#
+# Usage:
+#   export NAMESPACE=lumuscar-jobs
+#   export TRANSPORT_MODE=http  # or slim
+#   envsubst < deploy/k8s/configmap.yaml | kubectl apply -f -
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: tourist-scheduling
+data:
+  # Azure OpenAI configuration
+  AZURE_OPENAI_API_VERSION: "2024-02-01"
+
+  # Agent ports
+  UI_A2A_PORT: "10021"
+  SCHEDULER_PORT: "10000"
+
+  # Transport configuration
+  # Options: "slim" for SLIM transport, "http" for direct HTTP
+  TRANSPORT_MODE: "${TRANSPORT_MODE}"
+
+  # SLIM configuration (used when TRANSPORT_MODE=slim)
+  SLIM_GATEWAY_HOST: "${SLIM_GATEWAY_HOST}"
+  SLIM_GATEWAY_PORT: "${SLIM_GATEWAY_PORT}"
+
+  # Service URLs
+  SCHEDULER_URL: "${SCHEDULER_URL}"
+  UI_DASHBOARD_URL: "${UI_DASHBOARD_URL}"

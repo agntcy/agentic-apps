@@ -1,0 +1,103 @@
+# Docker Compose for Tourist Scheduling System
+#
+# This file is for building container images and local infrastructure only.
+# For runtime, deploy to Kubernetes using the manifests in deploy/k8s/
+#
+# Usage:
+#   docker-compose build                         # Build agent images
+#   docker-compose up -d slim jaeger             # Start local infrastructure for dev
+#   docker-compose down                          # Stop infrastructure
+#
+# Build and tag for registry:
+#   docker-compose build
+#   docker tag tourist_scheduling_system-scheduler $REGISTRY/scheduler-agent:$TAG
+#   docker tag tourist_scheduling_system-ui $REGISTRY/ui-agent:$TAG
+#
+# For Kubernetes deployment, see deploy/k8s/README.md
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Build-only Agent Services (for creating images to push to registry)
+  # ==========================================================================
+
+  # Scheduler Agent - ADK-based coordinator (A2A server)
+  scheduler:
+    build:
+      context: .
+      dockerfile: containers/scheduler/Dockerfile
+    image: scheduler-agent:latest
+
+  # UI Dashboard Agent - Real-time monitoring dashboard (A2A server)
+  ui:
+    build:
+      context: .
+      dockerfile: containers/ui/Dockerfile
+    image: ui-agent:latest
+
+  # Guide Agent - Client that offers tour services (Job)
+  guide:
+    build:
+      context: .
+      dockerfile: containers/guide/Dockerfile
+    image: guide-agent:latest
+
+  # Tourist Agent - Client that requests tours (Job)
+  tourist:
+    build:
+      context: .
+      dockerfile: containers/tourist/Dockerfile
+    image: tourist-agent:latest
+
+  # ==========================================================================
+  # Local Infrastructure (for development/testing)
+  # ==========================================================================
+
+  # SLIM Data Plane Node
+  slim:
+    image: ghcr.io/agntcy/slim:latest
+    container_name: slim-node
+    ports:
+      - "${SLIM_PORT:-46357}:46357"
+    volumes:
+      - ./slim-config.yaml:/config.yaml:ro
+    command: ["/slim", "-c", "/config.yaml"]
+    restart: unless-stopped
+    networks:
+      - tourist-net
+
+  # SLIM with OpenTelemetry enabled
+  slim-otel:
+    image: ghcr.io/agntcy/slim:latest
+    container_name: slim-node-otel
+    ports:
+      - "${SLIM_PORT:-46357}:46357"
+    volumes:
+      - ./slim-config-otel.yaml:/config.yaml:ro
+    command: ["/slim", "-c", "/config.yaml"]
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+    networks:
+      - tourist-net
+    profiles:
+      - tracing
+
+  # Jaeger All-in-One for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger-tracing
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"      # Jaeger UI
+      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317" # OTLP gRPC
+      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318" # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - tourist-net
+
+networks:
+  tourist-net:
+    driver: bridge

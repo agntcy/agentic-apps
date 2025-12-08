@@ -6,7 +6,7 @@ Collection of experimental and reference agent applications built on the A2A pro
 
 | Project | Description | Key Tech |
 |---------|-------------|----------|
-| `tourist_scheduling_system/` | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, FastAPI, WebSockets, OpenAI/Azure OpenAI |
+| `tourist_scheduling_system/` | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, Google ADK, SLIM, FastAPI, WebSockets, OpenTelemetry |
 | `remote_agent_agp/` | Remote agent gateway & client demos | A2A SDK, Docker Compose |
 | `mailcomposer/` | AI-driven email composer workflow | A2A SDK, LangGraph |
 | `marketing-campaign/` | Multi-agent marketing campaign planner | A2A SDK |
@@ -22,61 +22,65 @@ The most feature-complete example lives in `tourist_scheduling_system/`. It demo
 - Scheduler coordination of guide offers and tourist requests
 - Real-time UI agent (web + WebSocket)
 - Autonomous LLM-powered agents with heuristic fallback when cloud creds absent
+- **SLIM transport**: Encrypted group messaging via MLS protocol
+- **Google ADK agents**: Alternative implementation using Google's Agent Development Kit
+- **OpenTelemetry tracing**: Distributed tracing with Jaeger visualization
 
 ### Install
 
 ```bash
 git clone https://github.com/agntcy/agentic-apps.git
 cd agentic-apps/tourist_scheduling_system
-python -m venv .venv
+uv venv .venv
 source .venv/bin/activate  # macOS/Linux
-pip install -e .
+uv sync
 ```
 
-### Basic Run
-
-In one terminal start the scheduler:
-```bash
-PYTHONPATH=src python src/agents/scheduler_agent.py --host localhost --port 10010
-```
-
-In a second terminal start the UI dashboard:
-```bash
-PYTHONPATH=src python src/agents/ui_agent.py --host localhost --port 10011 --a2a-port 10012
-```
-
-Send a guide offer and tourist request:
-```bash
-PYTHONPATH=src python src/agents/guide_agent.py --scheduler-url http://localhost:10010 --guide-id guide-1
-PYTHONPATH=src python src/agents/tourist_agent.py --scheduler-url http://localhost:10010 --tourist-id tourist-1
-```
-
-Open http://localhost:10011 in your browser to view live activity.
-
-### Unified Script Demo
-
-Use the helper script to orchestrate everything (auto detects running ports and can add autonomous agents):
+### Quick Run with Scripts
 
 ```bash
 cd tourist_scheduling_system
-PYTHONPATH=src scripts/run_with_ui.sh --scheduler-port 10010 --ui-web-port 10011 --ui-a2a-port 10012
+
+# HTTP transport with original agents (default)
+./start.sh
+
+# HTTP transport with Google ADK agents
+./start.sh --agent-type adk --guides 2 --tourists 2
+
+# SLIM transport (auto-starts SLIM container)
+./start.sh --transport slim
+
+# ADK + SLIM + OpenTelemetry tracing
+./start.sh --agent-type adk --transport slim --tracing
+
+# Stop and cleanup
+./start.sh clean
 ```
 
-Add autonomous pair for a 1 minute smoke test:
+### Manual Control (Separate Infrastructure)
+
 ```bash
-PYTHONPATH=src scripts/run_with_ui.sh \
-	--scheduler-port 10010 \
-	--ui-web-port 10011 \
-	--ui-a2a-port 10012 \
-	--autonomous \
-	--auto-duration 1 \
-	--auto-guide-id ag-auto \
-	--auto-tourist-id at-auto
+cd tourist_scheduling_system
+
+# Start infrastructure (SLIM node + Jaeger for tracing)
+./setup.sh start --tracing
+
+# Run the demo
+./run.sh --agent-type adk --transport slim --tracing --guides 3 --tourists 3
+
+# Stop agents
+./run.sh stop
+
+# Stop infrastructure
+./setup.sh stop
+
+# Check status
+./setup.sh status
 ```
 
 ### Azure OpenAI (Optional)
 
-Set these before running autonomous mode to enable LLM reasoning; otherwise heuristic fallback is used:
+Set these before running to enable LLM reasoning; otherwise heuristic fallback is used:
 ```bash
 export AZURE_OPENAI_API_KEY=...
 export AZURE_OPENAI_API_VERSION=2024-08-01-preview
@@ -88,11 +92,11 @@ export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Exit Code: 127` running agents | Virtual env not active / path mismatch | `source .venv/bin/activate` then rerun; ensure working directory is `tourist_scheduling_system` |
-| Import errors after refactor | Missing `PYTHONPATH=src` | Prefix command with `PYTHONPATH=src` or install in editable mode (`pip install -e .`) |
-| Port already in use | Previous run still active | Use `lsof -i :10010` / kill PID or rely on script reuse logic |
-| No LLM decisions, warning about Azure vars | Cloud creds not set | Export Azure env vars or ignore (heuristics operate) |
-| UI blank page | Wrong port or UI agent not started | Confirm `ui_agent.py` running on specified web port |
+| SLIM container not starting | Docker not running | Start Docker Desktop or daemon |
+| Port already in use | Previous run still active | Use `./start.sh clean` or `lsof -i :10010` / kill PID |
+| No LLM decisions | Cloud creds not set | Export Azure env vars or ignore (heuristics operate) |
+| UI blank page | Wrong port or UI agent not started | Confirm UI is running on specified web port |
+| Jaeger not showing traces | Tracing not enabled | Use `--tracing` flag with start.sh or run.sh |
 
 ## Development
 

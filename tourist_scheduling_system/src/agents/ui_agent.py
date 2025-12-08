@@ -2,56 +2,66 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 """
-UI Agent - Real-time Dashboard
+ADK-based UI Agent
 
-A web-based dashboard agent that:
-1. Subscribes to scheduler agent updates
-2. Maintains real-time view of system state
-3. Publishes a WebSocket-enabled web UI for live updates
-4. Shows tourists, guides, assignments, and system metrics
+A dashboard agent that monitors the tourist scheduling system and provides
+real-time visibility into system state. Uses Google ADK with Azure OpenAI
+via LiteLLM.
 
-This agent acts as a bridge between the multi-agent system and human operators,
-providing visibility into the scheduling process in real-time.
+This agent:
+1. Connects to the scheduler as a RemoteA2aAgent to receive updates
+2. Maintains dashboard state (tourists, guides, assignments, metrics)
+3. Can be queried about system status
+4. Provides natural language summaries of scheduling activity
+
+The agent can be exposed via A2A protocol using ADK's to_a2a() utility.
+Supports both HTTP and SLIM transports.
 """
 
-import json
-import logging
 import asyncio
-import socket
-from threading import Thread
-from pathlib import Path
+import logging
+import os
+from dataclasses import dataclass, field
 from datetime import datetime
-from dataclasses import dataclass, asdict, is_dataclass
-from typing import List, Dict, Set, Optional
+from typing import Dict, List, Optional
+from enum import Enum
 
-import click
-import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.apps import A2AStarletteApplication
-from a2a.server.events import EventQueue
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
-from a2a.server.tasks.task_updater import TaskUpdater
-from a2a.utils.task import new_task
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
-    Part,
-    TaskState,
-    TextPart,
-)
+# Initialize tracing early
+try:
+    from core.tracing import setup_tracing, traced, create_span, add_span_event
+    TRACING_AVAILABLE = True
+except ImportError:
+    TRACING_AVAILABLE = False
 
-from core.messages import Assignment, GuideOffer, TouristRequest, ScheduleProposal
+# Set up file logging
+try:
+    from core.logging_config import setup_agent_logging
+    logger = setup_agent_logging("adk_ui")
+except ImportError:
+    logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+# Check SLIM availability
+try:
+    from core.slim_transport import (
+        SLIMConfig,
+        check_slim_available,
+        create_slim_server,
+        config_from_env,
+    )
+    SLIM_AVAILABLE = check_slim_available()
+except ImportError:
+    SLIM_AVAILABLE = False
+
+
+class TransportMode(str, Enum):
+    """Transport mode for agent communication"""
+    HTTP = "http"
+    SLIM = "slim"
+    UNKNOWN = "unknown"
 
 
 @dataclass
-class SystemMetrics:
+class DashboardMetrics:
     """Real-time system metrics for dashboard"""
     total_tourists: int = 0
     total_guides: int = 0
@@ -59,30 +69,50 @@ class SystemMetrics:
     satisfied_tourists: int = 0
     guide_utilization: float = 0.0
     avg_assignment_cost: float = 0.0
-    last_updated: Optional[datetime] = None
+    total_messages: int = 0
+    last_updated: Optional[str] = None
 
-    def __post_init__(self):
-        if self.last_updated is None:
-            self.last_updated = datetime.now()
+    def to_dict(self) -> dict:
+        return {
+            "total_tourists": self.total_tourists,
+            "total_guides": self.total_guides,
+            "total_assignments": self.total_assignments,
+            "satisfied_tourists": self.satisfied_tourists,
+            "guide_utilization": self.guide_utilization,
+            "avg_assignment_cost": self.avg_assignment_cost,
+            "total_messages": self.total_messages,
+            "last_updated": self.last_updated,
+        }
 
 
 @dataclass
-class UIState:
-    """Centralized UI state tracking all system data"""
-    tourist_requests: Dict[str, TouristRequest]
-    guide_offers: Dict[str, GuideOffer]
-    assignments: List[Assignment]
-    schedule_proposals: Dict[str, ScheduleProposal]
-    metrics: SystemMetrics
-    connected_clients: Set[WebSocket]
+class CommunicationEvent:
+    """Represents a communication event between agents"""
+    timestamp: str
+    source_agent: str
+    target_agent: str
+    message_type: str
+    summary: str
 
-    def __init__(self):
-        self.tourist_requests = {}
-        self.guide_offers = {}
-        self.assignments = []
-        self.schedule_proposals = {}
-        self.metrics = SystemMetrics()
-        self.connected_clients = set()
+    def to_dict(self) -> dict:
+        return {
+            "timestamp": self.timestamp,
+            "source_agent": self.source_agent,
+            "target_agent": self.target_agent,
+            "message_type": self.message_type,
+            "summary": self.summary,
+        }
+
+
+# Dashboard state storage (in-memory)
+@dataclass
+class DashboardState:
+    """Dashboard state storage"""
+    tourist_requests: Dict[str, dict] = field(default_factory=dict)
+    guide_offers: Dict[str, dict] = field(default_factory=dict)
+    assignments: List[dict] = field(default_factory=list)
+    communication_events: List[CommunicationEvent] = field(default_factory=list)
+    metrics: DashboardMetrics = field(default_factory=DashboardMetrics)
 
     def update_metrics(self):
         """Recalculate system metrics"""
@@ -90,704 +120,545 @@ class UIState:
         self.metrics.total_guides = len(self.guide_offers)
         self.metrics.total_assignments = len(self.assignments)
 
-        # Calculate satisfied tourists (those with assignments)
-        assigned_tourists = set(a.tourist_id for a in self.assignments)
-        self.metrics.satisfied_tourists = len(assigned_tourists)
+        # Calculate satisfied tourists (unique tourists with assignments, capped at total)
+        assigned_tourists = set(a.get("tourist_id") for a in self.assignments if a.get("tourist_id"))
+        self.metrics.satisfied_tourists = min(len(assigned_tourists), self.metrics.total_tourists)
 
-        # Calculate guide utilization
+        # Calculate guide utilization (unique guides with assignments, capped at 1.0)
         if self.guide_offers:
-            busy_guides = set(a.guide_id for a in self.assignments)
-            self.metrics.guide_utilization = len(busy_guides) / len(self.guide_offers)
+            busy_guides = set(a.get("guide_id") for a in self.assignments if a.get("guide_id"))
+            self.metrics.guide_utilization = min(len(busy_guides) / len(self.guide_offers), 1.0)
 
         # Calculate average assignment cost
         if self.assignments:
-            total_cost = sum(a.total_cost for a in self.assignments)
+            total_cost = sum(a.get("total_cost", 0) for a in self.assignments)
             self.metrics.avg_assignment_cost = total_cost / len(self.assignments)
 
-        self.metrics.last_updated = datetime.now()
-
-    async def broadcast_update(self, update_type: str, data: dict):
-        """Broadcast updates to all connected WebSocket clients"""
-        if not self.connected_clients:
-            return
-
-        message = {
-            "type": update_type,
-            "data": data,
-            "timestamp": datetime.now().isoformat()
-        }
-        message_str = json.dumps(message, default=str)
-
-        # Send to all connected clients
-        disconnected = set()
-        for client in self.connected_clients:
-            try:
-                await client.send_text(message_str)
-            except Exception as e:
-                logger.warning(f"Failed to send to client: {e}")
-                disconnected.add(client)
-
-        # Remove disconnected clients
-        self.connected_clients -= disconnected
+        self.metrics.last_updated = datetime.now().isoformat()
 
     def to_dict(self) -> dict:
-        """Convert state to dictionary for JSON serialization (supports Pydantic models or dataclasses)."""
-        def _convert(obj):
-            if hasattr(obj, "model_dump"):
-                return obj.model_dump()
-            if hasattr(obj, "dict") and callable(getattr(obj, "dict")):
-                return obj.dict()
-            if is_dataclass(obj) and not isinstance(obj, type):
-                return asdict(obj)  # type: ignore[arg-type]
-            if hasattr(obj, "to_dict") and not isinstance(obj, type):
-                return obj.to_dict()  # type: ignore[attr-defined]
-            return obj  # fallback raw
+        """Convert state to dictionary"""
+        # Handle communication_events which may be dicts or objects with to_dict()
+        comm_events = []
+        for e in self.communication_events[-20:]:
+            if isinstance(e, dict):
+                comm_events.append(e)
+            elif hasattr(e, 'to_dict'):
+                comm_events.append(e.to_dict())
+            else:
+                comm_events.append(str(e))
 
         return {
-            "tourist_requests": [ _convert(req) for req in self.tourist_requests.values() ],
-            "guide_offers": [ _convert(offer) for offer in self.guide_offers.values() ],
-            "assignments": [ _convert(assignment) for assignment in self.assignments ],
-            "schedule_proposals": { pid: _convert(prop) for pid, prop in self.schedule_proposals.items() },
-            "metrics": _convert(self.metrics)
+            "tourist_requests": list(self.tourist_requests.values()),
+            "guide_offers": list(self.guide_offers.values()),
+            "assignments": self.assignments,
+            "communication_events": comm_events,
+            "metrics": self.metrics.to_dict(),
         }
 
 
-# Global UI state
-ui_state = UIState()
+# Global dashboard state
+_dashboard_state = DashboardState()
 
 
-class UIAgentExecutor(AgentExecutor):
-    """Processes messages from other agents and updates UI state"""
-
-    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        """Process incoming A2A messages and update UI state"""
-        logger.info(f"[UI Agent] Received task: {context.task_id}")
-
-        # Create or get task
-        task = context.current_task
-        if not task:
-            if not context.message:
-                logger.error("[UI Agent] No message in context")
-                return
-            task = new_task(context.message)
-            await event_queue.enqueue_event(task)
-
-        # Create task updater
-        updater = TaskUpdater(event_queue, task.id, task.context_id)
-
-        # Extract message content
-        message_text = None
-        if context.message and context.message.parts:
-            for part in context.message.parts:
-                if isinstance(part, Part) and part.root:
-                    if isinstance(part.root, TextPart):
-                        message_text = part.root.text
-                        break
-
-        if not message_text:
-            logger.warning("[UI Agent] No text content in message")
-            await updater.complete()
-            return
-
-        try:
-            await updater.update_status(
-                TaskState.working,
-                message=updater.new_agent_message([Part(root=TextPart(text="Processing UI update..."))])
-            )
-
-            # Parse message as JSON
-            data = json.loads(message_text)
-            message_type = data.get("type")
-
-            if message_type == "TouristRequest":
-                request = TouristRequest.from_dict(data)
-                ui_state.tourist_requests[request.tourist_id] = request
-                ui_state.update_metrics()
-
-                await ui_state.broadcast_update("tourist_request", request.to_dict())
-                logger.info(f"[UI Agent] Updated tourist request from {request.tourist_id}")
-
-            elif message_type == "GuideOffer":
-                offer = GuideOffer.from_dict(data)
-                ui_state.guide_offers[offer.guide_id] = offer
-                ui_state.update_metrics()
-
-                await ui_state.broadcast_update("guide_offer", offer.to_dict())
-                logger.info(f"[UI Agent] Updated guide offer from {offer.guide_id}")
-
-            elif message_type == "ScheduleProposal":
-                proposal = ScheduleProposal.from_dict(data)
-                ui_state.schedule_proposals[proposal.proposal_id] = proposal
-                ui_state.assignments = proposal.assignments
-                ui_state.update_metrics()
-
-                await ui_state.broadcast_update("schedule_proposal", proposal.to_dict())
-                await ui_state.broadcast_update("metrics", asdict(ui_state.metrics))
-                logger.info(f"[UI Agent] Updated schedule proposal {proposal.proposal_id}")
-
-            else:
-                logger.warning(f"[UI Agent] Unknown message type: {message_type}")
-
-            await updater.complete()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"[UI Agent] JSON decode error: {e}")
-            await updater.update_status(TaskState.failed, message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]))
-        except Exception as e:
-            logger.error(f"[UI Agent] Error processing message: {e}")
-            await updater.update_status(TaskState.failed, message=updater.new_agent_message([Part(root=TextPart(text=str(e)))]))
-
-    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        """Cancel a task"""
-        logger.info(f"[UI Agent] Canceling task: {context.task_id}")
-        task = context.current_task
-        if not task:
-            return
-        updater = TaskUpdater(event_queue, task.id, task.context_id)
-        await updater.cancel()
+def get_dashboard_state() -> DashboardState:
+    """Get the global dashboard state."""
+    return _dashboard_state
 
 
-# FastAPI app for web UI
-web_app = FastAPI(title="Tourist Scheduling Dashboard")
-
-@web_app.get("/health")
-async def health():
-    """Simple health check endpoint for launcher scripts."""
-    return {"status": "ok", "timestamp": datetime.now().isoformat(), "connected_clients": len(ui_state.connected_clients)}
-
-@web_app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time updates"""
-    await websocket.accept()
-    ui_state.connected_clients.add(websocket)
-
-    try:
-        # Send initial state
-        initial_state = ui_state.to_dict()
-        await websocket.send_text(json.dumps({
-            "type": "initial_state",
-            "data": initial_state,
-            "timestamp": datetime.now().isoformat()
-        }, default=str))
-
-        # Keep connection alive
-        while True:
-            await asyncio.sleep(1)
-
-    except WebSocketDisconnect:
-        ui_state.connected_clients.discard(websocket)
-        logger.info("[UI Agent] WebSocket client disconnected")
-    except Exception as e:
-        logger.error(f"[UI Agent] WebSocket error: {e}")
-        ui_state.connected_clients.discard(websocket)
+def clear_dashboard_state():
+    """Clear the dashboard state (for testing)."""
+    global _dashboard_state
+    _dashboard_state = DashboardState()
 
 
-@web_app.get("/api/state")
-async def get_state():
-    """REST endpoint to get current system state"""
-    return ui_state.to_dict()
+# ============================================================================
+# ADK Tool Functions for Dashboard
+# ============================================================================
 
-
-@web_app.get("/", response_class=HTMLResponse)
-async def dashboard():
-    """Serve the dashboard HTML"""
-    return HTML_TEMPLATE
-
-
-# HTML template for the dashboard
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tourist Scheduling Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-        .header {
-            background: #2563eb;
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        .main {
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .metric-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #2563eb;
-            margin-bottom: 0.5rem;
-        }
-        .metric-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        .section {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .section-header {
-            background: #f8fafc;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #374151;
-        }
-        .section-content {
-            padding: 1rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .item {
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            margin-bottom: 0.75rem;
-            background: #fafafa;
-        }
-        .item:last-child {
-            margin-bottom: 0;
-        }
-        .item-header {
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.25rem;
-        }
-        .item-details {
-            font-size: 0.9rem;
-            color: #6b7280;
-        }
-        .assignments-section {
-            grid-column: 1 / -1;
-        }
-        .assignment {
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
-        }
-        .status {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        .status-online {
-            background: #dcfce7;
-            color: #166534;
-        }
-        .status-updated {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-        .timestamp {
-            font-size: 0.8rem;
-            color: #9ca3af;
-            margin-top: 0.5rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🗺️ Tourist Scheduling Dashboard</h1>
-        <div id="connection-status" class="status status-online">Connected</div>
-    </div>
-
-    <div class="main">
-        <!-- Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-value" id="total-tourists">0</div>
-                <div class="metric-label">Total Tourists</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="total-guides">0</div>
-                <div class="metric-label">Available Guides</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="total-assignments">0</div>
-                <div class="metric-label">Active Assignments</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="satisfaction-rate">0%</div>
-                <div class="metric-label">Satisfaction Rate</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="guide-utilization">0%</div>
-                <div class="metric-label">Guide Utilization</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="avg-cost">$0</div>
-                <div class="metric-label">Avg Assignment Cost</div>
-            </div>
-        </div>
-
-        <!-- Content Grid -->
-        <div class="content-grid">
-            <!-- Tourists -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title">Tourist Requests</div>
-                </div>
-                <div class="section-content" id="tourists-list">
-                    <div class="item">No tourists yet</div>
-                </div>
-            </div>
-
-            <!-- Guides -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title">Guide Offers</div>
-                </div>
-                <div class="section-content" id="guides-list">
-                    <div class="item">No guides yet</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Assignments -->
-        <div class="content-grid">
-            <div class="section assignments-section">
-                <div class="section-header">
-                    <div class="section-title">Current Assignments</div>
-                </div>
-                <div class="section-content" id="assignments-list">
-                    <div class="item">No assignments yet</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // WebSocket connection
-        const ws = new WebSocket(`ws://${window.location.host}/ws`);
-        const statusEl = document.getElementById('connection-status');
-
-        // Connection status
-        ws.onopen = () => {
-            statusEl.textContent = 'Connected';
-            statusEl.className = 'status status-online';
-        };
-
-        ws.onclose = () => {
-            statusEl.textContent = 'Disconnected';
-            statusEl.className = 'status status-offline';
-        };
-
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            statusEl.textContent = 'Error';
-            statusEl.className = 'status status-offline';
-        };
-
-        // Message handling
-        ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-
-            if (message.type === 'initial_state') {
-                updateFullState(message.data);
-            } else if (message.type === 'tourist_request') {
-                // Single tourist request object
-                updateTouristsList([message.data]);
-                updateMetricsIncremental('tourist');
-            } else if (message.type === 'guide_offer') {
-                // Single guide offer object
-                updateGuidesList([message.data]);
-                updateMetricsIncremental('guide');
-            } else if (message.type === 'schedule_proposal') {
-                // Proposal contains assignments array; update assignments list and metrics
-                updateAssignmentsList(message.data.assignments || []);
-                updateMetrics(message.data.metrics || document.cachedMetrics || {});
-            } else if (message.type === 'metrics') {
-                updateMetrics(message.data);
-                document.cachedMetrics = message.data; // cache latest metrics
-            }
-        };
-
-        function updateFullState(state) {
-            updateMetrics(state.metrics || {});
-            updateTouristsList(state.tourist_requests || []);
-            updateGuidesList(state.guide_offers || []);
-            updateAssignmentsList(state.assignments || []);
-            document.cachedMetrics = state.metrics;
-        }
-
-        function updateMetricsIncremental(kind) {
-            // Lightweight recalculation from DOM counts when individual items arrive
-            const tourists = document.querySelectorAll('#tourists-list .item-header').length;
-            const guides = document.querySelectorAll('#guides-list .item-header').length;
-            const assignments = document.querySelectorAll('#assignments-list .assignment').length;
-            const metrics = {
-                total_tourists: tourists,
-                total_guides: guides,
-                total_assignments: assignments,
-                satisfied_tourists: assignments, // approximation
-                guide_utilization: guides ? (assignments / guides) : 0,
-                avg_assignment_cost: document.cachedMetrics ? document.cachedMetrics.avg_assignment_cost : 0
-            };
-            updateMetrics(metrics);
-        }
-
-        function updateMetrics(metrics) {
-            document.getElementById('total-tourists').textContent = metrics.total_tourists;
-            document.getElementById('total-guides').textContent = metrics.total_guides;
-            document.getElementById('total-assignments').textContent = metrics.total_assignments;
-
-            const satisfactionRate = metrics.total_tourists > 0
-                ? Math.round((metrics.satisfied_tourists / metrics.total_tourists) * 100)
-                : 0;
-            document.getElementById('satisfaction-rate').textContent = satisfactionRate + '%';
-
-            document.getElementById('guide-utilization').textContent =
-                Math.round(metrics.guide_utilization * 100) + '%';
-
-            document.getElementById('avg-cost').textContent =
-                '$' + metrics.avg_assignment_cost.toFixed(0);
-        }
-
-        // Maintain maps so incremental updates append/replace individual items instead of wiping entire list.
-        const touristsState = new Map();
-        const guidesState = new Map();
-
-        function renderCollection(containerId, stateMap, kind) {
-            const container = document.getElementById(containerId);
-            if (stateMap.size === 0) {
-                container.innerHTML = `<div class="item">No ${kind} yet</div>`;
-                return;
-            }
-            const items = Array.from(stateMap.values()).sort((a,b) => (a[`${kind === 'tourists' ? 'tourist_id' : 'guide_id'}`] || '').localeCompare(b[`${kind === 'tourists' ? 'tourist_id' : 'guide_id'}`] || ''));
-            container.innerHTML = items.map(obj => {
-                if (kind === 'tourists') {
-                    return `<div class="item">
-                        <div class="item-header">${obj.tourist_id}</div>
-                        <div class="item-details">Budget: $${obj.budget} | Preferences: ${obj.preferences.join(', ')} | Windows: ${obj.availability.length}</div>
-                    </div>`;
-                } else {
-                    return `<div class="item">
-                        <div class="item-header">${obj.guide_id}</div>
-                        <div class="item-details">Rate: $${obj.hourly_rate}/hour | Categories: ${obj.categories.join(', ')} | Max Group: ${obj.max_group_size}</div>
-                    </div>`;
-                }
-            }).join('');
-        }
-
-        function updateTouristsList(tourists) {
-            // tourists can be full list (initial) or single-item array
-            if (Array.isArray(tourists)) {
-                tourists.forEach(t => { if (t && t.tourist_id) touristsState.set(t.tourist_id, t); });
-            } else if (tourists && tourists.tourist_id) {
-                touristsState.set(tourists.tourist_id, tourists);
-            }
-            renderCollection('tourists-list', touristsState, 'tourists');
-        }
-
-        function updateGuidesList(guides) {
-            if (Array.isArray(guides)) {
-                guides.forEach(g => { if (g && g.guide_id) guidesState.set(g.guide_id, g); });
-            } else if (guides && guides.guide_id) {
-                guidesState.set(guides.guide_id, guides);
-            }
-            renderCollection('guides-list', guidesState, 'guides');
-        }
-
-        function updateAssignmentsList(assignments) {
-            const container = document.getElementById('assignments-list');
-            if (!assignments || assignments.length === 0) {
-                container.innerHTML = '<div class="item">No assignments yet</div>';
-                return;
-            }
-
-            container.innerHTML = assignments.map(assignment => `
-                <div class="item assignment">
-                    <div class="item-header">
-                        ${assignment.tourist_id} ↔ ${assignment.guide_id}
-                    </div>
-                    <div class="item-details">
-                        Cost: $${assignment.total_cost.toFixed(0)} |
-                        Categories: ${assignment.categories.join(', ')} |
-                        Duration: ${formatTimeWindow(assignment.time_window)}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function formatTimeWindow(window) {
-            const start = new Date(window.start);
-            const end = new Date(window.end);
-            const duration = Math.round((end - start) / (1000 * 60)); // minutes
-            return `${duration}min (${start.toLocaleTimeString()} - ${end.toLocaleTimeString()})`;
-        }
-    </script>
-</body>
-</html>
-"""
-
-
-
-@click.command()
-@click.option("--host", default="localhost", help="Server host")
-@click.option("--port", default=10001, type=int, help="Server port")
-@click.option("--a2a-port", default=10002, type=int, help="A2A agent port")
-@click.option("--debug", is_flag=True, help="Enable debug mode")
-def main(host: str, port: int, a2a_port: int, debug: bool):
-    """Start the UI Agent with both web dashboard and A2A capabilities.
-
-    Previous implementation attempted to run two uvicorn servers concurrently via
-    asyncio.gather. In certain environments one server would start while the other
-    silently failed (resulting in ERR_CONNECTION_REFUSED for the web dashboard).
-
-    This revised launcher:
-    1. Performs port auto-retry (increment) when a requested port is busy.
-    2. Starts the web dashboard in a background thread using uvicorn.run (its own loop).
-    3. Runs the A2A server in the main asyncio loop.
-    4. Provides clear logging of the final bound ports.
+def record_tourist_request(
+    tourist_id: str,
+    availability_start: str,
+    availability_end: str,
+    preferences: str,
+    budget: float,
+) -> str:
     """
-    if debug:
-        logging.getLogger().setLevel(logging.DEBUG)
+    Record a tourist request in the dashboard.
 
-    # Resolve / auto-increment ports if occupied
-    original_web_port = port
-    original_a2a_port = a2a_port
-    port = find_available_port(host, port, label="web", max_increment=10)
-    a2a_port = find_available_port(host, a2a_port, label="a2a", max_increment=10)
+    Args:
+        tourist_id: Unique identifier for the tourist
+        availability_start: Start of availability window (ISO format)
+        availability_end: End of availability window (ISO format)
+        preferences: Comma-separated list of preferences (e.g., "culture, history")
+        budget: Maximum hourly budget in dollars
 
-    if port != original_web_port:
-        logger.warning(f"[UI Agent] Requested web port {original_web_port} busy, using {port}")
-    if a2a_port != original_a2a_port:
-        logger.warning(f"[UI Agent] Requested A2A port {original_a2a_port} busy, using {a2a_port}")
+    Returns:
+        Confirmation message
+    """
+    state = get_dashboard_state()
 
-    logger.info(f"[UI Agent] Starting web dashboard on {host}:{port}")
-    logger.info(f"[UI Agent] Starting A2A agent on {host}:{a2a_port}")
-    logger.info(f"[UI Agent] Dashboard available at: http://{host}:{port}/")
-    logger.info("[UI Agent] Health endpoint: /health (will report status: ok)")
+    request = {
+        "tourist_id": tourist_id,
+        "availability": {
+            "start": availability_start,
+            "end": availability_end,
+        },
+        "preferences": [p.strip() for p in preferences.split(",")],
+        "budget": budget,
+        "recorded_at": datetime.now().isoformat(),
+    }
 
-    # Persist final ports so other processes (scheduler) can discover actual A2A port if it auto-incremented
-    try:
-        ports_file = Path(__file__).resolve().parent.parent / "ui_agent_ports.json"
-        ports_file.write_text(json.dumps({"host": host, "web_port": port, "a2a_port": a2a_port}, indent=2))
-        logger.info(f"[UI Agent] Wrote ports file: {ports_file}")
-    except Exception as e:
-        logger.warning(f"[UI Agent] Failed to write ports file: {e}")
+    state.tourist_requests[tourist_id] = request
 
-    # Launch web server in thread so uvicorn's internal loop does not conflict
-    def _start_web():
-        try:
-            uvicorn.run(web_app, host=host, port=port, log_level="debug" if debug else "info")
-        except Exception as e:
-            logger.error(f"[UI Agent] Web server failed: {e}")
-    web_thread = Thread(target=_start_web, name="ui-web-thread", daemon=True)
-    web_thread.start()
-    logger.info("[UI Agent] Web server thread started")
+    # Record communication event
+    event = CommunicationEvent(
+        timestamp=datetime.now().isoformat(),
+        source_agent=tourist_id,
+        target_agent="scheduler",
+        message_type="TouristRequest",
+        summary=f"Tourist {tourist_id} requested schedule (budget: ${budget}/hr)",
+    )
+    state.communication_events.append(event)
+    state.metrics.total_messages += 1
+    state.update_metrics()
 
-    # Run A2A server in main loop (blocking until shutdown)
-    try:
-        asyncio.run(start_a2a_server(host, a2a_port))
-    except KeyboardInterrupt:
-        logger.info("[UI Agent] Shutdown requested (KeyboardInterrupt)")
-    except Exception as e:
-        logger.error(f"[UI Agent] A2A server error: {e}")
-
-    logger.info("[UI Agent] Exiting main process")
+    logger.info(f"[Dashboard] Recorded tourist request from {tourist_id}")
+    return f"Recorded tourist request from {tourist_id}"
 
 
-async def start_a2a_server(host: str, port: int):
-    """Start the A2A agent server (with port retry already performed in main)."""
-    skill = AgentSkill(
-        id="real_time_dashboard",
-        name="Real-time System Dashboard",
-        description="Provides real-time web dashboard for multi-agent tourist scheduling system",
-        tags=["dashboard", "ui", "monitoring", "real-time"],
-        examples=[
-            "Monitor tourist requests and guide availability",
-            "Track assignment success rates and system metrics",
-        ],
+def record_guide_offer(
+    guide_id: str,
+    categories: str,
+    available_start: str,
+    available_end: str,
+    hourly_rate: float,
+    max_group_size: int = 1,
+) -> str:
+    """
+    Record a guide offer in the dashboard.
+
+    Args:
+        guide_id: Unique identifier for the guide
+        categories: Comma-separated list of expertise categories
+        available_start: Start of availability window (ISO format)
+        available_end: End of availability window (ISO format)
+        hourly_rate: Hourly rate in dollars
+        max_group_size: Maximum number of tourists the guide can handle
+
+    Returns:
+        Confirmation message
+    """
+    state = get_dashboard_state()
+
+    offer = {
+        "guide_id": guide_id,
+        "categories": [c.strip() for c in categories.split(",")],
+        "availability": {
+            "start": available_start,
+            "end": available_end,
+        },
+        "hourly_rate": hourly_rate,
+        "max_group_size": max_group_size,
+        "recorded_at": datetime.now().isoformat(),
+    }
+
+    state.guide_offers[guide_id] = offer
+
+    # Record communication event
+    event = CommunicationEvent(
+        timestamp=datetime.now().isoformat(),
+        source_agent=guide_id,
+        target_agent="scheduler",
+        message_type="GuideOffer",
+        summary=f"Guide {guide_id} offering {categories} at ${hourly_rate}/hr",
+    )
+    state.communication_events.append(event)
+    state.metrics.total_messages += 1
+    state.update_metrics()
+
+    logger.info(f"[Dashboard] Recorded guide offer from {guide_id}")
+    return f"Recorded guide offer from {guide_id}"
+
+
+def record_assignment(
+    tourist_id: str,
+    guide_id: str,
+    start_time: str,
+    end_time: str,
+    total_cost: float,
+) -> str:
+    """
+    Record an assignment in the dashboard.
+
+    Args:
+        tourist_id: ID of the assigned tourist
+        guide_id: ID of the assigned guide
+        start_time: Start time of the assignment (ISO format)
+        end_time: End time of the assignment (ISO format)
+        total_cost: Total cost of the assignment
+
+    Returns:
+        Confirmation message
+    """
+    state = get_dashboard_state()
+
+    assignment = {
+        "tourist_id": tourist_id,
+        "guide_id": guide_id,
+        "window": {
+            "start": start_time,
+            "end": end_time,
+        },
+        "total_cost": total_cost,
+        "created_at": datetime.now().isoformat(),
+    }
+
+    state.assignments.append(assignment)
+
+    # Record communication event
+    event = CommunicationEvent(
+        timestamp=datetime.now().isoformat(),
+        source_agent="scheduler",
+        target_agent=tourist_id,
+        message_type="Assignment",
+        summary=f"Assigned {tourist_id} to guide {guide_id} (${total_cost})",
+    )
+    state.communication_events.append(event)
+    state.metrics.total_messages += 1
+    state.update_metrics()
+
+    logger.info(f"[Dashboard] Recorded assignment: {tourist_id} -> {guide_id}")
+    return f"Recorded assignment: {tourist_id} assigned to {guide_id}"
+
+
+def get_dashboard_summary() -> str:
+    """
+    Get a summary of the current dashboard state.
+
+    Returns:
+        Human-readable summary of the system state
+    """
+    state = get_dashboard_state()
+    state.update_metrics()
+    m = state.metrics
+
+    summary = f"""Dashboard Summary (as of {m.last_updated}):
+
+📊 Overview:
+- Total Tourists: {m.total_tourists}
+- Total Guides: {m.total_guides}
+- Total Assignments: {m.total_assignments}
+- Satisfied Tourists: {m.satisfied_tourists}
+
+📈 Metrics:
+- Guide Utilization: {m.guide_utilization:.1%}
+- Average Assignment Cost: ${m.avg_assignment_cost:.2f}
+- Total Messages: {m.total_messages}
+
+🧑‍🤝‍🧑 Recent Activity:"""
+
+    # Add recent events
+    for event in state.communication_events[-5:]:
+        summary += f"\n  • [{event.timestamp[:19]}] {event.summary}"
+
+    if not state.communication_events:
+        summary += "\n  • No recent activity"
+
+    return summary
+
+
+def get_recent_events(count: int = 10) -> str:
+    """
+    Get recent communication events.
+
+    Args:
+        count: Number of recent events to retrieve
+
+    Returns:
+        List of recent communication events
+    """
+    state = get_dashboard_state()
+    events = state.communication_events[-count:]
+
+    if not events:
+        return "No communication events recorded yet."
+
+    result = f"Last {len(events)} communication events:\n"
+    for i, event in enumerate(reversed(events), 1):
+        result += f"\n{i}. [{event.timestamp[:19]}] {event.message_type}\n"
+        result += f"   From: {event.source_agent} → To: {event.target_agent}\n"
+        result += f"   {event.summary}"
+
+    return result
+
+
+# ============================================================================
+# ADK Agent Definition
+# ============================================================================
+
+# Lazy-loaded UI agent singleton
+_ui_agent = None
+
+
+def get_ui_agent():
+    """
+    Get or create the UI dashboard agent.
+
+    Uses lazy initialization to avoid importing google.adk at module load time.
+
+    Returns:
+        The UI LlmAgent instance
+    """
+    global _ui_agent
+
+    if _ui_agent is None:
+        # Import ADK components at runtime
+        from google.adk.agents.llm_agent import LlmAgent
+        from google.adk.models.lite_llm import LiteLlm
+
+        # Get model configuration from environment
+        # Supports Azure OpenAI via LiteLLM
+        deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+        model_name = os.getenv("UI_MODEL", f"azure/{deployment_name}")
+
+        # Use LiteLlm for Azure OpenAI support
+        model = LiteLlm(
+            model=model_name,
+            api_key=os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY"),
+            api_base=os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01"),
+        )
+
+        _ui_agent = LlmAgent(
+            name="ui_dashboard_agent",
+            model=model,
+            description=(
+                "A dashboard agent that monitors the tourist scheduling system and provides "
+                "real-time visibility into tourists, guides, assignments, and system metrics."
+            ),
+            instruction="""You are the UI Dashboard Agent for the Tourist Scheduling System.
+
+Your role is to:
+1. Track and record tourist requests as they come in
+2. Track and record guide offers
+3. Track and record assignments made by the scheduler
+4. Provide summaries and insights about the system state
+5. Answer questions about current tourists, guides, and assignments
+
+You have access to the following tools:
+
+1. **record_tourist_request**: Record a tourist's request when notified
+2. **record_guide_offer**: Record a guide's offer when notified
+3. **record_assignment**: Record an assignment when the scheduler makes a match
+4. **get_dashboard_summary**: Get a high-level summary of the system state
+5. **get_recent_events**: Get recent communication events
+
+When you receive updates about tourists, guides, or assignments, use the appropriate
+recording tool to track them. When asked for status or summaries, use the dashboard
+tools to provide accurate information.
+
+Be helpful and provide clear, concise summaries of the scheduling system state.""",
+            tools=[
+                record_tourist_request,
+                record_guide_offer,
+                record_assignment,
+                get_dashboard_summary,
+                get_recent_events,
+            ],
+        )
+
+    return _ui_agent
+
+
+def create_ui_app(host: str = "0.0.0.0", port: int = 10011):
+    """
+    Create an A2A application for the UI dashboard agent.
+    Uses the agent card from a2a_cards/ui_agent.json.
+
+    Args:
+        host: Host to bind the server to
+        port: Port to bind the server to
+
+    Returns:
+        FastAPI application configured with A2A endpoints
+    """
+    from google.adk.a2a.utils.agent_to_a2a import to_a2a
+
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_ui_card
+    agent_card = get_ui_card(host=host, port=port)
+    logger.info(f"[ADK UI] Using agent card: {agent_card.name} v{agent_card.version}")
+
+    return to_a2a(
+        get_ui_agent(),
+        host=host,
+        port=port,
+        protocol="http",
+        agent_card=agent_card,
     )
 
-    agent_card = AgentCard(
-        name="UI Agent",
-        description="Real-time web dashboard for tourist scheduling system monitoring",
-        url=f"http://{host}:{port}/",
-        version="1.0.0",
-        default_input_modes=["text"],
-        default_output_modes=["text"],
-        capabilities=AgentCapabilities(streaming=False),
-        skills=[skill],
-    )
 
+def create_ui_a2a_components(host: str = "0.0.0.0", port: int = 10011):
+    """
+    Create A2A components for the UI agent (for SLIM transport).
+
+    Returns the AgentCard and DefaultRequestHandler that can be used
+    with SLIM transport. Uses the agent card from a2a_cards/ui_agent.json.
+
+    Args:
+        host: Host for the A2A RPC URL
+        port: Port for the A2A server
+
+    Returns:
+        Tuple of (agent_card, request_handler)
+    """
+    from google.adk.runners import InMemoryRunner
+    from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
+    from a2a.server.request_handlers import DefaultRequestHandler
+    from a2a.server.tasks import InMemoryTaskStore
+
+    # Load agent card from a2a_cards directory
+    from .a2a_cards import get_ui_card
+    agent_card = get_ui_card(host=host, port=port)
+    logger.info(f"[ADK UI] Loaded agent card: {agent_card.name} v{agent_card.version}")
+
+    agent = get_ui_agent()
+
+    # Create runner for the agent
+    runner = InMemoryRunner(agent=agent)
+
+    # Create A2A executor wrapping the ADK runner
+    agent_executor = A2aAgentExecutor(runner=runner)
+
+    # Create request handler
     request_handler = DefaultRequestHandler(
-        agent_executor=UIAgentExecutor(),
+        agent_executor=agent_executor,
         task_store=InMemoryTaskStore(),
     )
 
-    a2a_app = A2AStarletteApplication(
-        agent_card=agent_card,
-        http_handler=request_handler,
-    )
-
-    config = uvicorn.Config(a2a_app.build(), host=host, port=port, log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
+    return agent_card, request_handler
 
 
-def find_available_port(host: str, desired_port: int, label: str, max_increment: int = 5) -> int:
-    """Return an available port, incrementing if the desired one is busy.
-
-    This avoids hard failures when the UI agent is relaunched while previous A2A
-    sockets are still bound. We attempt up to max_increment increments.
-    """
-    for offset in range(0, max_increment + 1):
-        candidate = desired_port + offset
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                s.bind((host, candidate))
-                # Successfully bound; release and return
-                logger.debug(f"[UI Agent] Port check success for {label} port {candidate}")
-                return candidate
-            except OSError:
-                logger.debug(f"[UI Agent] Port {candidate} busy for {label}")
-                continue
-    raise RuntimeError(f"[UI Agent] No available {label} port found starting at {desired_port}")
-
+# ============================================================================
+# CLI Entry Point
+# ============================================================================
 
 if __name__ == "__main__":
+    import click
+    import uvicorn
+
+    @click.command()
+    @click.option("--host", default="0.0.0.0", help="Host to bind to")
+    @click.option("--port", default=10011, help="Port to bind to")
+    @click.option("--transport", type=click.Choice(["http", "slim"]), default="http",
+                  help="Transport protocol: http or slim")
+    @click.option("--slim-endpoint", default=None, help="SLIM node endpoint")
+    @click.option("--slim-local-id", default=None, help="SLIM local agent ID")
+    @click.option("--dashboard/--no-dashboard", default=True, help="Enable web dashboard UI")
+    @click.option("--tracing/--no-tracing", default=False, help="Enable OpenTelemetry tracing")
+    def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id: str, dashboard: bool, tracing: bool):
+        """Run the UI Dashboard Agent as an A2A server."""
+        logging.basicConfig(level=logging.INFO)
+
+        # Initialize tracing if enabled
+        if tracing and TRACING_AVAILABLE:
+            otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+            setup_tracing(
+                service_name="ui-dashboard-agent",
+                otlp_endpoint=otlp_endpoint,
+                file_export=True,
+            )
+            logger.info("[ADK UI] OpenTelemetry tracing enabled")
+
+        # Set up dashboard if enabled
+        dashboard_app = None
+        if dashboard:
+            try:
+                from .dashboard import (
+                    create_dashboard_app,
+                    set_dashboard_state,
+                    set_transport_mode,
+                    broadcast_to_clients,
+                )
+                # Create dashboard state
+                dashboard_state = DashboardState()
+                set_dashboard_state(dashboard_state)
+                set_transport_mode(transport)
+                dashboard_app = create_dashboard_app()
+                logger.info(f"[ADK UI] Web dashboard enabled at http://{host}:{port}")
+            except ImportError as e:
+                logger.warning(f"[ADK UI] Dashboard module not available: {e}")
+                dashboard = False
+
+        if transport == "slim":
+            if not SLIM_AVAILABLE:
+                logger.error("[ADK UI] SLIM transport requested but slimrpc/slima2a not installed")
+                raise SystemExit(1)
+
+            # Load SLIM config
+            slim_config = config_from_env(prefix="UI_")
+            if slim_endpoint:
+                slim_config.endpoint = slim_endpoint
+            if slim_local_id:
+                slim_config.local_id = slim_local_id
+            else:
+                slim_config.local_id = "agntcy/tourist_scheduling/adk_ui"
+
+            logger.info(f"[ADK UI] Starting with SLIM transport")
+            logger.info(f"[ADK UI] SLIM endpoint: {slim_config.endpoint}")
+            logger.info(f"[ADK UI] SLIM local ID: {slim_config.local_id}")
+
+            # Create A2A components
+            agent_card, request_handler = create_ui_a2a_components(host=host, port=port)
+
+            # Create SLIM server
+            start_server = create_slim_server(slim_config, agent_card, request_handler)
+
+            async def run_slim_server():
+                logger.info("[ADK UI] Starting SLIM server...")
+                server, local_app, server_task = await start_server()
+                logger.info("[ADK UI] SLIM server running")
+
+                tasks = [server_task]
+
+                # If dashboard enabled, also run the dashboard web server
+                if dashboard_app:
+                    import uvicorn
+                    dashboard_config = uvicorn.Config(
+                        dashboard_app,
+                        host=host,
+                        port=port,
+                        log_level="warning",
+                    )
+                    dashboard_server = uvicorn.Server(dashboard_config)
+                    dashboard_task = asyncio.create_task(dashboard_server.serve())
+                    tasks.append(dashboard_task)
+                    logger.info(f"[ADK UI] Dashboard running at http://{host}:{port}")
+
+                try:
+                    # Wait for all tasks - if any fails, we'll catch it
+                    await asyncio.gather(*tasks)
+                except asyncio.CancelledError:
+                    logger.info("[ADK UI] SLIM server cancelled")
+
+            try:
+                asyncio.run(run_slim_server())
+            except KeyboardInterrupt:
+                logger.info("[ADK UI] Shutting down...")
+        else:
+            # HTTP transport with dashboard
+            if dashboard_app:
+                # Mount the A2A app under the dashboard app
+                from starlette.routing import Mount
+                a2a_app = create_ui_app(host=host, port=port)
+                dashboard_app.routes.append(Mount("/a2a", app=a2a_app))
+                logger.info(f"[ADK UI] Starting with dashboard on http://{host}:{port}")
+                uvicorn.run(dashboard_app, host=host, port=port)
+            else:
+                # Just A2A server
+                logger.info(f"Starting UI Dashboard Agent on {host}:{port}")
+                app = create_ui_app(host=host, port=port)
+                uvicorn.run(app, host=host, port=port)
+
     main()
