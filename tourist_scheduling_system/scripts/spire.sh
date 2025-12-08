@@ -6,7 +6,9 @@ set -e
 
 NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-jobs}"
 RELEASE_NAME="spire"
-CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.1}"
+CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.0}"
+SPIRE_VERSION="${SPIRE_VERSION:-1.13.0}"
+KUBECTL_VERSION="${SPIRE_KUBECTL_VERSION:-1.28.0}"
 TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
 CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-false}"
@@ -78,6 +80,8 @@ install() {
             --set global.spire.namespaces.system.name="${NAMESPACE}" \
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
+            --set global.spire.image.tag="${SPIRE_VERSION}" \
+            --set global.spire.tools.kubectl.tag="${KUBECTL_VERSION}" \
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
@@ -95,6 +99,8 @@ install() {
             --set global.spire.namespaces.system.name="${NAMESPACE}" \
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
+            --set global.spire.image.tag="${SPIRE_VERSION}" \
+            --set global.spire.tools.kubectl.tag="${KUBECTL_VERSION}" \
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \

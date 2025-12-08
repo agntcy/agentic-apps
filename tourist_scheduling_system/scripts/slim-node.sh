@@ -18,7 +18,7 @@ CONTROLLER_PORT="${SLIM_CONTROLLER_PORT:-50052}"
 
 # SPIRE Configuration
 SPIRE_ENABLED="${SPIRE_ENABLED:-false}"
-SPIRE_SOCKET_PATH="${SPIRE_SOCKET_PATH:-unix:///run/spire/agent-sockets/spire-agent.sock}"
+SPIRE_NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-spire}"
 SPIRE_TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
 SPIRE_CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 
@@ -54,20 +54,20 @@ download_chart() {
 register_with_spire() {
     log_info "Registering SLIM node workload with SPIRE..."
 
-    # Check if SPIRE server is available
-    if ! kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o name | grep -q "pod/"; then
-        log_warn "SPIRE server not found in namespace ${NAMESPACE}, skipping registration"
+    # Check if SPIRE server is available in SPIRE namespace
+    if ! kubectl get pod -n "${SPIRE_NAMESPACE}" -l app.kubernetes.io/name=server -o name | grep -q "pod/"; then
+        log_warn "SPIRE server not found in namespace ${SPIRE_NAMESPACE}, skipping registration"
         return 0
     fi
 
     local SPIRE_SERVER_POD
-    SPIRE_SERVER_POD=$(kubectl get pod -n "${NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
+    SPIRE_SERVER_POD=$(kubectl get pod -n "${SPIRE_NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
 
-    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD}"
+    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD} in namespace ${SPIRE_NAMESPACE}"
 
     # Register SLIM Node
     log_info "Registering SLIM Node '${NODE_NAME}'..."
-    kubectl exec -n "${NAMESPACE}" "${SPIRE_SERVER_POD}" -c spire-server -- \
+    kubectl exec -n "${SPIRE_NAMESPACE}" "${SPIRE_SERVER_POD}" -c spire-server -- \
         /opt/spire/bin/spire-server entry create \
         -spiffeID "spiffe://${SPIRE_TRUST_DOMAIN}/slim/node/${NODE_NAME}" \
         -parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent/k8s_psat/${SPIRE_CLUSTER_NAME}" \
@@ -110,7 +110,6 @@ install() {
             --set slim.config.services.slim/0.controller.clients[0].tls.useSpiffe=true
             --set spire.enabled=true
             --set spire.useCSIDriver=true
-            --set spire.agentSocketPath="${SPIRE_SOCKET_PATH}"
         )
     else
         HELM_VALUES+=(
@@ -257,7 +256,6 @@ usage() {
     echo "  SLIM_CONTROLLER_HOST  Controller hostname (default: slim-control)"
     echo "  SLIM_CONTROLLER_PORT  Controller port (default: 50052)"
     echo "  SPIRE_ENABLED         Enable SPIRE mTLS (default: false)"
-    echo "  SPIRE_SOCKET_PATH     SPIRE agent socket path"
     echo "  SPIRE_TRUST_DOMAIN    SPIRE trust domain (default: example.org)"
     echo "  SPIRE_CLUSTER_NAME    SPIRE cluster name (default: slim-cluster)"
     echo ""
