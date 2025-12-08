@@ -8,7 +8,6 @@ NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-jobs}"
 RELEASE_NAME="spire"
 CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.0}"
 SPIRE_VERSION="${SPIRE_VERSION:-1.13.0}"
-KUBECTL_VERSION="${SPIRE_KUBECTL_VERSION:-1.28.0}"
 TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
 CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
 CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-false}"
@@ -71,6 +70,9 @@ install() {
         helm upgrade "${RELEASE_NAME}" spiffe/spire \
             -n "${NAMESPACE}" \
             --version "${CHART_VERSION}" \
+            --reuse-values \
+            --set global.installAndUpgradeHooks.enabled=false \
+            --set global.deleteHooks.enabled=false \
             --set global.spire.trustDomain="${TRUST_DOMAIN}" \
             --set global.spire.clusterName="${CLUSTER_NAME}" \
             --set global.spire.namespaces.create=false \
@@ -78,7 +80,6 @@ install() {
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
             --set global.spire.image.tag="${SPIRE_VERSION}" \
-            --set global.spire.tools.kubectl.tag="${KUBECTL_VERSION}" \
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
@@ -90,6 +91,8 @@ install() {
         helm install "${RELEASE_NAME}" spiffe/spire \
             -n "${NAMESPACE}" \
             --version "${CHART_VERSION}" \
+            --set global.installAndUpgradeHooks.enabled=false \
+            --set global.deleteHooks.enabled=false \
             --set global.spire.trustDomain="${TRUST_DOMAIN}" \
             --set global.spire.clusterName="${CLUSTER_NAME}" \
             --set global.spire.namespaces.create=false \
@@ -97,7 +100,6 @@ install() {
             --set global.spire.namespaces.server.name="${NAMESPACE}" \
             --set global.spire.recommendations.enabled=false \
             --set global.spire.image.tag="${SPIRE_VERSION}" \
-            --set global.spire.tools.kubectl.tag="${KUBECTL_VERSION}" \
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
@@ -228,7 +230,6 @@ usage() {
     echo "  SPIRE_CLUSTER_NAME        Cluster name (default: slim-cluster)"
     echo "  SPIRE_CHART_VERSION       Helm chart version (default: 0.27.0)"
     echo "  SPIRE_VERSION             SPIRE version (default: 1.13.0)"
-    echo "  SPIRE_KUBECTL_VERSION     kubectl image version (default: 1.28.0)"
     echo "  SPIRE_CSI_DRIVER_ENABLED  Enable SPIFFE CSI driver (default: false)"
     echo ""
     echo "Examples:"
