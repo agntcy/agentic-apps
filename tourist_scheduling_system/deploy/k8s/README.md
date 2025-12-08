@@ -175,7 +175,7 @@ kubectl logs -l app=guide-agent -n $NAMESPACE
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NAMESPACE` | `lumuscar-jobs` | Target Kubernetes namespace |
-| `IMAGE_REGISTRY` | `ghcr.io/agntcy` | Container image registry |
+| `IMAGE_REGISTRY` | `ghcr.io/agntcy/apps` | Container image registry |
 | `IMAGE_TAG` | `latest` | Container image tag |
 | `TRANSPORT_MODE` | `http` | Transport mode: `http` or `slim` |
 | `SLIM_GATEWAY_HOST` | `slim-slim-node` | SLIM gateway service name |

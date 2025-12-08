@@ -8,15 +8,22 @@
 #
 # Environment variables:
 #   NAMESPACE          - Target namespace (default: lumuscar-jobs)
-#   IMAGE_REGISTRY     - Container registry (default: ghcr.io/agntcy)
+#   IMAGE_REGISTRY     - Container registry (default: ghcr.io/agntcy/apps)
 #   IMAGE_TAG          - Image tag (default: latest)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy}"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+
+# Export all variables for envsubst
+export NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
+export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
+export TRANSPORT_MODE="${TRANSPORT_MODE:-http}"
+export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
+export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
+export SCHEDULER_URL="${SCHEDULER_URL:-http://scheduler-agent:10000}"
+export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,7 +54,7 @@ show_usage() {
     echo ""
     echo "Environment Variables:"
     echo "  NAMESPACE        Target namespace (default: lumuscar-jobs)"
-    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy)"
+    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy/apps)"
     echo "  IMAGE_TAG        Image tag (default: latest)"
     echo ""
     echo "Required secrets (create before deploying):"
@@ -69,9 +76,16 @@ deploy_http() {
     export SCHEDULER_URL="http://scheduler-agent:10000"
     export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
 
-    # Deploy namespace and configmap
-    log_info "Creating namespace and configuration..."
-    envsubst < "$SCRIPT_DIR/namespace.yaml" | kubectl apply -f -
+    # Verify namespace exists
+    if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
+        log_error "Namespace '$NAMESPACE' does not exist. Please create it first:"
+        echo "  kubectl create namespace $NAMESPACE"
+        exit 1
+    fi
+
+    # Deploy configmap
+    log_info "Deploying configmap..."
+    envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
 
     # Check for secret
     if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
@@ -122,9 +136,16 @@ deploy_slim() {
     export SCHEDULER_URL="http://scheduler-agent:10000"
     export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
 
-    # Deploy namespace and configmap
-    log_info "Creating namespace and configuration..."
-    envsubst < "$SCRIPT_DIR/namespace.yaml" | kubectl apply -f -
+    # Verify namespace exists
+    if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
+        log_error "Namespace '$NAMESPACE' does not exist. Please create it first:"
+        echo "  kubectl create namespace $NAMESPACE"
+        exit 1
+    fi
+
+    # Deploy configmap
+    log_info "Deploying configmap..."
+    envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
 
     # Check for secret
     if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then

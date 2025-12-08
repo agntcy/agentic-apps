@@ -5,7 +5,7 @@
 #   - Container image built and pushed
 #
 # Usage:
-#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 #   export IMAGE_TAG=latest
 #   export NAMESPACE=lumuscar-jobs
 #   envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
@@ -17,15 +17,15 @@
 #   envsubst < deploy/k8s/ui-agent.yaml | kubectl apply -f -
 #
 # Verify:
-#   kubectl get pods -l app=ui-dashboard-agent -n ${NAMESPACE:-lumuscar-jobs}
-#   kubectl get svc ui-dashboard-agent -n ${NAMESPACE:-lumuscar-jobs}
+#   kubectl get pods -l app=ui-dashboard-agent -n ${NAMESPACE}
+#   kubectl get svc ui-dashboard-agent -n ${NAMESPACE}
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ui-dashboard-agent
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: ui-dashboard-agent
     app.kubernetes.io/name: ui-dashboard-agent
@@ -45,7 +45,7 @@ spec:
     spec:
       containers:
         - name: ui-dashboard-agent
-          image: ${IMAGE_REGISTRY}/ui-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/ui-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: 10021
@@ -106,7 +106,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ui-dashboard-agent
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: ui-dashboard-agent
     app.kubernetes.io/name: ui-dashboard-agent
