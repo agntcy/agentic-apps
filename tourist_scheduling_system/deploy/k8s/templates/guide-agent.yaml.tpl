@@ -29,7 +29,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}/guide-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY

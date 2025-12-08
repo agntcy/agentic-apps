@@ -28,7 +28,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/tourist-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}/tourist-agent:${IMAGE_TAG:-latest}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
