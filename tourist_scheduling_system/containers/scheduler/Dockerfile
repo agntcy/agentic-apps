@@ -57,4 +57,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 10000
 
 # Run the scheduler agent
-CMD ["sh", "-c", "python main.py --host 0.0.0.0 --port $PORT --mode a2a"]
+# TRANSPORT_MODE can be 'http' or 'slim' (default: http)
+CMD ["sh", "-c", "python main.py --host 0.0.0.0 --port $PORT --mode a2a --transport ${TRANSPORT_MODE:-http}"]
