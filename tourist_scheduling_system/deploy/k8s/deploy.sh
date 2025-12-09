@@ -53,16 +53,40 @@ show_usage() {
     echo "  status  Show deployment status"
     echo ""
     echo "Environment Variables:"
-    echo "  NAMESPACE        Target namespace (default: lumuscar-jobs)"
-    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy/apps)"
-    echo "  IMAGE_TAG        Image tag (default: latest)"
-    echo ""
-    echo "Required secrets (create before deploying):"
-    echo "  kubectl create secret generic azure-openai-credentials \\"
-    echo "    --from-literal=api-key=\$AZURE_OPENAI_API_KEY \\"
-    echo "    --from-literal=endpoint=\$AZURE_OPENAI_ENDPOINT \\"
-    echo "    --from-literal=deployment-name=\${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \\"
-    echo "    -n $NAMESPACE"
+    echo "  NAMESPACE                    Target namespace (default: lumuscar-jobs)"
+    echo "  IMAGE_REGISTRY               Container registry (default: ghcr.io/agntcy/apps)"
+    echo "  IMAGE_TAG                    Image tag (default: latest)"
+    echo "  AZURE_OPENAI_API_KEY         Azure OpenAI API key (required)"
+    echo "  AZURE_OPENAI_ENDPOINT        Azure OpenAI endpoint URL (required)"
+    echo "  AZURE_OPENAI_DEPLOYMENT_NAME Azure OpenAI deployment name (default: gpt-4o)"
+    echo "  AZURE_OPENAI_API_VERSION     Azure OpenAI API version (default: 2024-10-21)"
+}
+
+# Create or update the azure-openai-credentials secret from environment variables
+ensure_azure_secret() {
+    if [[ -z "${AZURE_OPENAI_API_KEY:-}" ]]; then
+        log_error "AZURE_OPENAI_API_KEY environment variable is not set"
+        log_error "Please set the required environment variables:"
+        echo "  export AZURE_OPENAI_API_KEY='your-api-key'"
+        echo "  export AZURE_OPENAI_ENDPOINT='https://your-resource.openai.azure.com/'"
+        echo "  export AZURE_OPENAI_DEPLOYMENT_NAME='gpt-4o'"
+        exit 1
+    fi
+
+    if [[ -z "${AZURE_OPENAI_ENDPOINT:-}" ]]; then
+        log_error "AZURE_OPENAI_ENDPOINT environment variable is not set"
+        exit 1
+    fi
+
+    local deployment_name="${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o}"
+
+    log_info "Creating/updating azure-openai-credentials secret..."
+    kubectl create secret generic azure-openai-credentials \
+        --namespace "$NAMESPACE" \
+        --from-literal=api-key="${AZURE_OPENAI_API_KEY}" \
+        --from-literal=endpoint="${AZURE_OPENAI_ENDPOINT}" \
+        --from-literal=deployment-name="${deployment_name}" \
+        --dry-run=client -o yaml | kubectl apply -f -
 }
 
 deploy_http() {
@@ -83,20 +107,12 @@ deploy_http() {
         exit 1
     fi
 
+    # Create/update azure credentials secret
+    ensure_azure_secret
+
     # Deploy configmap
     log_info "Deploying configmap..."
     envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
-
-    # Check for secret
-    if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
-        log_warn "Secret 'azure-openai-credentials' not found in namespace '$NAMESPACE'"
-        log_warn "Please create it before deploying agents:"
-        echo "  kubectl create secret generic azure-openai-credentials \\"
-        echo "    --from-literal=api-key=\$AZURE_OPENAI_API_KEY \\"
-        echo "    --from-literal=endpoint=\$AZURE_OPENAI_ENDPOINT \\"
-        echo "    --from-literal=deployment-name=\${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \\"
-        echo "    -n $NAMESPACE"
-    fi
 
     # Deploy scheduler agent
     log_info "Deploying scheduler agent..."
@@ -143,15 +159,12 @@ deploy_slim() {
         exit 1
     fi
 
+    # Create/update azure credentials secret
+    ensure_azure_secret
+
     # Deploy configmap
     log_info "Deploying configmap..."
     envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
-
-    # Check for secret
-    if ! kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
-        log_warn "Secret 'azure-openai-credentials' not found in namespace '$NAMESPACE'"
-        log_warn "Please create it before deploying agents."
-    fi
 
     # Deploy scheduler agent
     log_info "Deploying scheduler agent..."
