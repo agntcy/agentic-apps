@@ -99,6 +99,12 @@ spec:
                   name: agent-config
                   key: SLIM_GATEWAY_PORT
                   optional: true
+            - name: SCHEDULER_EXTERNAL_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_EXTERNAL_URL
+                  optional: true
           resources:
             requests:
               memory: "256Mi"

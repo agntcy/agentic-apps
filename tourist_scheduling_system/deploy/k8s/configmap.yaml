@@ -32,4 +32,10 @@ data:
 
   # Service URLs
   SCHEDULER_URL: "${SCHEDULER_URL}"
+  SCHEDULER_EXTERNAL_URL: "${SCHEDULER_URL}"
   UI_DASHBOARD_URL: "${UI_DASHBOARD_URL}"
+
+  # Proxy configuration (for external API access)
+  HTTP_PROXY: "${HTTP_PROXY}"
+  HTTPS_PROXY: "${HTTPS_PROXY}"
+  NO_PROXY: "${NO_PROXY}"
