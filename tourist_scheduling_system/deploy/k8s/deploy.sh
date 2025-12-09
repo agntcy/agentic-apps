@@ -25,6 +25,11 @@ export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
 export SCHEDULER_URL="${SCHEDULER_URL:-http://scheduler-agent:10000}"
 export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
 
+# Proxy configuration (optional - for environments requiring proxy for external access)
+export HTTP_PROXY="${HTTP_PROXY:-}"
+export HTTPS_PROXY="${HTTPS_PROXY:-}"
+export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1,.cluster.local,scheduler-agent,ui-dashboard-agent}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

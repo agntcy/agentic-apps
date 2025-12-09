@@ -70,6 +70,42 @@ spec:
                   name: agent-config
                   key: SLIM_GATEWAY_PORT
                   optional: true
+            - name: HTTP_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: HTTPS_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: NO_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
+            - name: http_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: https_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: no_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
           args:
             - "--scheduler-url=http://scheduler-agent:10000"
             - "--tourist-id=${TOURIST_ID}"
