@@ -70,12 +70,13 @@ def create_guide_agent(
     """
     # Import ADK components at runtime
     from google.adk.agents.llm_agent import LlmAgent
-    from google.adk.agents.remote_a2a_agent import RemoteA2aAgent, AGENT_CARD_WELL_KNOWN_PATH
+    from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
     from google.adk.models.lite_llm import LiteLlm
 
     # Create remote scheduler agent reference
     # The agent_card parameter is a URL to the scheduler's agent card
-    agent_card_url = f"{scheduler_url.rstrip('/')}/{AGENT_CARD_WELL_KNOWN_PATH.lstrip('/')}"
+    # Use new endpoint path (/.well-known/agent-card.json) instead of deprecated /.well-known/agent.json
+    agent_card_url = f"{scheduler_url.rstrip('/')}/.well-known/agent-card.json"
     scheduler_remote = RemoteA2aAgent(
         name="scheduler",
         description="The tourist scheduling coordinator that handles guide offers",

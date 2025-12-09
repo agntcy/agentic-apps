@@ -558,7 +558,7 @@ async def run_a2a_server_demo(
         print()
         print(f"Starting ADK Scheduler Agent A2A Server")
         print(f"  Endpoint: http://{host}:{port}/")
-        print(f"  Agent Card: http://{host}:{port}/.well-known/agent.json")
+        print(f"  Agent Card: http://{host}:{port}/.well-known/agent-card.json")
         print()
         print("Other ADK agents can now connect to this scheduler.")
         print("Press Ctrl+C to stop.")
