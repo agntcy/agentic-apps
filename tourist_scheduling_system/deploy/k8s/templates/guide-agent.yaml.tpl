@@ -10,7 +10,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: guide-agent-${GUIDE_ID}
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: guide-agent
     app.kubernetes.io/name: guide-agent
@@ -29,7 +29,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}/guide-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/guide-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -71,17 +71,54 @@ spec:
                   name: agent-config
                   key: SLIM_GATEWAY_PORT
                   optional: true
+            - name: HTTP_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: HTTPS_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: NO_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
+            - name: http_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: https_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: no_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
           args:
+            - "--scheduler-url=http://scheduler-agent:10000"
             - "--guide-id=${GUIDE_ID}"
-            - "--categories=${GUIDE_CATEGORIES:-culture,history}"
-            - "--available-start=${GUIDE_START:-2025-06-01T09:00:00}"
-            - "--available-end=${GUIDE_END:-2025-06-01T17:00:00}"
-            - "--hourly-rate=${GUIDE_RATE:-50}"
-            - "--max-group-size=${GUIDE_MAX_GROUP:-5}"
+            - "--categories=${GUIDE_CATEGORIES}"
+            - "--available-start=${GUIDE_START}"
+            - "--available-end=${GUIDE_END}"
+            - "--hourly-rate=${GUIDE_RATE}"
+            - "--max-group-size=${GUIDE_MAX_GROUP}"
           resources:
             requests:
-              memory: "128Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "1Gi"
+              cpu: "500m"

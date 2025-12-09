@@ -120,7 +120,13 @@ def get_scheduler_card(host: str = "localhost", port: int = 10000) -> AgentCard:
     Returns:
         Configured AgentCard for the scheduler
     """
-    url = f"http://{host}:{port}/"
+    import os
+    # Check for external URL override (for K8s service discovery)
+    external_url = os.environ.get("SCHEDULER_EXTERNAL_URL")
+    if external_url:
+        url = external_url.rstrip("/") + "/"
+    else:
+        url = f"http://{host}:{port}/"
     return load_agent_card("scheduler_agent", url_override=url)
 
 
