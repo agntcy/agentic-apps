@@ -8,7 +8,6 @@ Collection of experimental and reference agent applications built on the A2A pro
 |---------|-------------|----------|
 | [`tourist_scheduling_system/`](tourist_scheduling_system/README.md) | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, Google ADK, SLIM, FastAPI, WebSockets, OpenTelemetry |
 | [`network_of_assistants/`](network_of_assistants/README.md) | Network-of-assistants stack (moderator, math, file, web, user proxy) | FastAPI, Docker, A2A SDK |
-| [`weather_vibes_agp/`](weather_vibes_agp/README.md) | Weather plus mood/vibe agent demo | A2A SDK |
 
 ## Quick Start (Tourist Scheduling System)
 
