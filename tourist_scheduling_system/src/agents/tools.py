@@ -128,6 +128,20 @@ def send_to_ui_agent(message_data: dict):
     thread.join(timeout=2.0)
 
 
+def send_communication_event(source_agent: str, target_agent: str, message_type: str, summary: str):
+    """Send a communication event to the UI dashboard for tracking."""
+    transport = os.environ.get("TRANSPORT_MODE", "http")
+    send_to_ui_agent({
+        "type": "communication_event",
+        "timestamp": datetime.now().isoformat(),
+        "source_agent": source_agent,
+        "target_agent": target_agent,
+        "message_type": message_type,
+        "summary": summary,
+        "transport": transport,
+    })
+
+
 @traced("register_tourist_request")
 def register_tourist_request(
     tourist_id: str,
@@ -191,6 +205,14 @@ def register_tourist_request(
                 "end": availability_end,
             }
         })
+
+        # Send communication event for dashboard log
+        send_communication_event(
+            source_agent=tourist_id,
+            target_agent="scheduler",
+            message_type="TouristRequest",
+            summary=f"Tourist requesting {', '.join(preferences)} with ${budget}/hr budget"
+        )
 
         return {
             "status": "registered",
@@ -274,6 +296,14 @@ def register_guide_offer(
             }
         })
 
+        # Send communication event for dashboard log
+        send_communication_event(
+            source_agent=guide_id,
+            target_agent="scheduler",
+            message_type="GuideOffer",
+            summary=f"Guide offering {', '.join(categories)} @ ${hourly_rate}/hr"
+        )
+
         return {
             "status": "registered",
             "guide_id": guide_id,
@@ -351,6 +381,14 @@ def run_scheduling(tool_context: ToolContext = None) -> Dict[str, Any]:
                     "end": assignment.time_window.end.isoformat() if assignment.time_window else None,
                 }
             })
+
+            # Send communication event for dashboard log
+            send_communication_event(
+                source_agent="scheduler",
+                target_agent=assignment.tourist_id,
+                message_type="Assignment",
+                summary=f"Matched with {assignment.guide_id} for {', '.join(assignment.categories)} @ ${assignment.total_cost}"
+            )
 
         # Notify UI agent with final metrics
         assigned_tourists = set(a.tourist_id for a in assignments)

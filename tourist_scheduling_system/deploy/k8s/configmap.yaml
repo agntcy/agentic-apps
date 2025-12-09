@@ -29,6 +29,11 @@ data:
   # SLIM configuration (used when TRANSPORT_MODE=slim)
   SLIM_GATEWAY_HOST: "${SLIM_GATEWAY_HOST}"
   SLIM_GATEWAY_PORT: "${SLIM_GATEWAY_PORT}"
+  SLIM_SHARED_SECRET: "${SLIM_SHARED_SECRET}"
+  SLIM_TLS_INSECURE: "true"
+
+  # SLIM topic IDs (for agent routing)
+  SCHEDULER_SLIM_TOPIC: "agntcy/tourist_scheduling/scheduler"
 
   # Service URLs
   SCHEDULER_URL: "${SCHEDULER_URL}"
