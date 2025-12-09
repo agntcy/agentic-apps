@@ -9,7 +9,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: tourist-agent-${TOURIST_ID}
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: tourist-agent
     app.kubernetes.io/name: tourist-agent
@@ -28,7 +28,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}/tourist-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/tourist-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -71,15 +71,16 @@ spec:
                   key: SLIM_GATEWAY_PORT
                   optional: true
           args:
+            - "--scheduler-url=http://scheduler-agent:10000"
             - "--tourist-id=${TOURIST_ID}"
-            - "--preferences=${TOURIST_PREFERENCES:-culture,history}"
-            - "--availability-start=${TOURIST_START:-2025-06-01T09:00:00}"
-            - "--availability-end=${TOURIST_END:-2025-06-01T17:00:00}"
-            - "--budget=${TOURIST_BUDGET:-100}"
+            - "--preferences=${TOURIST_PREFERENCES}"
+            - "--availability-start=${TOURIST_START}"
+            - "--availability-end=${TOURIST_END}"
+            - "--budget=${TOURIST_BUDGET}"
           resources:
             requests:
-              memory: "128Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "1Gi"
+              cpu: "500m"
