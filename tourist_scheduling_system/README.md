@@ -186,7 +186,7 @@ cd deploy/k8s
 
 # Set environment
 export NAMESPACE=lumuscar-jobs
-export IMAGE_REGISTRY=ghcr.io/your-org
+export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 export IMAGE_TAG=latest
 
 # Deploy with HTTP transport (default)
