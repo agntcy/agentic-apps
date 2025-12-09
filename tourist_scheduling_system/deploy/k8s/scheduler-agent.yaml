@@ -108,14 +108,14 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /.well-known/agent.json
+              path: /.well-known/agent-card.json
               port: 10000
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /.well-known/agent.json
+              path: /.well-known/agent-card.json
               port: 10000
             initialDelaySeconds: 5
             periodSeconds: 10
