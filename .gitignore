@@ -188,6 +188,10 @@ Thumbs.db
 logs/
 traces/
 header.txt
+
+# Helm chart tarballs
+*.tgz
+
 # Tourist Scheduling System generated artifacts
 tourist_scheduling_system/*.log
 tourist_scheduling_system/ui_agent_ports.json

@@ -34,6 +34,9 @@ RUN adduser --disabled-password --gecos "" agentuser && \
 # Copy source code
 COPY src/ ./src/
 
+# Copy only the scheduler agent card (served via /.well-known/agent.json)
+COPY a2a_cards/scheduler_agent.json ./a2a_cards/
+
 # Copy main.py entry point for scheduler
 COPY containers/scheduler/main.py ./main.py
 

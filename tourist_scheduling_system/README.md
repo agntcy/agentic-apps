@@ -232,7 +232,7 @@ For SLIM transport with mTLS authentication:
 ```bash
 # Using envsubst for variable substitution
 export NAMESPACE=lumuscar-jobs
-export IMAGE_REGISTRY=ghcr.io/agntcy
+export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 export IMAGE_TAG=latest
 export TRANSPORT_MODE=http  # or slim
 

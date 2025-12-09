@@ -6,14 +6,8 @@ Collection of experimental and reference agent applications built on the A2A pro
 
 | Project | Description | Key Tech |
 |---------|-------------|----------|
-| `tourist_scheduling_system/` | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, Google ADK, SLIM, FastAPI, WebSockets, OpenTelemetry |
-| `remote_agent_agp/` | Remote agent gateway & client demos | A2A SDK, Docker Compose |
-| `mailcomposer/` | AI-driven email composer workflow | A2A SDK, LangGraph |
-| `marketing-campaign/` | Multi-agent marketing campaign planner | A2A SDK |
-| `email_reviewer/` | Agent that reviews emails for quality & tone | A2A SDK |
-| `network_of_assistants/` | Network-of-assistants stack (moderator, math, file, web, user proxy) | FastAPI, Docker, A2A SDK |
-| `weather_vibes_agp/` | Weather plus mood/vibe agent demo | A2A SDK |
-| `api_bridge_agent_demos/` | MCP / bridge agent examples | A2A SDK, MCP |
+| [`tourist_scheduling_system/`](tourist_scheduling_system/README.md) | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, Google ADK, SLIM, FastAPI, WebSockets, OpenTelemetry |
+| [`network_of_assistants/`](network_of_assistants/README.md) | Network-of-assistants stack (moderator, math, file, web, user proxy) | FastAPI, Docker, A2A SDK |
 
 ## Quick Start (Tourist Scheduling System)
 

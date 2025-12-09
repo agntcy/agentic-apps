@@ -5,7 +5,7 @@
 #
 # Usage:
 #   export NAMESPACE=lumuscar-jobs
-#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 #   envsubst < deploy/k8s/tourist-agent.yaml | kubectl apply -f -
 #
 # For SLIM transport mode:
@@ -19,7 +19,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: tourist-agent-t1
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: tourist-agent
     app.kubernetes.io/name: tourist-agent
@@ -37,7 +37,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/tourist-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/tourist-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -100,7 +100,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: tourist-agent-t2
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: tourist-agent
     app.kubernetes.io/name: tourist-agent
@@ -117,7 +117,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: tourist-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/tourist-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/tourist-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY

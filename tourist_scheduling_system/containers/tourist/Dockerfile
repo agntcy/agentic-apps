@@ -34,6 +34,8 @@ RUN adduser --disabled-password --gecos "" agentuser && \
 # Copy source code
 COPY src/ ./src/
 
+# Note: Tourist agent fetches agent card from scheduler URL, no local cards needed
+
 # Copy main.py entry point
 COPY containers/tourist/main.py ./main.py
 

@@ -5,7 +5,7 @@
 #
 # Usage:
 #   export NAMESPACE=lumuscar-jobs
-#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 #   envsubst < deploy/k8s/guide-agent.yaml | kubectl apply -f -
 #
 # For SLIM transport mode:
@@ -19,7 +19,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: guide-agent-g1
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: guide-agent
     app.kubernetes.io/name: guide-agent
@@ -37,7 +37,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/guide-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
@@ -101,7 +101,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: guide-agent-g2
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: guide-agent
     app.kubernetes.io/name: guide-agent
@@ -118,7 +118,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: guide-agent
-          image: ${IMAGE_REGISTRY:-ghcr.io/agntcy}/guide-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/guide-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           env:
             - name: AZURE_OPENAI_API_KEY
