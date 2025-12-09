@@ -1,7 +1,11 @@
 # Kubernetes Namespace and Shared Resources
 #
-# Apply first:
-#   export NAMESPACE=lumuscar-jobs  # or your preferred namespace
+# Apply using deploy.sh (recommended):
+#   ./deploy/k8s/deploy.sh http   # or slim
+#
+# Or manually:
+#   export NAMESPACE=lumuscar-jobs
+#   export TRANSPORT_MODE=http
 #   envsubst < deploy/k8s/namespace.yaml | kubectl apply -f -
 #
 # Then create the secret:
@@ -9,7 +13,7 @@
 #     --from-literal=api-key=$AZURE_OPENAI_API_KEY \
 #     --from-literal=endpoint=$AZURE_OPENAI_ENDPOINT \
 #     --from-literal=deployment-name=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \
-#     -n ${NAMESPACE:-lumuscar-jobs}
+#     -n $NAMESPACE
 #
 # Environment Variables:
 #   NAMESPACE          - Target namespace (default: lumuscar-jobs)
@@ -21,7 +25,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ${NAMESPACE:-lumuscar-jobs}
+  name: ${NAMESPACE}
   labels:
     app.kubernetes.io/part-of: tourist-scheduling
 
@@ -31,7 +35,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: agent-config
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/part-of: tourist-scheduling
 data:
@@ -44,14 +48,15 @@ data:
 
   # Transport configuration
   # Options: "slim" for SLIM transport, "http" for direct HTTP
-  TRANSPORT_MODE: "${TRANSPORT_MODE:-http}"
+  TRANSPORT_MODE: "${TRANSPORT_MODE}"
 
   # SLIM configuration (used when TRANSPORT_MODE=slim)
-  SLIM_GATEWAY_HOST: "${SLIM_GATEWAY_HOST:-slim-slim-node}"
-  SLIM_GATEWAY_PORT: "${SLIM_GATEWAY_PORT:-46357}"
+  SLIM_GATEWAY_HOST: "${SLIM_GATEWAY_HOST}"
+  SLIM_GATEWAY_PORT: "${SLIM_GATEWAY_PORT}"
 
   # Service URLs (computed based on transport mode)
   # For HTTP mode: http://scheduler-agent:10000
   # For SLIM mode: configured via SLIM_GATEWAY
-  SCHEDULER_URL: "${SCHEDULER_URL:-http://scheduler-agent:10000}"
-  UI_DASHBOARD_URL: "${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
+  SCHEDULER_URL: "${SCHEDULER_URL}"
+  UI_DASHBOARD_URL: "${UI_DASHBOARD_URL}"
+

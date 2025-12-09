@@ -6,7 +6,7 @@
 #   - Container image built and pushed
 #
 # Usage:
-#   export IMAGE_REGISTRY=ghcr.io/agntcy
+#   export IMAGE_REGISTRY=ghcr.io/agntcy/apps
 #   export IMAGE_TAG=latest
 #   export NAMESPACE=lumuscar-jobs
 #   envsubst < deploy/k8s/scheduler-agent.yaml | kubectl apply -f -
@@ -18,15 +18,15 @@
 #   envsubst < deploy/k8s/scheduler-agent.yaml | kubectl apply -f -
 #
 # Verify:
-#   kubectl get pods -l app=scheduler-agent -n ${NAMESPACE:-lumuscar-jobs}
-#   kubectl logs -l app=scheduler-agent -n ${NAMESPACE:-lumuscar-jobs}
+#   kubectl get pods -l app=scheduler-agent -n ${NAMESPACE}
+#   kubectl logs -l app=scheduler-agent -n ${NAMESPACE}
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: scheduler-agent
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: scheduler-agent
     app.kubernetes.io/name: scheduler-agent
@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
         - name: scheduler-agent
-          image: ${IMAGE_REGISTRY}/scheduler-agent:${IMAGE_TAG:-latest}
+          image: ${IMAGE_REGISTRY}/scheduler-agent:${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: 10000
@@ -126,7 +126,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: scheduler-agent
-  namespace: ${NAMESPACE:-lumuscar-jobs}
+  namespace: ${NAMESPACE}
   labels:
     app: scheduler-agent
     app.kubernetes.io/name: scheduler-agent

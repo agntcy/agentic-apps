@@ -34,6 +34,9 @@ RUN adduser --disabled-password --gecos "" agentuser && \
 # Copy source code
 COPY src/ ./src/
 
+# Copy only the UI agent card (served via /.well-known/agent.json)
+COPY a2a_cards/ui_agent.json ./a2a_cards/
+
 # Copy main.py entry point for UI agent
 COPY containers/ui/main.py ./main.py
 

@@ -10,14 +10,14 @@
 #
 # Environment variables:
 #   NAMESPACE          - Target namespace (default: lumuscar-jobs)
-#   IMAGE_REGISTRY     - Container registry (default: ghcr.io/agntcy)
+#   IMAGE_REGISTRY     - Container registry (default: ghcr.io/agntcy/apps)
 #   IMAGE_TAG          - Image tag (default: latest)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy}"
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 # Colors
@@ -186,7 +186,7 @@ show_usage() {
     echo ""
     echo "Environment Variables:"
     echo "  NAMESPACE        Target namespace (default: lumuscar-jobs)"
-    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy)"
+    echo "  IMAGE_REGISTRY   Container registry (default: ghcr.io/agntcy/apps)"
     echo "  IMAGE_TAG        Image tag (default: latest)"
     echo ""
     echo "Examples:"
