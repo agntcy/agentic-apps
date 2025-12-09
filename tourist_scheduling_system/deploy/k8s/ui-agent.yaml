@@ -79,6 +79,43 @@ spec:
                   name: agent-config
                   key: SCHEDULER_URL
                   optional: true
+            # Proxy configuration
+            - name: HTTP_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: HTTPS_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: NO_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
+            - name: http_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTP_PROXY
+                  optional: true
+            - name: https_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: HTTPS_PROXY
+                  optional: true
+            - name: no_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: NO_PROXY
+                  optional: true
           resources:
             requests:
               memory: "512Mi"
