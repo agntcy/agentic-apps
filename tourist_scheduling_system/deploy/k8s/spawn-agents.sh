@@ -16,9 +16,9 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+export NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
+export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 # Colors
 RED='\033[0;31m'
