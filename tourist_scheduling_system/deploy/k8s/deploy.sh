@@ -28,7 +28,15 @@ export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
 # Proxy configuration (optional - for environments requiring proxy for external access)
 export HTTP_PROXY="${HTTP_PROXY:-}"
 export HTTPS_PROXY="${HTTPS_PROXY:-}"
-export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1,.cluster.local,scheduler-agent,ui-dashboard-agent}"
+
+# Ensure NO_PROXY includes necessary internal services
+DEFAULT_NO_PROXY="localhost,127.0.0.1,.cluster.local,slim-slim-node,scheduler-agent,ui-dashboard-agent"
+if [[ -n "${NO_PROXY:-}" ]]; then
+    # Avoid leading comma if NO_PROXY is set
+    export NO_PROXY="${NO_PROXY},${DEFAULT_NO_PROXY}"
+else
+    export NO_PROXY="${DEFAULT_NO_PROXY}"
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -119,6 +127,12 @@ deploy_http() {
     log_info "Deploying configmap..."
     envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
 
+    # Patch configmap with proxy values if set
+    if [[ -n "$HTTP_PROXY" || -n "$HTTPS_PROXY" ]]; then
+        log_info "Patching agent-config ConfigMap with proxy values..."
+        kubectl patch configmap agent-config -n "$NAMESPACE" --type merge -p '{"data":{"HTTP_PROXY":"'${HTTP_PROXY}'","HTTPS_PROXY":"'${HTTPS_PROXY}'","NO_PROXY":"'${NO_PROXY}'"}}'
+    fi
+
     # Deploy scheduler agent
     log_info "Deploying scheduler agent..."
     envsubst < "$SCRIPT_DIR/scheduler-agent.yaml" | kubectl apply -f -
@@ -170,6 +184,12 @@ deploy_slim() {
     # Deploy configmap
     log_info "Deploying configmap..."
     envsubst < "$SCRIPT_DIR/configmap.yaml" | kubectl apply -f -
+
+    # Patch configmap with proxy values if set
+    if [[ -n "$HTTP_PROXY" || -n "$HTTPS_PROXY" ]]; then
+        log_info "Patching agent-config ConfigMap with proxy values..."
+        kubectl patch configmap agent-config -n "$NAMESPACE" --type merge -p '{"data":{"HTTP_PROXY":"'${HTTP_PROXY}'","HTTPS_PROXY":"'${HTTPS_PROXY}'","NO_PROXY":"'${NO_PROXY}'"}}'
+    fi
 
     # Deploy scheduler agent
     log_info "Deploying scheduler agent..."
