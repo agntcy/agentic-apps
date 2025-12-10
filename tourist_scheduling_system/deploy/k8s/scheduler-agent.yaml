@@ -80,6 +80,11 @@ spec:
                 configMapKeyRef:
                   name: agent-config
                   key: UI_A2A_PORT
+            - name: UI_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: UI_DASHBOARD_URL
             # Transport configuration
             - name: TRANSPORT_MODE
               valueFrom:
