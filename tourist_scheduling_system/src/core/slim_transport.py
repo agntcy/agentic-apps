@@ -49,12 +49,21 @@ try:
     import slimrpc
     from slima2a.handler import SRPCHandler
     from slima2a.client_transport import SRPCTransport
+    
+    class CustomSRPCTransport(SRPCTransport):
+        """Custom transport to handle 'extensions' argument introduced in google-adk 1.19+."""
+        async def send_message(self, message, **kwargs):
+            if "extensions" in kwargs:
+                kwargs.pop("extensions")
+            return await super().send_message(message, **kwargs)
+
     SLIM_AVAILABLE = True
 except ImportError:
     SLIM_AVAILABLE = False
     slimrpc = None  # type: ignore
     SRPCHandler = None  # type: ignore
     SRPCTransport = None  # type: ignore
+    CustomSRPCTransport = None # type: ignore
     logger.warning("slimrpc/slima2a not installed - SLIM transport unavailable")
 
 
@@ -359,7 +368,7 @@ def create_client_factory_from_app(local_app, httpx_client=None):
     )
 
     client_factory = ClientFactory(client_config)
-    client_factory.register("slimrpc", SRPCTransport.create)
+    client_factory.register("slimrpc", CustomSRPCTransport.create)
 
     logger.info(f"[SLIM] Created client factory from existing app")
     return client_factory
@@ -440,7 +449,7 @@ async def create_slim_client_factory(config: SLIMConfig, httpx_client=None):
     )
 
     client_factory = ClientFactory(client_config)
-    client_factory.register("slimrpc", SRPCTransport.create)
+    client_factory.register("slimrpc", CustomSRPCTransport.create)
 
     logger.info(f"[SLIM] Created client factory for {config.local_id}")
     return client_factory
