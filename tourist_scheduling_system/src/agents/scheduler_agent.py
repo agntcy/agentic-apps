@@ -302,8 +302,9 @@ def main(mode: str, port: int, host: str, transport: str, slim_endpoint: str, sl
             slim_config.endpoint = slim_endpoint
         if slim_local_id:
             slim_config.local_id = slim_local_id
-        else:
-            slim_config.local_id = "agntcy/tourist_scheduling/adk_scheduler"
+        elif slim_config.local_id == "agntcy/tourist_scheduling/agent":
+            # Use consistent default that matches what clients expect
+            slim_config.local_id = "agntcy/tourist_scheduling/scheduler"
 
         logger.info(f"[ADK Scheduler] Starting with SLIM transport")
         logger.info(f"[ADK Scheduler] SLIM endpoint: {slim_config.endpoint}")

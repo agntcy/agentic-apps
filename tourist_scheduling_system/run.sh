@@ -75,6 +75,7 @@ Options:
     --duration N           Duration in minutes (0=single run)
     --interval N           Request interval in seconds (default: $_INTERVAL)
     --no-demo              Start servers only, no demo traffic
+    --real-agents          Use real ADK guide/tourist agents instead of simulation
 
 Environment variables (recommended for zsh - args may not work when sourcing):
     export TRANSPORT=slim          # Use SLIM transport
@@ -88,6 +89,9 @@ Examples:
 
     # Using command line args (works with ./run.sh)
     ./run.sh --transport slim --tracing
+
+    # Run real ADK agents with SLIM transport
+    ./run.sh --transport slim --real-agents --guides 2 --tourists 2
 
     # Stop agents
     ./run.sh stop
@@ -199,6 +203,7 @@ _run_demo() {
     # Parse options - inherit from environment first
     local ENABLE_TRACING="$_TRACING"
     local NO_DEMO=false
+    local REAL_AGENTS=false
 
     while [[ ${#args[@]} -gt 0 && -n "${args[0]:-}" ]]; do
         case "${args[0]}" in
@@ -211,6 +216,7 @@ _run_demo() {
             --duration) _DURATION="${args[1]:-0}"; args=("${args[@]:2}") ;;
             --interval) _INTERVAL="${args[1]:-1.0}"; args=("${args[@]:2}") ;;
             --no-demo) NO_DEMO=true; args=("${args[@]:1}") ;;
+            --real-agents) REAL_AGENTS=true; args=("${args[@]:1}") ;;
             -h|--help) _usage; cd "$_RUN_ORIG_DIR" 2>/dev/null || true; return 0 ;;
             "") args=("${args[@]:1}") ;;  # Skip empty args
             *) _err "Unknown option: ${args[0]}"; _usage; cd "$_RUN_ORIG_DIR" 2>/dev/null || true; return 1 ;;
@@ -226,8 +232,14 @@ _run_demo() {
             return 1
         fi
         export SLIM_ENDPOINT="$_SLIM_ENDPOINT"
+        export SLIM_GATEWAY_HOST="localhost"
+        export SLIM_GATEWAY_PORT="$_SLIM_PORT"
         export SLIM_SHARED_SECRET="$_SLIM_SHARED_SECRET"
         export SLIM_TLS_INSECURE="$_SLIM_TLS_INSECURE"
+        export TRANSPORT_MODE="slim"
+        export SCHEDULER_SLIM_TOPIC="agntcy/tourist_scheduling/scheduler"
+    else
+        export TRANSPORT_MODE="http"
     fi
 
     if [[ "$ENABLE_TRACING" == "true" ]]; then
@@ -280,7 +292,7 @@ _run_demo() {
     local UI_ARGS=(--port "$_UI_PORT" --host localhost --dashboard)
 
     if [[ "$_TRANSPORT" == "slim" ]]; then
-        SCHED_ARGS+=(--transport slim --slim-endpoint "$_SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/adk_scheduler")
+        SCHED_ARGS+=(--transport slim --slim-endpoint "$_SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/scheduler")
         UI_ARGS+=(--transport slim --slim-endpoint "$_SLIM_ENDPOINT" --slim-local-id "agntcy/tourist_scheduling/adk_ui")
     fi
 
@@ -323,10 +335,73 @@ _run_demo() {
     echo "   tail -f $UI_LOG"
     echo "======================================================="
 
-    # Run demo simulation
+    # Run demo simulation or real agents
     if [[ "$NO_DEMO" == "true" ]]; then
         _log "No demo traffic (--no-demo). Press Ctrl+C to stop."
         wait
+    elif [[ "$REAL_AGENTS" == "true" ]]; then
+        _log "Running real ADK guide and tourist agents..."
+
+        # Guide categories and tourist preferences for variety
+        local GUIDE_CATEGORIES=("culture,history,food" "art,architecture" "nature,adventure" "food,nightlife" "history,museums")
+        local TOURIST_PREFS=("culture,history" "art,food" "nature,museums" "adventure,nightlife" "history,architecture")
+
+        # Start guide agents
+        _log "Starting $_NUM_GUIDES guide agents..."
+        for i in $(seq 1 "$_NUM_GUIDES"); do
+            local GUIDE_ID="g${i}"
+            local CATS="${GUIDE_CATEGORIES[$((i % ${#GUIDE_CATEGORIES[@]}))]}"
+            local RATE=$((50 + i * 10))
+            local GUIDE_LOG="${_RUN_SCRIPT_DIR}/guide_${GUIDE_ID}.log"
+
+            local GUIDE_ARGS=(--guide-id "$GUIDE_ID" --categories "$CATS" --hourly-rate "$RATE" --max-group-size 5)
+            GUIDE_ARGS+=(--scheduler-url "http://localhost:$_SCHED_PORT")
+            GUIDE_ARGS+=(--available-start "2025-06-01T10:00:00" --available-end "2025-06-01T18:00:00")
+
+            _log "  Guide $GUIDE_ID: $CATS @ \$$RATE/hr"
+            "$PYTHON" -m agents.guide_agent "${GUIDE_ARGS[@]}" > "$GUIDE_LOG" 2>&1 &
+            _save_pid $!
+
+            # Small delay between guides
+            sleep 2
+        done
+
+        # Wait for guides to register
+        _log "Waiting for guides to register..."
+        sleep 5
+
+        # Start tourist agents
+        _log "Starting $_NUM_TOURISTS tourist agents..."
+        for i in $(seq 1 "$_NUM_TOURISTS"); do
+            local TOURIST_ID="t${i}"
+            local PREFS="${TOURIST_PREFS[$((i % ${#TOURIST_PREFS[@]}))]}"
+            local BUDGET=$((80 + i * 20))
+            local TOURIST_LOG="${_RUN_SCRIPT_DIR}/tourist_${TOURIST_ID}.log"
+
+            local TOURIST_ARGS=(--tourist-id "$TOURIST_ID" --preferences "$PREFS" --budget "$BUDGET")
+            TOURIST_ARGS+=(--scheduler-url "http://localhost:$_SCHED_PORT")
+            TOURIST_ARGS+=(--availability-start "2025-06-01T09:00:00" --availability-end "2025-06-01T17:00:00")
+
+            _log "  Tourist $TOURIST_ID: $PREFS @ \$$BUDGET budget"
+            "$PYTHON" -m agents.tourist_agent "${TOURIST_ARGS[@]}" > "$TOURIST_LOG" 2>&1 &
+            _save_pid $!
+
+            # Small delay between tourists
+            sleep 2
+        done
+
+        _log "Waiting for agents to complete..."
+        wait
+
+        _ok "Real agents demo complete!"
+        echo ""
+        echo "Agent logs:"
+        for i in $(seq 1 "$_NUM_GUIDES"); do
+            echo "   tail -f ${_RUN_SCRIPT_DIR}/guide_g${i}.log"
+        done
+        for i in $(seq 1 "$_NUM_TOURISTS"); do
+            echo "   tail -f ${_RUN_SCRIPT_DIR}/tourist_t${i}.log"
+        done
     else
         _log "Running demo simulation..."
 

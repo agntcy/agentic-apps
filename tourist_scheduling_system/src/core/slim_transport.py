@@ -480,14 +480,29 @@ def config_from_env(prefix: str = "") -> SLIMConfig:
 
     Returns:
         SLIMConfig populated from environment
+
+    Environment Variables:
+        SLIM_ENDPOINT: Full endpoint URL (e.g., "http://slim-node:46357")
+        SLIM_GATEWAY_HOST: Host name for SLIM gateway (alternative to SLIM_ENDPOINT)
+        SLIM_GATEWAY_PORT: Port for SLIM gateway (used with SLIM_GATEWAY_HOST)
+        SLIM_LOCAL_ID: Local agent identifier
+        SLIM_SHARED_SECRET: MLS shared secret for encryption
+        SLIM_TLS_INSECURE: Whether to skip TLS verification
     """
     import os
 
     def get_env(key: str, default: str) -> str:
         return os.environ.get(f"{prefix}{key}", os.environ.get(key, default))
 
+    # Construct endpoint from SLIM_GATEWAY_HOST and SLIM_GATEWAY_PORT if SLIM_ENDPOINT not set
+    endpoint = get_env("SLIM_ENDPOINT", "")
+    if not endpoint:
+        gateway_host = get_env("SLIM_GATEWAY_HOST", "localhost")
+        gateway_port = get_env("SLIM_GATEWAY_PORT", "46357")
+        endpoint = f"http://{gateway_host}:{gateway_port}"
+
     return SLIMConfig(
-        endpoint=get_env("SLIM_ENDPOINT", "http://localhost:46357"),
+        endpoint=endpoint,
         local_id=get_env("SLIM_LOCAL_ID", "agntcy/tourist_scheduling/agent"),
         shared_secret=get_env("SLIM_SHARED_SECRET", "tourist-scheduling-demo-secret-key-32"),
         tls_insecure=get_env("SLIM_TLS_INSECURE", "true").lower() == "true",
