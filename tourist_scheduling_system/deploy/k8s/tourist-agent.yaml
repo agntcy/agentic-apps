@@ -55,6 +55,11 @@ spec:
                 secretKeyRef:
                   name: azure-openai-credentials
                   key: deployment-name
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: AZURE_OPENAI_API_VERSION
             - name: SCHEDULER_URL
               valueFrom:
                 configMapKeyRef:
@@ -153,6 +158,11 @@ spec:
                 secretKeyRef:
                   name: azure-openai-credentials
                   key: deployment-name
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: AZURE_OPENAI_API_VERSION
             - name: SCHEDULER_URL
               valueFrom:
                 configMapKeyRef:
