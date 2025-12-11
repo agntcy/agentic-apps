@@ -71,6 +71,24 @@ spec:
                   name: agent-config
                   key: SLIM_GATEWAY_PORT
                   optional: true
+            - name: SLIM_SHARED_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_SHARED_SECRET
+                  optional: true
+            - name: SLIM_TLS_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SLIM_TLS_INSECURE
+                  optional: true
+            - name: SCHEDULER_SLIM_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: SCHEDULER_SLIM_TOPIC
+                  optional: true
             - name: HTTP_PROXY
               valueFrom:
                 configMapKeyRef:

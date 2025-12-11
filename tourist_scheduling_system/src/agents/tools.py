@@ -90,15 +90,19 @@ def _discover_ui_ports(default_port: int = 10021) -> int:
 
 async def _send_to_ui_agent_async(message_data: dict):
     """Send data to UI agent dashboard for updates (async version)."""
-    port = _discover_ui_ports()
-    # Use the dashboard's direct update API endpoint
-    url = f"http://localhost:{port}/api/update"
+    # Check for full URL override first
+    url = os.environ.get("UI_DASHBOARD_URL")
+    if not url:
+        port = _discover_ui_ports()
+        # Use the dashboard's direct update API endpoint
+        url = f"http://localhost:{port}/api/update"
+
     logger.info(f"[ADK Scheduler] Sending update to dashboard: {url}")
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(url, json=message_data)
         if response.status_code == 200:
-            logger.info(f"[ADK Scheduler] ✅ Sent update to dashboard on port {port}: {message_data.get('type')}")
+            logger.info(f"[ADK Scheduler] ✅ Sent update to dashboard: {message_data.get('type')}")
         else:
             logger.warning(f"[ADK Scheduler] Dashboard POST returned {response.status_code}")
     except Exception as e:

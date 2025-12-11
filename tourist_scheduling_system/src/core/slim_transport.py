@@ -49,12 +49,21 @@ try:
     import slimrpc
     from slima2a.handler import SRPCHandler
     from slima2a.client_transport import SRPCTransport
+
+    class CustomSRPCTransport(SRPCTransport):
+        """Custom transport to handle 'extensions' argument introduced in google-adk 1.19+."""
+        async def send_message(self, message, **kwargs):
+            if "extensions" in kwargs:
+                kwargs.pop("extensions")
+            return await super().send_message(message, **kwargs)
+
     SLIM_AVAILABLE = True
 except ImportError:
     SLIM_AVAILABLE = False
     slimrpc = None  # type: ignore
     SRPCHandler = None  # type: ignore
     SRPCTransport = None  # type: ignore
+    CustomSRPCTransport = None # type: ignore
     logger.warning("slimrpc/slima2a not installed - SLIM transport unavailable")
 
 
@@ -184,6 +193,24 @@ def create_slim_server(
         # Subscribe to all handler topics (same as server.run() but we do it once upfront)
         await local_app.subscribe(local_app.local_name)
         logger.info(f"[SLIM] Subscribed to {local_app.local_name}")
+
+        # Subscribe to the configured local_id (alias) if different
+        # This allows clients to address us by "agntcy/tourist_scheduling/scheduler"
+        # without knowing the random hash.
+        try:
+            # Import slim_bindings to create Name object
+            import slim_bindings as sb
+
+            parts = config.local_id.split('/')
+            if len(parts) == 3:
+                # Create Name with empty ID part to represent the alias
+                alias_name = sb.Name(parts[0], parts[1], parts[2], "")
+                # Only subscribe if it's different (it should be, as local_name has hash)
+                if str(alias_name) != str(local_app.local_name):
+                    await local_app.subscribe(alias_name)
+                    logger.info(f"[SLIM] Subscribed to alias {alias_name}")
+        except Exception as e:
+            logger.warning(f"[SLIM] Failed to subscribe to alias {config.local_id}: {e}")
 
         for service_method, rpc_handler in server.handlers.items():
             from slimrpc.common import handler_name_to_pyname
@@ -359,7 +386,7 @@ def create_client_factory_from_app(local_app, httpx_client=None):
     )
 
     client_factory = ClientFactory(client_config)
-    client_factory.register("slimrpc", SRPCTransport.create)
+    client_factory.register("slimrpc", CustomSRPCTransport.create)
 
     logger.info(f"[SLIM] Created client factory from existing app")
     return client_factory
@@ -440,7 +467,7 @@ async def create_slim_client_factory(config: SLIMConfig, httpx_client=None):
     )
 
     client_factory = ClientFactory(client_config)
-    client_factory.register("slimrpc", SRPCTransport.create)
+    client_factory.register("slimrpc", CustomSRPCTransport.create)
 
     logger.info(f"[SLIM] Created client factory for {config.local_id}")
     return client_factory
