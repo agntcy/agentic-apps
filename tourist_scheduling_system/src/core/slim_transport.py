@@ -51,11 +51,16 @@ try:
     from slima2a.client_transport import SRPCTransport
 
     class CustomSRPCTransport(SRPCTransport):
-        """Custom transport to handle 'extensions' argument introduced in google-adk 1.19+."""
+        """Custom transport to handle 'request_metadata' argument from google-adk."""
         async def send_message(self, message, **kwargs):
-            if "extensions" in kwargs:
-                kwargs.pop("extensions")
+            if "request_metadata" in kwargs:
+                kwargs.pop("request_metadata")
             return await super().send_message(message, **kwargs)
+
+        async def send_message_streaming(self, message, **kwargs):
+            if "request_metadata" in kwargs:
+                kwargs.pop("request_metadata")
+            return super().send_message_streaming(message, **kwargs)
 
     SLIM_AVAILABLE = True
 except ImportError:
