@@ -159,6 +159,7 @@ class DashboardState:
 
 # Global dashboard state
 _dashboard_state = DashboardState()
+_broadcaster = None
 
 
 def get_dashboard_state() -> DashboardState:
@@ -170,6 +171,15 @@ def clear_dashboard_state():
     """Clear the dashboard state (for testing)."""
     global _dashboard_state
     _dashboard_state = DashboardState()
+
+
+async def broadcast_update():
+    """Broadcast state update to dashboard clients."""
+    if _broadcaster:
+        try:
+            await _broadcaster()
+        except Exception as e:
+            logger.warning(f"[Dashboard] Broadcast failed: {e}")
 
 
 # ============================================================================
@@ -222,6 +232,13 @@ def record_tourist_request(
     state.communication_events.append(event)
     state.metrics.total_messages += 1
     state.update_metrics()
+
+    # Trigger broadcast
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_update())
+    except RuntimeError:
+        pass
 
     logger.info(f"[Dashboard] Recorded tourist request from {tourist_id}")
     return f"Recorded tourist request from {tourist_id}"
@@ -277,6 +294,13 @@ def record_guide_offer(
     state.metrics.total_messages += 1
     state.update_metrics()
 
+    # Trigger broadcast
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_update())
+    except RuntimeError:
+        pass
+
     logger.info(f"[Dashboard] Recorded guide offer from {guide_id}")
     return f"Recorded guide offer from {guide_id}"
 
@@ -327,6 +351,13 @@ def record_assignment(
     state.communication_events.append(event)
     state.metrics.total_messages += 1
     state.update_metrics()
+
+    # Trigger broadcast
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_update())
+    except RuntimeError:
+        pass
 
     logger.info(f"[Dashboard] Recorded assignment: {tourist_id} -> {guide_id}")
     return f"Recorded assignment: {tourist_id} assigned to {guide_id}"
@@ -581,11 +612,22 @@ if __name__ == "__main__":
                     set_transport_mode,
                     broadcast_to_clients,
                 )
-                # Create dashboard state
-                dashboard_state = DashboardState()
-                set_dashboard_state(dashboard_state)
+                # Use global dashboard state
+                set_dashboard_state(_dashboard_state)
                 set_transport_mode(transport)
                 dashboard_app = create_dashboard_app()
+
+                # Setup broadcaster
+                async def broadcaster():
+                    state = get_dashboard_state()
+                    await broadcast_to_clients({
+                        "type": "initial_state",
+                        "data": state.to_dict()
+                    })
+
+                global _broadcaster
+                _broadcaster = broadcaster
+
                 logger.info(f"[ADK UI] Web dashboard enabled at http://{host}:{port}")
             except ImportError as e:
                 logger.warning(f"[ADK UI] Dashboard module not available: {e}")

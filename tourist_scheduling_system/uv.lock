@@ -10,7 +10,7 @@ resolution-markers = [
 
 [[package]]
 name = "a2a-sdk"
-version = "0.3.10"
+version = "0.3.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -19,9 +19,9 @@ dependencies = [
     { name = "protobuf" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/5a/3634ce054a8985c0d2ca0cb2ed1c8c8fdcd67456ddb6496895483c17fee0/a2a_sdk-0.3.10.tar.gz", hash = "sha256:f2df01935fb589c6ebaf8581aede4fe059a30a72cd38e775035337c78f8b2cca", size = 225974, upload-time = "2025-10-21T20:40:38.423Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/c1/4c7968e44a318fbfaf82e142b2f63aedcf62ca8da5ee0cea6104a1a29580/a2a_sdk-0.3.20.tar.gz", hash = "sha256:f05bbdf4a8ada6be81dc7e7c73da3add767b20065195d94e8eb6d671d7ea658a", size = 229272, upload-time = "2025-12-03T15:48:22.349Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/9b/82df9530ed77d30831c49ffffc827222961422d444c0d684101e945ee214/a2a_sdk-0.3.10-py3-none-any.whl", hash = "sha256:b216ccc5ccfd00dcfa42f0f2dc709bc7ba057550717a34b0b1b34a99a76749cf", size = 140291, upload-time = "2025-10-21T20:40:36.929Z" },
+    { url = "https://files.pythonhosted.org/packages/11/33/719a9331421ee5df0338505548b58b4129a6aca82bba5c8e0593ac8864c7/a2a_sdk-0.3.20-py3-none-any.whl", hash = "sha256:35da261aae28fd22440b61f8eb16a8343b60809e1f7ef028a06d01f17b48a8b9", size = 141547, upload-time = "2025-12-03T15:48:20.812Z" },
 ]
 
 [package.optional-dependencies]
@@ -2003,7 +2003,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "slima2a", specifier = "==0.2.1" },
+    { name = "slima2a", specifier = "==0.2.2" },
     { name = "slimrpc", specifier = "==0.2.1" },
     { name = "uvicorn", specifier = ">=0.23.0" },
     { name = "websockets", specifier = ">=11.0.0" },
@@ -3517,15 +3517,15 @@ wheels = [
 
 [[package]]
 name = "slima2a"
-version = "0.2.1"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "a2a-sdk", extra = ["telemetry"] },
     { name = "slimrpc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/5d/1a3a098943a2322c3eab50a4f7f40c47b95a37337026544d2c59547bbab2/slima2a-0.2.1.tar.gz", hash = "sha256:c521c83c896dc3d7c2d19827234c4fbda4dedecf9cb981f80aca2e5cc9fc8b7f", size = 10415, upload-time = "2025-12-02T12:40:24.105Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/be/8c1d3c0d8f097b74a595223f19ae8f3497d1a86eb78c14fbf26b60cbc32c/slima2a-0.2.2.tar.gz", hash = "sha256:210d9d66f66052ffc6a74e6d39d10d947d6e5c90f75e3cc38a34295dbbbf0552", size = 10621, upload-time = "2025-12-11T13:40:30.92Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/4a/38f1608f5043df73464fd374506f2a381192efd5d97ebeae0b7e35573ad3/slima2a-0.2.1-py3-none-any.whl", hash = "sha256:1a5267fceed70210d48e3882577e7e418f762620f4d0044c8245655cd4cff832", size = 7978, upload-time = "2025-12-02T12:40:23.015Z" },
+    { url = "https://files.pythonhosted.org/packages/17/a7/73ccdcdff01f8e8702f25ae3866749e7f2f445dcce6d65ec5a6472139b4f/slima2a-0.2.2-py3-none-any.whl", hash = "sha256:ac5af2cdf0f51f415fdee110aa54717375340c19c72014f2eee2cdd6d11c862d", size = 8080, upload-time = "2025-12-11T13:40:29.837Z" },
 ]
 
 [[package]]

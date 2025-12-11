@@ -18,6 +18,7 @@ Supports both HTTP and SLIM transport based on TRANSPORT_MODE env var.
 import asyncio
 import logging
 import os
+import sys
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -278,6 +279,7 @@ def main(
         hourly_rate=hourly_rate,
         max_group_size=max_group_size,
     ))
+    sys.exit(0)
 
 
 if __name__ == "__main__":
