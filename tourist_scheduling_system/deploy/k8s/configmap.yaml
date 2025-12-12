@@ -18,6 +18,10 @@ data:
   # Azure OpenAI configuration
   AZURE_OPENAI_API_VERSION: "2024-02-01"
 
+  # Model Provider (azure or google)
+  MODEL_PROVIDER: "${MODEL_PROVIDER}"
+  MODEL_NAME: "${MODEL_NAME}"
+
   # Agent ports
   UI_A2A_PORT: "10021"
   SCHEDULER_PORT: "10000"

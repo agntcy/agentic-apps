@@ -20,6 +20,8 @@ export NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
 export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
 export TRANSPORT_MODE="${TRANSPORT_MODE:-http}"
+export MODEL_PROVIDER="${MODEL_PROVIDER:-}"
+export MODEL_NAME="${MODEL_NAME:-}"
 export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
 export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
 export SCHEDULER_URL="${SCHEDULER_URL:-http://scheduler-agent:10000}"
@@ -69,15 +71,32 @@ show_usage() {
     echo "  NAMESPACE                    Target namespace (default: lumuscar-jobs)"
     echo "  IMAGE_REGISTRY               Container registry (default: ghcr.io/agntcy/apps)"
     echo "  IMAGE_TAG                    Image tag (default: latest)"
-    echo "  AZURE_OPENAI_API_KEY         Azure OpenAI API key (required)"
-    echo "  AZURE_OPENAI_ENDPOINT        Azure OpenAI endpoint URL (required)"
+    echo "  MODEL_PROVIDER               Model provider: azure or google"
+    echo "  MODEL_NAME                   Specific model name (optional)"
+    echo "  AZURE_OPENAI_API_KEY         Azure OpenAI API key (required for azure)"
+    echo "  AZURE_OPENAI_ENDPOINT        Azure OpenAI endpoint URL (required for azure)"
     echo "  AZURE_OPENAI_DEPLOYMENT_NAME Azure OpenAI deployment name (default: gpt-4o)"
     echo "  AZURE_OPENAI_API_VERSION     Azure OpenAI API version (default: 2024-10-21)"
+    echo "  GOOGLE_API_KEY               Google API key (required for google)"
+}
+
+# Create or update the google-credentials secret from environment variables
+ensure_google_secret() {
+    if [[ -n "${GOOGLE_API_KEY:-}" ]]; then
+        log_info "Creating/updating google-credentials secret..."
+        kubectl create secret generic google-credentials \
+            --namespace "$NAMESPACE" \
+            --from-literal=api-key="${GOOGLE_API_KEY}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+    fi
 }
 
 # Create or update the azure-openai-credentials secret from environment variables
 ensure_azure_secret() {
     if [[ -z "${AZURE_OPENAI_API_KEY:-}" ]]; then
+        if [[ "$MODEL_PROVIDER" == "google" ]]; then
+            return 0
+        fi
         log_error "AZURE_OPENAI_API_KEY environment variable is not set"
         log_error "Please set the required environment variables:"
         echo "  export AZURE_OPENAI_API_KEY='your-api-key'"
