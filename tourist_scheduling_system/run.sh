@@ -77,11 +77,29 @@ Options:
     --no-demo              Start servers only, no demo traffic
     --real-agents          Use real ADK guide/tourist agents instead of simulation
 
-Environment variables (recommended for zsh - args may not work when sourcing):
-    export TRANSPORT=slim          # Use SLIM transport
-    export TRACING=true            # Enable OpenTelemetry tracing
-    export AZURE_OPENAI_API_KEY=...
-    source run.sh
+Environment variables (can be used instead of flags):
+    TRANSPORT              Transport mode (http/slim)
+    TRACING                Enable tracing (true/false)
+    SCHED_PORT             Scheduler port
+    UI_PORT                Dashboard port
+    NUM_GUIDES             Number of guides
+    NUM_TOURISTS           Number of tourists
+    DURATION               Duration in minutes
+    INTERVAL               Request interval
+
+    # SLIM Configuration
+    SLIM_PORT              SLIM node port (default: 46357)
+    SLIM_ENDPOINT          SLIM endpoint URL
+    SLIM_SHARED_SECRET     SLIM shared secret
+
+    # Tracing Configuration
+    JAEGER_OTLP_HTTP_PORT  Jaeger OTLP HTTP port (default: 4318)
+    JAEGER_UI_PORT         Jaeger UI port (default: 16686)
+
+    # Required for Agents
+    AZURE_OPENAI_API_KEY   Azure OpenAI API Key
+    AZURE_OPENAI_ENDPOINT  Azure OpenAI Endpoint
+    AZURE_OPENAI_DEPLOYMENT_NAME Azure OpenAI Deployment Name
 
 Examples:
     # Using environment variables (recommended for zsh)
@@ -345,6 +363,7 @@ _run_demo() {
         # Guide categories and tourist preferences for variety
         local GUIDE_CATEGORIES=("culture,history,food" "art,architecture" "nature,adventure" "food,nightlife" "history,museums")
         local TOURIST_PREFS=("culture,history" "art,food" "nature,museums" "adventure,nightlife" "history,architecture")
+        local AGENT_PIDS=""
 
         # Start guide agents
         _log "Starting $_NUM_GUIDES guide agents..."
@@ -360,7 +379,9 @@ _run_demo() {
 
             _log "  Guide $GUIDE_ID: $CATS @ \$$RATE/hr"
             "$PYTHON" -m agents.guide_agent "${GUIDE_ARGS[@]}" > "$GUIDE_LOG" 2>&1 &
-            _save_pid $!
+            local pid=$!
+            _save_pid $pid
+            AGENT_PIDS="$AGENT_PIDS $pid"
 
             # Small delay between guides
             sleep 2
@@ -384,14 +405,16 @@ _run_demo() {
 
             _log "  Tourist $TOURIST_ID: $PREFS @ \$$BUDGET budget"
             "$PYTHON" -m agents.tourist_agent "${TOURIST_ARGS[@]}" > "$TOURIST_LOG" 2>&1 &
-            _save_pid $!
+            local pid=$!
+            _save_pid $pid
+            AGENT_PIDS="$AGENT_PIDS $pid"
 
             # Small delay between tourists
             sleep 2
         done
 
         _log "Waiting for agents to complete..."
-        wait
+        wait $AGENT_PIDS
 
         _ok "Real agents demo complete!"
         echo ""
@@ -402,6 +425,10 @@ _run_demo() {
         for i in $(seq 1 "$_NUM_TOURISTS"); do
             echo "   tail -f ${_RUN_SCRIPT_DIR}/tourist_t${i}.log"
         done
+
+        _log "Dashboard still running at http://localhost:$_UI_PORT"
+        _log "Press Ctrl+C to stop agents."
+        wait
     else
         _log "Running demo simulation..."
 

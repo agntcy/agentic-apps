@@ -51,11 +51,16 @@ try:
     from slima2a.client_transport import SRPCTransport
 
     class CustomSRPCTransport(SRPCTransport):
-        """Custom transport to handle 'extensions' argument introduced in google-adk 1.19+."""
+        """Custom transport to handle 'request_metadata' argument from google-adk."""
         async def send_message(self, message, **kwargs):
-            if "extensions" in kwargs:
-                kwargs.pop("extensions")
+            if "request_metadata" in kwargs:
+                kwargs.pop("request_metadata")
             return await super().send_message(message, **kwargs)
+
+        async def send_message_streaming(self, message, **kwargs):
+            if "request_metadata" in kwargs:
+                kwargs.pop("request_metadata")
+            return super().send_message_streaming(message, **kwargs)
 
     SLIM_AVAILABLE = True
 except ImportError:
@@ -198,19 +203,25 @@ def create_slim_server(
         # This allows clients to address us by "agntcy/tourist_scheduling/scheduler"
         # without knowing the random hash.
         try:
-            # Import slim_bindings to create Name object
-            import slim_bindings as sb
-
-            parts = config.local_id.split('/')
-            if len(parts) == 3:
-                # Create Name with empty ID part to represent the alias
-                alias_name = sb.Name(parts[0], parts[1], parts[2], "")
-                # Only subscribe if it's different (it should be, as local_name has hash)
-                if str(alias_name) != str(local_app.local_name):
-                    await local_app.subscribe(alias_name)
-                    logger.info(f"[SLIM] Subscribed to alias {alias_name}")
+            # Try subscribing with the raw string first (for alias support)
+            # This is required because sb.Name() requires an integer ID, but aliases don't have one.
+            await local_app.subscribe(config.local_id)
+            logger.info(f"[SLIM] Subscribed to alias {config.local_id}")
         except Exception as e:
-            logger.warning(f"[SLIM] Failed to subscribe to alias {config.local_id}: {e}")
+            logger.warning(f"[SLIM] Failed to subscribe to alias string {config.local_id}: {e}")
+
+            # Fallback: try with Name object and ID 0 (if supported)
+            try:
+                import slim_bindings as sb
+                parts = config.local_id.split('/')
+                if len(parts) == 3:
+                    alias_name = sb.Name(parts[0], parts[1], parts[2], 0)
+                    # Only subscribe if it's different
+                    if str(alias_name) != str(local_app.local_name):
+                        await local_app.subscribe(alias_name)
+                        logger.info(f"[SLIM] Subscribed to alias {alias_name}")
+            except Exception as e2:
+                logger.warning(f"[SLIM] Failed to subscribe to alias Name {config.local_id}: {e2}")
 
         for service_method, rpc_handler in server.handlers.items():
             from slimrpc.common import handler_name_to_pyname

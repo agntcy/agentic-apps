@@ -153,7 +153,6 @@ def register_tourist_request(
     availability_end: str,
     preferences: List[str],
     budget: float,
-    tool_context: ToolContext,
 ) -> Dict[str, Any]:
     """
     Register a tourist's request for scheduling.
@@ -167,7 +166,6 @@ def register_tourist_request(
         availability_end: End time in ISO format (e.g., "2025-06-01T17:00:00")
         preferences: List of preferred categories (e.g., ["culture", "history"])
         budget: Maximum hourly budget in dollars
-        tool_context: ADK tool context for state access
 
     Returns:
         Confirmation with registration details
@@ -241,7 +239,6 @@ def register_guide_offer(
     available_end: str,
     hourly_rate: float,
     max_group_size: int = 1,
-    tool_context: ToolContext = None,
 ) -> Dict[str, Any]:
     """
     Register a guide's availability and capabilities.
@@ -256,7 +253,6 @@ def register_guide_offer(
         available_end: End of availability in ISO format
         hourly_rate: Guide's hourly rate in dollars
         max_group_size: Maximum number of tourists the guide can handle (default: 1)
-        tool_context: ADK tool context for state access
 
     Returns:
         Confirmation with registration details
@@ -324,23 +320,15 @@ def register_guide_offer(
 
 
 @traced("run_scheduling")
-def run_scheduling(tool_context: ToolContext = None) -> Dict[str, Any]:
+def run_scheduling() -> Dict[str, Any]:
     """
     Execute the scheduling algorithm to match tourists with guides.
 
-    This tool runs a greedy scheduling algorithm that:
-    1. Sorts tourists by earliest availability
-    2. Matches each tourist to the best available guide based on:
-       - Budget constraints
-       - Time overlap
-       - Preference matching score
-    3. Creates assignments and schedule proposals
-
-    Args:
-        tool_context: ADK tool context for state access
+    This tool triggers the matching process based on current requests and offers.
+    It should be called after requests and offers have been registered.
 
     Returns:
-        Summary of scheduling results including assignments made
+        Summary of the scheduling run
     """
     try:
         tourists = _scheduler_state.tourist_requests
@@ -371,7 +359,7 @@ def run_scheduling(tool_context: ToolContext = None) -> Dict[str, Any]:
                 assignments=[assignment],
                 status="proposed",
             )
-            proposals.append(proposal.model_dump())
+            proposals.append(proposal)
 
             # Notify UI agent for each assignment
             send_to_ui_agent({
@@ -413,8 +401,8 @@ def run_scheduling(tool_context: ToolContext = None) -> Dict[str, Any]:
             "status": "completed",
             "message": f"Scheduled {len(assignments)} assignments from {len(tourists)} tourists and {len(guides)} guides",
             "num_assignments": len(assignments),
-            "assignments": [a.model_dump() for a in assignments],
-            "proposals": proposals,
+            "assignments": [a.model_dump(mode='json') for a in assignments],
+            "proposals": [p.model_dump(mode='json') if hasattr(p, 'model_dump') else p for p in proposals],
         }
 
     except Exception as e:
@@ -425,7 +413,7 @@ def run_scheduling(tool_context: ToolContext = None) -> Dict[str, Any]:
         }
 
 
-def get_schedule_status(tool_context: ToolContext = None) -> Dict[str, Any]:
+def get_schedule_status() -> Dict[str, Any]:
     """
     Get the current status of the scheduler.
 
@@ -434,9 +422,6 @@ def get_schedule_status(tool_context: ToolContext = None) -> Dict[str, Any]:
     - Number of available guides
     - Number of completed assignments
     - Utilization metrics
-
-    Args:
-        tool_context: ADK tool context for state access
 
     Returns:
         Current scheduler state summary
@@ -551,12 +536,9 @@ def _build_schedule(
     return assignments
 
 
-def clear_scheduler_state(tool_context: ToolContext = None) -> Dict[str, Any]:
+def clear_scheduler_state() -> Dict[str, Any]:
     """
     Clear all scheduler state (for testing/reset).
-
-    Args:
-        tool_context: ADK tool context
 
     Returns:
         Confirmation message
