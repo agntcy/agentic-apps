@@ -86,7 +86,7 @@ async def create_tourist_agent(
         # The scheduler's SLIM topic (must match scheduler's local_id)
         scheduler_topic = os.environ.get(
             "SCHEDULER_SLIM_TOPIC",
-            "agntcy/tourist_scheduling/scheduler"
+            "agntcy/tourist_scheduling/scheduler/0"
         )
         agent_card = minimal_slim_agent_card(scheduler_topic)
 
@@ -211,10 +211,24 @@ async def run_tourist_agent(
     print(f"[Tourist {tourist_id}] Sending request...")
 
     # Run the agent with the request
-    events = await runner.run_debug(
-        user_messages=message,
-        verbose=True,
-    )
+    events = []
+    max_retries = 30
+    retry_delay = 10
+
+    for attempt in range(max_retries):
+        try:
+            events = await runner.run_debug(
+                user_messages=message,
+                verbose=True,
+            )
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"[Tourist {tourist_id}] Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print(f"[Tourist {tourist_id}] All attempts failed.")
+                raise
 
     # Process response
     for event in events:
