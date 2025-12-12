@@ -449,17 +449,8 @@ def get_ui_agent():
         from google.adk.models.lite_llm import LiteLlm
 
         # Get model configuration from environment
-        # Supports Azure OpenAI via LiteLLM
-        deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-        model_name = os.getenv("UI_MODEL", f"azure/{deployment_name}")
-
-        # Use LiteLlm for Azure OpenAI support
-        model = LiteLlm(
-            model=model_name,
-            api_key=os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY"),
-            api_base=os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01"),
-        )
+        from core.model_factory import create_llm_model
+        model = create_llm_model("ui")
 
         _ui_agent = LlmAgent(
             name="ui_dashboard_agent",
