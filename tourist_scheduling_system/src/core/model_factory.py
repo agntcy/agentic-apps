@@ -20,6 +20,11 @@ def create_llm_model(agent_type: str = "default"):
     # Determine provider
     provider = os.getenv("MODEL_PROVIDER", "azure").lower()
 
+    # Log proxy configuration
+    http_proxy = os.getenv("HTTP_PROXY")
+    https_proxy = os.getenv("HTTPS_PROXY")
+    logger.info(f"Proxy configuration - HTTP_PROXY: {http_proxy}, HTTPS_PROXY: {https_proxy}")
+
     # Determine model name
     # 1. Try specific agent model var (e.g. GUIDE_MODEL)
     # 2. Try generic MODEL_NAME

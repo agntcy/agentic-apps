@@ -25,7 +25,7 @@ export MODEL_NAME="${MODEL_NAME:-}"
 export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
 export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
 export SCHEDULER_URL="${SCHEDULER_URL:-http://scheduler-agent:10000}"
-export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:10021}"
+export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:80/api/update}"
 
 # Proxy configuration (optional - for environments requiring proxy for external access)
 export HTTP_PROXY="${HTTP_PROXY:-}"
@@ -141,6 +141,7 @@ deploy_http() {
 
     # Create/update azure credentials secret
     ensure_azure_secret
+    ensure_google_secret
 
     # Deploy configmap
     log_info "Deploying configmap..."
@@ -199,6 +200,7 @@ deploy_slim() {
 
     # Create/update azure credentials secret
     ensure_azure_secret
+    ensure_google_secret
 
     # Deploy configmap
     log_info "Deploying configmap..."
