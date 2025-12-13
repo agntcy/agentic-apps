@@ -70,11 +70,48 @@ spec:
                 secretKeyRef:
                   name: azure-openai-credentials
                   key: deployment-name
+            - name: MODEL_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: MODEL_PROVIDER
+                  optional: true
+            - name: MODEL_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: MODEL_NAME
+                  optional: true
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-credentials
+                  key: api-key
+                  optional: true
             - name: AZURE_OPENAI_API_VERSION
               valueFrom:
                 configMapKeyRef:
                   name: agent-config
                   key: AZURE_OPENAI_API_VERSION
+            # Google Gemini configuration
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-credentials
+                  key: api-key
+                  optional: true
+            - name: MODEL_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: MODEL_PROVIDER
+                  optional: true
+            - name: MODEL_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: MODEL_NAME
+                  optional: true
             - name: UI_A2A_PORT
               valueFrom:
                 configMapKeyRef:

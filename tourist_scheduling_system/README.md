@@ -50,6 +50,12 @@ cd agentic-apps/tourist_scheduling_system
 # Configure Azure OpenAI
 export AZURE_OPENAI_API_KEY="your-key"
 export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com"
+
+# Or Configure Google Gemini
+export MODEL_PROVIDER="google"
+export GOOGLE_API_KEY="your-google-api-key"
+# Optional: Specify model (default: gemini/gemini-3-pro-preview)
+export MODEL_NAME="gemini/gemini-3-pro-preview"
 ```
 
 ### Run the Demo

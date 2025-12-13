@@ -115,17 +115,8 @@ async def create_guide_agent(
         logger.info(f"[Guide {guide_id}] Using HTTP transport to scheduler: {agent_card_url}")
 
     # Get model configuration from environment
-    # Supports Azure OpenAI via LiteLLM
-    # Environment variables: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
-    # AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT_NAME
-    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-    model_name = os.getenv("GUIDE_MODEL", f"azure/{deployment_name}")
-    model = LiteLlm(
-        model=model_name,
-        api_key=os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY"),
-        api_base=os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01"),
-    )
+    from core.model_factory import create_llm_model
+    model = create_llm_model("guide")
 
     guide_agent = LlmAgent(
         name=f"guide_{guide_id}",

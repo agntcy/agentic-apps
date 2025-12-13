@@ -203,3 +203,4 @@ tourist_scheduling_system/ui_agent_ports.json
 tourist_scheduling_system/__pycache__/
 tourist_scheduling_system/.pytest_cache/
 tourist_scheduling_system/.DS_Store
+tourist_scheduling_system/.agent_pids
