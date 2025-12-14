@@ -803,19 +803,19 @@ def main(mode: str, port: int, ui_port: int, host: str, guides: int, tourists: i
         os.environ["MODEL_PROVIDER"] = provider
 
     # Check for LLM credentials
-    has_azure = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY")
-    has_google = os.getenv("GOOGLE_API_KEY")
+    has_azure = os.getenv("AZURE_OPENAI_API_KEY")
+    has_google = os.getenv("GOOGLE_GEMINI_API_KEY")
 
     if not (has_azure or has_google):
         print("⚠️  Warning: No LLM API key found!")
-        print("   Set AZURE_OPENAI_API_KEY (for Azure) or GOOGLE_API_KEY (for Gemini).")
+        print("   Set AZURE_OPENAI_API_KEY (for Azure) or GOOGLE_GEMINI_API_KEY (for Gemini).")
         print()
 
     # Infer provider if not set
     if not os.getenv("MODEL_PROVIDER"):
         if has_google and not has_azure:
-             os.environ["MODEL_PROVIDER"] = "google"
-             print("   ℹ️  Using Google Gemini (inferred from GOOGLE_API_KEY)")
+             os.environ["MODEL_PROVIDER"] = "gemini"
+             print("   ℹ️  Using Google Gemini (inferred from GOOGLE_GEMINI_API_KEY)")
         elif has_azure:
              os.environ["MODEL_PROVIDER"] = "azure"
              print("   ℹ️  Using Azure OpenAI (inferred from AZURE_OPENAI_API_KEY)")

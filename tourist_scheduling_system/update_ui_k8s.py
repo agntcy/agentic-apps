@@ -8,8 +8,8 @@ env_vars_to_add = """            # Model Configuration
               value: "${MODEL_PROVIDER}"
             - name: MODEL_NAME
               value: "${MODEL_NAME}"
-            - name: GOOGLE_API_KEY
-              value: "${GOOGLE_API_KEY}"
+            - name: GOOGLE_GEMINI_API_KEY
+              value: "${GOOGLE_GEMINI_API_KEY}"
             - name: AZURE_OPENAI_API_KEY
               value: "${AZURE_OPENAI_API_KEY}"
             - name: AZURE_OPENAI_ENDPOINT

@@ -30,10 +30,8 @@ except ImportError:
 # Supports Azure OpenAI or Google AI
 import os
 API_KEY_AVAILABLE = bool(
-    os.environ.get("AZURE_API_KEY") or
     os.environ.get("AZURE_OPENAI_API_KEY") or
-    os.environ.get("GOOGLE_API_KEY") or
-    os.environ.get("GOOGLE_GENAI_API_KEY")
+    os.environ.get("GOOGLE_GEMINI_API_KEY")
 )
 
 
@@ -47,12 +45,12 @@ def reset_scheduler_state():
 
 
 @pytest.mark.skipif(not ADK_AVAILABLE, reason="ADK not installed")
-@pytest.mark.skipif(not API_KEY_AVAILABLE, reason="No API key set (AZURE_API_KEY or GOOGLE_API_KEY)")
+@pytest.mark.skipif(not API_KEY_AVAILABLE, reason="No API key set (AZURE_OPENAI_API_KEY or GOOGLE_GEMINI_API_KEY)")
 class TestSchedulerAgentIntegration:
     """Integration tests for the scheduler agent.
 
     These tests require a valid API key to run the LLM agent.
-    Set one of: AZURE_API_KEY, AZURE_OPENAI_API_KEY, GOOGLE_API_KEY, or GOOGLE_GENAI_API_KEY.
+    Set one of: AZURE_OPENAI_API_KEY, GOOGLE_GEMINI_API_KEY.
 
     For Azure OpenAI, also set AZURE_API_BASE and AZURE_API_VERSION.
     """

@@ -38,9 +38,9 @@ def create_llm_model(agent_type: str = "default"):
         if not model_name:
             model_name = "gemini/gemini-3-pro-preview"
 
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
         if not api_key:
-            logger.warning("GOOGLE_API_KEY not set for Gemini model")
+            logger.warning("GOOGLE_GEMINI_API_KEY not set for Gemini model")
 
         logger.info(f"Creating Gemini model: {model_name}")
         return LiteLlm(
@@ -48,12 +48,13 @@ def create_llm_model(agent_type: str = "default"):
             api_key=api_key
         )
 
-    elif provider == "azure":
+    elif provider in ["azure", "openai"]:
         deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
         if not model_name:
             model_name = f"azure/{deployment_name}"
 
-        api_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+
         api_base = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZURE_API_BASE")
         api_version = os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("AZURE_API_VERSION", "2024-02-01")
 

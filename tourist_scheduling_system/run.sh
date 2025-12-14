@@ -100,13 +100,13 @@ Environment variables (can be used instead of flags):
     # Required for Agents
     AZURE_OPENAI_API_KEY   Azure OpenAI API Key
     # OR
-    GOOGLE_API_KEY         Google Gemini API Key
-    MODEL_PROVIDER         "google" or "azure" (default: azure)
+    GOOGLE_GEMINI_API_KEY  Google Gemini API Key
+    MODEL_PROVIDER         "gemini" or "openai" (default: azure)
     MODEL_NAME             Specific model name (optional)
 
     # Or for Google Gemini
-    GOOGLE_API_KEY         Google API Key
-    MODEL_PROVIDER         "google" or "gemini"
+    GOOGLE_GEMINI_API_KEY  Google Gemini API Key
+    MODEL_PROVIDER         "gemini"
     MODEL_NAME             e.g. "gemini/gemini-3-pro-preview"
     AZURE_OPENAI_ENDPOINT  Azure OpenAI Endpoint
     AZURE_OPENAI_DEPLOYMENT_NAME Azure OpenAI Deployment Name
