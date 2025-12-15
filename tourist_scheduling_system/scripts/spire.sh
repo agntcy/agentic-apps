@@ -4,16 +4,16 @@
 
 set -e
 
-NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-jobs}"
+NAMESPACE="${SPIRE_NAMESPACE:-lumuscar-spire}"
 RELEASE_NAME="spire"
 CHART_VERSION="${SPIRE_CHART_VERSION:-0.27.0}"
 SPIRE_VERSION="${SPIRE_VERSION:-1.13.0}"
 KUBECTL_VERSION="${SPIRE_KUBECTL_VERSION:-v1.28.15}"
 TRUST_DOMAIN="${SPIRE_TRUST_DOMAIN:-example.org}"
 CLUSTER_NAME="${SPIRE_CLUSTER_NAME:-slim-cluster}"
-CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-false}"
+CSI_DRIVER_ENABLED="${SPIRE_CSI_DRIVER_ENABLED:-true}"
 # MicroK8s uses a different kubelet path
-KUBELET_PATH="${SPIRE_KUBELET_PATH:-/var/snap/microk8s/common/var/lib/kubelet}"
+KUBELET_PATH="${SPIRE_KUBELET_PATH:-/var/lib/kubelet}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -83,6 +83,7 @@ install() {
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
+            --set spire-agent.socketPath="/run/spire/agent-sockets/spire-agent.sock" \
             --set spiffe-csi-driver.enabled="${CSI_DRIVER_ENABLED}" \
             --set spiffe-csi-driver.kubeletPath="${KUBELET_PATH}" \
             --set spiffe-oidc-discovery-provider.enabled=false
@@ -102,6 +103,7 @@ install() {
             --set spire-server.enabled=true \
             --set spire-server.controllerManager.enabled="${CSI_DRIVER_ENABLED}" \
             --set spire-agent.enabled=true \
+            --set spire-agent.socketPath="/run/spire/agent-sockets/spire-agent.sock" \
             --set spiffe-csi-driver.enabled="${CSI_DRIVER_ENABLED}" \
             --set spiffe-csi-driver.kubeletPath="${KUBELET_PATH}" \
             --set spiffe-oidc-discovery-provider.enabled=false
