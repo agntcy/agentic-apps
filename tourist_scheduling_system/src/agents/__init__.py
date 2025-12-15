@@ -59,11 +59,11 @@ def __getattr__(name):
             return create_tourist_agent
         return create_tourist_request_message
     elif name == "a2a_cards":
-        from . import a2a_cards
+        from src.core import a2a_cards
         return a2a_cards
     elif name in ("load_agent_card", "get_scheduler_card", "get_guide_card",
                   "get_tourist_card", "get_ui_card", "list_available_cards"):
-        from . import a2a_cards
+        from src.core import a2a_cards
         return getattr(a2a_cards, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

@@ -48,6 +48,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.20.0",
     "slimrpc==0.2.1",
     "slima2a==0.2.2",
+    "agntcy-dir>=0.5.7",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +67,9 @@ scheduler = "agents.scheduler_agent:main"
 guide = "agents.guide_agent:main"
 tourist = "agents.tourist_agent:main"
 ui = "agents.ui_agent:main"
+
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
 
 [project.urls]
 Homepage = "https://github.com/agntcy/agentic-apps"

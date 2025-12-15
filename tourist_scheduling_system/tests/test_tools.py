@@ -27,7 +27,7 @@ from agents.tools import (
     clear_scheduler_state,
     _scheduler_state,
 )
-from agents.models import (
+from src.core.models import (
     TouristRequest,
     GuideOffer,
     Assignment,

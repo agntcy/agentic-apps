@@ -101,11 +101,12 @@ class TestGuideAgentCreation:
     """Tests for guide agent factory function."""
 
     @pytest.mark.skipif(not ADK_AVAILABLE, reason="ADK not installed")
-    def test_create_guide_agent(self):
+    @pytest.mark.asyncio
+    async def test_create_guide_agent(self):
         """Test creating a guide agent."""
         from agents.guide_agent import create_guide_agent
 
-        agent = create_guide_agent(
+        agent = await create_guide_agent(
             guide_id="g1",
             scheduler_url="http://localhost:10000",
         )
@@ -113,11 +114,12 @@ class TestGuideAgentCreation:
         assert agent.name == "guide_g1"
 
     @pytest.mark.skipif(not ADK_AVAILABLE, reason="ADK not installed")
-    def test_guide_agent_has_scheduler_subagent(self):
+    @pytest.mark.asyncio
+    async def test_guide_agent_has_scheduler_subagent(self):
         """Test that guide agent has scheduler as sub-agent."""
         from agents.guide_agent import create_guide_agent
 
-        agent = create_guide_agent(
+        agent = await create_guide_agent(
             guide_id="g1",
             scheduler_url="http://localhost:10000",
         )
@@ -130,11 +132,12 @@ class TestTouristAgentCreation:
     """Tests for tourist agent factory function."""
 
     @pytest.mark.skipif(not ADK_AVAILABLE, reason="ADK not installed")
-    def test_create_tourist_agent(self):
+    @pytest.mark.asyncio
+    async def test_create_tourist_agent(self):
         """Test creating a tourist agent."""
         from agents.tourist_agent import create_tourist_agent
 
-        agent = create_tourist_agent(
+        agent = await create_tourist_agent(
             tourist_id="t1",
             scheduler_url="http://localhost:10000",
         )
@@ -142,11 +145,12 @@ class TestTouristAgentCreation:
         assert agent.name == "tourist_t1"
 
     @pytest.mark.skipif(not ADK_AVAILABLE, reason="ADK not installed")
-    def test_tourist_agent_has_scheduler_subagent(self):
+    @pytest.mark.asyncio
+    async def test_tourist_agent_has_scheduler_subagent(self):
         """Test that tourist agent has scheduler as sub-agent."""
         from agents.tourist_agent import create_tourist_agent
 
-        agent = create_tourist_agent(
+        agent = await create_tourist_agent(
             tourist_id="t1",
             scheduler_url="http://localhost:10000",
         )

@@ -508,7 +508,7 @@ def create_ui_app(host: str = "0.0.0.0", port: int = 10011):
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
     # Load agent card from a2a_cards directory
-    from .a2a_cards import get_ui_card
+    from src.core.a2a_cards import get_ui_card
     agent_card = get_ui_card(host=host, port=port)
     logger.info(f"[ADK UI] Using agent card: {agent_card.name} v{agent_card.version}")
 
@@ -541,7 +541,7 @@ def create_ui_a2a_components(host: str = "0.0.0.0", port: int = 10011):
     from a2a.server.tasks import InMemoryTaskStore
 
     # Load agent card from a2a_cards directory
-    from .a2a_cards import get_ui_card
+    from src.core.a2a_cards import get_ui_card
     agent_card = get_ui_card(host=host, port=port)
     logger.info(f"[ADK UI] Loaded agent card: {agent_card.name} v{agent_card.version}")
 
@@ -597,7 +597,7 @@ if __name__ == "__main__":
         dashboard_app = None
         if dashboard:
             try:
-                from .dashboard import (
+                from src.core.dashboard import (
                     create_dashboard_app,
                     set_dashboard_state,
                     set_transport_mode,

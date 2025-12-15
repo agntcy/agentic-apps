@@ -45,7 +45,7 @@ else:
     # Create a placeholder for ToolContext when ADK is not installed
     ToolContext = Any
 
-from .models import (
+from src.core.models import (
     TouristRequest,
     GuideOffer,
     Assignment,
@@ -153,6 +153,7 @@ def register_tourist_request(
     availability_end: str,
     preferences: List[str],
     budget: float,
+    tool_context: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Register a tourist's request for scheduling.
@@ -239,6 +240,7 @@ def register_guide_offer(
     available_end: str,
     hourly_rate: float,
     max_group_size: int = 1,
+    tool_context: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Register a guide's availability and capabilities.
@@ -320,7 +322,7 @@ def register_guide_offer(
 
 
 @traced("run_scheduling")
-def run_scheduling() -> Dict[str, Any]:
+def run_scheduling(tool_context: Optional[Any] = None) -> Dict[str, Any]:
     """
     Execute the scheduling algorithm to match tourists with guides.
 
@@ -413,7 +415,7 @@ def run_scheduling() -> Dict[str, Any]:
         }
 
 
-def get_schedule_status() -> Dict[str, Any]:
+def get_schedule_status(tool_context: Optional[Any] = None) -> Dict[str, Any]:
     """
     Get the current status of the scheduler.
 
@@ -536,7 +538,7 @@ def _build_schedule(
     return assignments
 
 
-def clear_scheduler_state() -> Dict[str, Any]:
+def clear_scheduler_state(tool_context: Optional[Any] = None) -> Dict[str, Any]:
     """
     Clear all scheduler state (for testing/reset).
 

@@ -42,7 +42,28 @@ env:
   IMAGE_PREFIX: ghcr.io/agntcy/apps
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        working-directory: tourist_scheduling_system
+        run: uv sync --all-extras --dev
+
+      - name: Run tests
+        working-directory: tourist_scheduling_system
+        run: uv run pytest tests/
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
