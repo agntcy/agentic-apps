@@ -67,6 +67,7 @@ Run ./setup.sh start first for infrastructure.
 
 Options:
     --transport MODE       Transport: http (default) or slim
+    --provider NAME        Model provider: azure (default) or google
     --tracing              Enable OpenTelemetry tracing
     --scheduler-port N     Scheduler port (default: $_SCHED_PORT)
     --ui-port N            Dashboard port (default: $_UI_PORT)
@@ -98,6 +99,15 @@ Environment variables (can be used instead of flags):
 
     # Required for Agents
     AZURE_OPENAI_API_KEY   Azure OpenAI API Key
+    # OR
+    GOOGLE_GEMINI_API_KEY  Google Gemini API Key
+    MODEL_PROVIDER         "gemini" or "openai" (default: azure)
+    MODEL_NAME             Specific model name (optional)
+
+    # Or for Google Gemini
+    GOOGLE_GEMINI_API_KEY  Google Gemini API Key
+    MODEL_PROVIDER         "gemini"
+    MODEL_NAME             e.g. "gemini/gemini-3-pro-preview"
     AZURE_OPENAI_ENDPOINT  Azure OpenAI Endpoint
     AZURE_OPENAI_DEPLOYMENT_NAME Azure OpenAI Deployment Name
 
@@ -222,10 +232,12 @@ _run_demo() {
     local ENABLE_TRACING="$_TRACING"
     local NO_DEMO=false
     local REAL_AGENTS=false
+    local PROVIDER_ARG=""
 
     while [[ ${#args[@]} -gt 0 && -n "${args[0]:-}" ]]; do
         case "${args[0]}" in
             --transport) _TRANSPORT="${args[1]:-http}"; args=("${args[@]:2}") ;;
+            --provider) PROVIDER_ARG="${args[1]}"; args=("${args[@]:2}") ;;
             --tracing) ENABLE_TRACING=true; args=("${args[@]:1}") ;;
             --scheduler-port) _SCHED_PORT="${args[1]:-10000}"; args=("${args[@]:2}") ;;
             --ui-port) _UI_PORT="${args[1]:-10021}"; args=("${args[@]:2}") ;;
@@ -240,6 +252,27 @@ _run_demo() {
             *) _err "Unknown option: ${args[0]}"; _usage; cd "$_RUN_ORIG_DIR" 2>/dev/null || true; return 1 ;;
         esac
     done
+
+    # Set provider from argument if provided
+    if [[ -n "$PROVIDER_ARG" ]]; then
+        export MODEL_PROVIDER="$PROVIDER_ARG"
+    fi
+
+    # Check for LLM credentials and infer provider
+    if [[ -z "${MODEL_PROVIDER:-}" ]]; then
+        if [[ -n "${GOOGLE_API_KEY:-}" && -z "${AZURE_OPENAI_API_KEY:-}" ]]; then
+            export MODEL_PROVIDER="google"
+            _log "Inferred MODEL_PROVIDER=google from GOOGLE_API_KEY"
+        elif [[ -n "${AZURE_OPENAI_API_KEY:-}" ]]; then
+            export MODEL_PROVIDER="azure"
+            _log "Inferred MODEL_PROVIDER=azure from AZURE_OPENAI_API_KEY"
+        fi
+    fi
+
+    if [[ -z "${AZURE_OPENAI_API_KEY:-}" && -z "${GOOGLE_API_KEY:-}" ]]; then
+        _warn "No LLM API keys found (AZURE_OPENAI_API_KEY or GOOGLE_API_KEY)"
+        _warn "Agents may fail to start if they require LLM access."
+    fi
 
     # Validation
     [[ "$_TRANSPORT" == "http" || "$_TRANSPORT" == "slim" ]] || { _err "Invalid transport: $_TRANSPORT"; return 1; }

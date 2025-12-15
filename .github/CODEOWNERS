@@ -1,2 +1,4 @@
 **/ @agntcy/app-maintainers
 
+tourist_scheduling_system/ @agntcy/dir-maintainers @agntcy/slim-maintainers
+network_of_assistants/ @agntcy/slim-maintainers @agntcy/obs-maintainers @agntcy/obs-tools-maintainers

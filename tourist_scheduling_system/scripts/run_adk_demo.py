@@ -432,7 +432,8 @@ async def run_console_demo():
     print("=" * 70)
     print()
     print("This demo shows the scheduler agent processing requests and offers")
-    print("using Azure OpenAI via LiteLLM.")
+    provider = os.getenv("MODEL_PROVIDER", "azure")
+    print(f"using {provider.title()} via LiteLLM.")
     print()
 
     runner = InMemoryRunner(agent=get_scheduler_agent())
@@ -762,8 +763,9 @@ def run_multi_agent_demo(
 @click.option("--duration", default=0, help="Demo duration in minutes (0 = run once and exit)")
 @click.option("--interval", default=1.0, help="Delay between agent requests in seconds")
 @click.option("--fast/--no-fast", default=False, help="Fast mode: skip LLM calls, send data directly to dashboard")
+@click.option("--provider", type=click.Choice(["azure", "google"]), default=None, help="Model provider to use")
 def main(mode: str, port: int, ui_port: int, host: str, guides: int, tourists: int,
-         transport: str, slim_endpoint: str, tracing: bool, duration: int, interval: float, fast: bool):
+         transport: str, slim_endpoint: str, tracing: bool, duration: int, interval: float, fast: bool, provider: str):
     """
     Run the ADK-based Tourist Scheduling Demo.
 
@@ -796,11 +798,27 @@ def main(mode: str, port: int, ui_port: int, host: str, guides: int, tourists: i
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    # Check for Azure credentials
-    if not (os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_API_KEY")):
-        print("⚠️  Warning: No Azure API key found!")
-        print("   Set AZURE_OPENAI_API_KEY or source your env file.")
+    # Set provider if specified
+    if provider:
+        os.environ["MODEL_PROVIDER"] = provider
+
+    # Check for LLM credentials
+    has_azure = os.getenv("AZURE_OPENAI_API_KEY")
+    has_google = os.getenv("GOOGLE_GEMINI_API_KEY")
+
+    if not (has_azure or has_google):
+        print("⚠️  Warning: No LLM API key found!")
+        print("   Set AZURE_OPENAI_API_KEY (for Azure) or GOOGLE_GEMINI_API_KEY (for Gemini).")
         print()
+
+    # Infer provider if not set
+    if not os.getenv("MODEL_PROVIDER"):
+        if has_google and not has_azure:
+             os.environ["MODEL_PROVIDER"] = "gemini"
+             print("   ℹ️  Using Google Gemini (inferred from GOOGLE_GEMINI_API_KEY)")
+        elif has_azure:
+             os.environ["MODEL_PROVIDER"] = "azure"
+             print("   ℹ️  Using Azure OpenAI (inferred from AZURE_OPENAI_API_KEY)")
 
     # Check SLIM availability if requested
     if transport == "slim":

@@ -26,7 +26,7 @@ scheduler, with optional SLIM transport for encrypted messaging and distributed 
 - **A2A Communication**: Full A2A compliance with SLIM transport support
 - **Real-Time Dashboard**: Live monitoring with WebSocket updates
 - **Distributed Tracing**: OpenTelemetry integration with Jaeger visualization
-- **LLM-Powered Agents**: Azure OpenAI integration via LiteLLM
+- **LLM-Powered Agents**: Azure OpenAI and Google Gemini integration via LiteLLM
 
 ## 🚀 Quick Start
 
@@ -50,6 +50,12 @@ cd agentic-apps/tourist_scheduling_system
 # Configure Azure OpenAI
 export AZURE_OPENAI_API_KEY="your-key"
 export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com"
+
+# Or Configure Google Gemini
+export MODEL_PROVIDER="gemini"
+export GOOGLE_GEMINI_API_KEY="your-google-api-key"
+# Optional: Specify model (default: gemini/gemini-3-pro-preview)
+export MODEL_NAME="gemini/gemini-3-pro-preview"
 ```
 
 ### Run the Demo
@@ -377,10 +383,14 @@ For direct Python control:
 ### Environment Variables
 
 ```bash
-# Required
+# Required (Choose one provider)
 export AZURE_OPENAI_API_KEY="your-key"
+# OR
+export GOOGLE_GEMINI_API_KEY="your-google-api-key"
 
 # Optional
+export MODEL_PROVIDER="openai"                 # or "gemini"
+export MODEL_NAME="gemini/gemini-3-pro-preview" # for Gemini
 export AZURE_OPENAI_ENDPOINT="https://..."
 export TRANSPORT=slim                          # Default transport
 export SLIM_ENDPOINT=http://localhost:46357    # SLIM node URL
