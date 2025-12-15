@@ -1,6 +1,7 @@
 #!/bin/bash
 # SLIM Controller deployment script for Kubernetes
 # Usage: ./slim-controller.sh [install|uninstall|status|clean|logs]
+# Strategy: SLIM_STRATEGY=daemonset ./slim-controller.sh install (default: statefulset)
 # SPIRE mode: SPIRE_ENABLED=true ./slim-controller.sh install
 
 set -e
@@ -10,6 +11,9 @@ RELEASE_NAME="slim-controller"
 CHART_VERSION="v0.7.0"
 CHART_REPO="oci://ghcr.io/agntcy/slim/helm/slim-control-plane"
 CHART_FILE="slim-control-plane-${CHART_VERSION}.tgz"
+
+# Deployment Strategy
+SLIM_STRATEGY="${SLIM_STRATEGY:-statefulset}"
 
 # SPIRE Configuration
 SPIRE_ENABLED="${SPIRE_ENABLED:-false}"
@@ -47,46 +51,43 @@ download_chart() {
 
 # Register SLIM controller workload with SPIRE
 register_with_spire() {
-    log_info "Registering SLIM controller workload with SPIRE..."
+    log_info "Applying ClusterSPIFFEID for SLIM Controller..."
 
-    # Check if SPIRE server is available in SPIRE namespace
-    if ! kubectl get pod -n "${SPIRE_NAMESPACE}" -l app.kubernetes.io/name=server -o name | grep -q "pod/"; then
-        log_warn "SPIRE server not found in namespace ${SPIRE_NAMESPACE}, skipping registration"
-        return 0
+    local TEMPLATE_FILE="slim-control-csid.yaml.tpl"
+    if [ ! -f "$TEMPLATE_FILE" ]; then
+        log_error "Template file $TEMPLATE_FILE not found"
+        return 1
     fi
 
-    local SPIRE_SERVER_POD
-    SPIRE_SERVER_POD=$(kubectl get pod -n "${SPIRE_NAMESPACE}" -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
+    # Export variables for envsubst
+    export NAMESPACE
+    export SPIRE_TRUST_DOMAIN
 
-    log_info "Using SPIRE Server pod: ${SPIRE_SERVER_POD} in namespace ${SPIRE_NAMESPACE}"
+    if command -v envsubst >/dev/null 2>&1; then
+        envsubst < "$TEMPLATE_FILE" | kubectl apply -f -
+    else
+        # Fallback to sed if envsubst is not available
+        sed -e "s/\${NAMESPACE}/${NAMESPACE}/g" \
+            -e "s/\${SPIRE_TRUST_DOMAIN}/${SPIRE_TRUST_DOMAIN}/g" \
+            "$TEMPLATE_FILE" | kubectl apply -f -
+    fi
 
-    # Register SLIM Controller
-    log_info "Registering SLIM Controller..."
-    kubectl exec -n "${SPIRE_NAMESPACE}" "${SPIRE_SERVER_POD}" -c spire-server -- \
-        /opt/spire/bin/spire-server entry create \
-        -spiffeID "spiffe://${SPIRE_TRUST_DOMAIN}/slim/controller" \
-        -parentID "spiffe://${SPIRE_TRUST_DOMAIN}/spire/agent/k8s_psat/${SPIRE_CLUSTER_NAME}" \
-        -selector "k8s:ns:${NAMESPACE}" \
-        -selector "k8s:sa:slim-control" \
-        -dns "slim-control" \
-        -dns "slim-control.${NAMESPACE}.svc.cluster.local" \
-        2>/dev/null || log_warn "Controller entry may already exist"
-
-    log_info "SPIRE registration complete"
+    log_info "ClusterSPIFFEID applied"
 }
 
 # Install SLIM controller
 install() {
-    log_info "Installing SLIM controller in namespace ${NAMESPACE}..."
+    log_info "Installing SLIM controller in namespace ${NAMESPACE} using strategy: ${SLIM_STRATEGY}..."
 
     # Download chart if needed
     download_chart
 
-    # Build base Helm values
+    local SCRIPT_DIR
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    # Base values
     HELM_VALUES=(
-        --set config.database.filePath="/db/controlplane.db"
-        --set securityContext.runAsUser=0
-        --set securityContext.runAsGroup=0
+        -f "${SCRIPT_DIR}/controller-values.yaml"
     )
 
     # Add SPIRE values if enabled
@@ -145,12 +146,12 @@ clean() {
     done
 
     # Remove all resources
-    log_info "Removing SLIM controller resources..."
+    log_info "Removing controller resources..."
     kubectl delete deployment slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete service slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete configmap slim-control -n "${NAMESPACE}" 2>/dev/null || true
     kubectl delete serviceaccount slim-control -n "${NAMESPACE}" 2>/dev/null || true
-    kubectl delete pvc slim-control-db -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete clusterspiffeid slim-control 2>/dev/null || true
 
     log_info "Cleanup complete"
 }
@@ -165,86 +166,40 @@ status() {
     echo ""
 
     echo "=== Pods ==="
-    kubectl get pods -n "${NAMESPACE}" -l "app.kubernetes.io/name=slim-control-plane" 2>/dev/null || echo "No pods found"
+    kubectl get pods -n "${NAMESPACE}" -l "app.kubernetes.io/instance=${RELEASE_NAME}" 2>/dev/null || echo "No pods found"
     echo ""
 
     echo "=== Services ==="
-    kubectl get svc -n "${NAMESPACE}" -l "app.kubernetes.io/name=slim-control-plane" 2>/dev/null || echo "No services found"
+    kubectl get svc -n "${NAMESPACE}" -l "app.kubernetes.io/instance=${RELEASE_NAME}" 2>/dev/null || echo "No services found"
     echo ""
-
-    echo "=== PVC ==="
-    kubectl get pvc -n "${NAMESPACE}" slim-control-db 2>/dev/null || echo "No PVC found"
 }
 
 # Show logs
 logs() {
-    log_info "Fetching SLIM controller logs..."
-    kubectl logs -n "${NAMESPACE}" -l "app.kubernetes.io/name=slim-control-plane" --tail=100 -f
+    log_info "Fetching logs for SLIM controller..."
+    kubectl logs -n "${NAMESPACE}" -l app.kubernetes.io/name=slim-control --tail=100 -f
 }
 
-# Port forward for local access
-port_forward() {
-    log_info "Setting up port forwarding..."
-    log_info "North API (gRPC): localhost:50051"
-    log_info "South API (gRPC): localhost:50052"
-
-    POD_NAME=$(kubectl get pods -n "${NAMESPACE}" -l "app.kubernetes.io/name=slim-control-plane" -o jsonpath="{.items[0].metadata.name}")
-
-    if [ -z "$POD_NAME" ]; then
-        log_error "No SLIM controller pod found"
-        exit 1
-    fi
-
-    kubectl port-forward -n "${NAMESPACE}" "${POD_NAME}" 50051:50051 50052:50052
-}
-
-# Show help
-usage() {
-    echo "SLIM Controller Deployment Script"
-    echo ""
-    echo "Usage: $0 <command>"
-    echo ""
-    echo "Commands:"
-    echo "  install      Install or upgrade SLIM controller"
-    echo "  clean        Remove all SLIM controller resources"
-    echo "  status       Show deployment status"
-    echo "  logs         Stream SLIM controller logs"
-    echo "  port-forward Set up port forwarding for local access"
-    echo ""
-    echo "Environment variables:"
-    echo "  SLIM_NAMESPACE       Target namespace (default: lumuscar-jobs)"
-    echo "  SPIRE_ENABLED        Enable SPIRE mTLS (default: false)"
-    echo "  SPIRE_TRUST_DOMAIN   SPIRE trust domain (default: example.org)"
-    echo "  SPIRE_CLUSTER_NAME   SPIRE cluster name (default: slim-cluster)"
-    echo ""
-    echo "Examples:"
-    echo "  $0 install"
-    echo "  SPIRE_ENABLED=true $0 install"
-    echo "  $0 port-forward"
-}
-
-# Main
-case "${1:-}" in
+# Main execution
+case "$1" in
     install)
         install
         ;;
-    clean)
-        clean
+    uninstall)
+        log_info "Uninstalling SLIM controller..."
+        helm uninstall "${RELEASE_NAME}" -n "${NAMESPACE}"
         ;;
     status)
         status
         ;;
+    clean)
+        clean
+        ;;
     logs)
         logs
         ;;
-    port-forward)
-        port_forward
-        ;;
-    -h|--help|help)
-        usage
-        ;;
     *)
-        usage
+        echo "Usage: $0 {install|uninstall|status|clean|logs}"
         exit 1
         ;;
 esac

@@ -103,23 +103,23 @@ Two deployment scripts are provided in `scripts/`:
 #### SLIM Node (`scripts/slim-node.sh`)
 
 ```bash
-# Install a SLIM node
-./scripts/slim-node.sh install slim-node
+# Install a SLIM node (StatefulSet by default)
+./scripts/slim-node.sh install
+
+# Install as DaemonSet
+SLIM_STRATEGY=daemonset ./scripts/slim-node.sh install
 
 # Check status
-./scripts/slim-node.sh status slim-node
+./scripts/slim-node.sh status
 
 # View logs
-./scripts/slim-node.sh logs slim-node
-
-# List all nodes
-./scripts/slim-node.sh list
+./scripts/slim-node.sh logs
 
 # Uninstall
-./scripts/slim-node.sh uninstall slim-node
+./scripts/slim-node.sh uninstall
 
-# Force clean
-./scripts/slim-node.sh force-clean slim-node
+# Clean
+./scripts/slim-node.sh clean
 ```
 
 ### Environment Variables
@@ -127,6 +127,7 @@ Two deployment scripts are provided in `scripts/`:
 | Variable               | Default                                           | Description                    |
 |------------------------|---------------------------------------------------|--------------------------------|
 | `SLIM_NAMESPACE`       | `lumuscar-jobs`                                   | Target Kubernetes namespace    |
+| `SLIM_STRATEGY`        | `statefulset`                                     | Deployment strategy (statefulset/daemonset) |
 | `SLIM_CONTROLLER_HOST` | `slim-control`                                    | Controller service hostname    |
 | `SLIM_CONTROLLER_PORT` | `50052`                                           | Controller south API port      |
 | `SPIRE_ENABLED`        | `false`                                           | Enable SPIRE mTLS mode         |
@@ -141,13 +142,12 @@ To deploy SLIM with SPIRE mTLS:
 # 1. Install SPIRE first
 ./scripts/spire.sh install
 
-# 2. Register SLIM workloads with SPIRE
-./scripts/spire.sh register-slim
-
-# 3. Install SLIM Controller with SPIRE
+# 2. Install SLIM Controller with SPIRE
+# This automatically applies the ClusterSPIFFEID
 SPIRE_ENABLED=true ./scripts/slim-controller.sh install
 
-# 4. Install SLIM Node with SPIRE
+# 3. Install SLIM Node with SPIRE
+# This automatically applies the ClusterSPIFFEID
 SPIRE_ENABLED=true ./scripts/slim-node.sh install
 ```
 

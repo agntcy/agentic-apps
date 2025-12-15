@@ -96,7 +96,10 @@ tourist_scheduling_system/
 │   ├── slim-controller.sh       # SLIM controller deployment
 │   ├── slim-node.sh             # SLIM data plane node deployment
 │   ├── directory.sh             # Agent Directory deployment
-│   └── run_adk_demo.py          # Main demo runner (Python CLI)
+│   ├── run_adk_demo.py          # Main demo runner (Python CLI)
+│   ├── slim-control-csid.yaml.tpl # SPIRE ID template for Controller
+│   ├── slim-node-csid.yaml.tpl    # SPIRE ID template for Node
+│   └── *-values.yaml            # Helm values files
 ├── deploy/
 │   └── k8s/                     # Kubernetes manifests
 │       ├── namespace.yaml       # Namespace and ConfigMap
@@ -214,14 +217,24 @@ kubectl create secret generic azure-openai-credentials \
 
 ### SLIM Infrastructure Setup
 
-For SLIM transport with mTLS authentication:
+For SLIM transport with mTLS authentication (via SPIRE):
 
 ```bash
 # Install SPIRE (identity provider)
 ./scripts/spire.sh install
 
-# Install SLIM controller and node
+# Install SLIM controller (with SPIRE enabled)
+export SPIRE_ENABLED=true
 ./scripts/slim-controller.sh install
+
+# Install SLIM node (with SPIRE enabled)
+# Default strategy is StatefulSet
+export SPIRE_ENABLED=true
+./scripts/slim-node.sh install
+
+# Or install SLIM node as DaemonSet
+export SLIM_STRATEGY=daemonset
+export SPIRE_ENABLED=true
 ./scripts/slim-node.sh install
 
 # Install Agent Directory (optional)

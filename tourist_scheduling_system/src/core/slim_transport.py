@@ -202,6 +202,7 @@ def create_slim_server(
         # Subscribe to the configured local_id (alias) if different
         # This allows clients to address us by "agntcy/tourist_scheduling/scheduler"
         # without knowing the random hash.
+        alias_id = None
         try:
             # Try subscribing with the raw string first (for alias support)
             # This is required because sb.Name() requires an integer ID, but aliases don't have one.
@@ -220,8 +221,11 @@ def create_slim_server(
                     if str(alias_name) != str(local_app.local_name):
                         await local_app.subscribe(alias_name)
                         logger.info(f"[SLIM] Subscribed to alias {alias_name}")
+                        alias_id = 0
             except Exception as e2:
                 logger.warning(f"[SLIM] Failed to subscribe to alias Name {config.local_id}: {e2}")
+
+        logger.info(f"[SLIM] Starting service subscription loop. alias_id={alias_id}")
 
         for service_method, rpc_handler in server.handlers.items():
             from slimrpc.common import handler_name_to_pyname
@@ -237,6 +241,25 @@ def create_slim_server(
             logger.info(f"[SLIM] Subscribing to {s_clone}")
             await local_app.subscribe(s_clone)
             server._pyname_to_handler[s_clone] = rpc_handler
+
+            # Also subscribe to alias ID if available
+            if alias_id is not None:
+                s_alias = sb.Name(strs[0], strs[1], strs[2], alias_id)
+                logger.info(f"[SLIM] Subscribing service to alias {s_alias}")
+                await local_app.subscribe(s_alias)
+                server._pyname_to_handler[s_alias] = rpc_handler
+
+                # Try subscribing to -1 (ffffffffffffffff) as well, as some clients might use that for aliases
+                if alias_id == 0:
+                    try:
+                        # 0xFFFFFFFFFFFFFFFF is -1 in 64-bit signed, or max uint64
+                        # We try both -1 and the large int just in case
+                        s_wildcard = sb.Name(strs[0], strs[1], strs[2], 0xFFFFFFFFFFFFFFFF)
+                        logger.info(f"[SLIM] Subscribing service to wildcard alias {s_wildcard}")
+                        await local_app.subscribe(s_wildcard)
+                        server._pyname_to_handler[s_wildcard] = rpc_handler
+                    except Exception as e_wild:
+                        logger.warning(f"[SLIM] Failed to subscribe to wildcard alias: {e_wild}")
 
         # Main loop - listen for sessions with error recovery
         consecutive_errors = 0
