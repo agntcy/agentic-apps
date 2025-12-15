@@ -47,6 +47,15 @@ spec:
         - name: ui-dashboard-agent
           image: ${IMAGE_REGISTRY}/ui-agent:${IMAGE_TAG}
           imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              python main.py \
+              --host 0.0.0.0 \
+              --port 10021 \
+              --dashboard \
+              --transport "${TRANSPORT_MODE:-http}" \
+              --slim-endpoint "http://${SLIM_GATEWAY_HOST}:${SLIM_GATEWAY_PORT}"
           ports:
             - containerPort: 10021
               protocol: TCP

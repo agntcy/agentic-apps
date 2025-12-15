@@ -20,9 +20,9 @@ export NAMESPACE="${NAMESPACE:-lumuscar-jobs}"
 export IMAGE_REGISTRY="${IMAGE_REGISTRY:-ghcr.io/agntcy/apps}"
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
 export TRANSPORT_MODE="${TRANSPORT_MODE:-http}"
-export MODEL_PROVIDER="${MODEL_PROVIDER:-}"
+export MODEL_PROVIDER="${MODEL_PROVIDER:-azure}"
 export MODEL_NAME="${MODEL_NAME:-}"
-export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
+export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-node}"
 export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
 export SCHEDULER_URL="${SCHEDULER_URL:-http://scheduler-agent:10000}"
 export UI_DASHBOARD_URL="${UI_DASHBOARD_URL:-http://ui-dashboard-agent:80/api/update}"
@@ -32,7 +32,7 @@ export HTTP_PROXY="${HTTP_PROXY:-}"
 export HTTPS_PROXY="${HTTPS_PROXY:-}"
 
 # Ensure NO_PROXY includes necessary internal services
-DEFAULT_NO_PROXY="localhost,127.0.0.1,.cluster.local,slim-slim-node,scheduler-agent,ui-dashboard-agent"
+DEFAULT_NO_PROXY="localhost,127.0.0.1,.cluster.local,slim-node,scheduler-agent,ui-dashboard-agent"
 if [[ -n "${NO_PROXY:-}" ]]; then
     # Avoid leading comma if NO_PROXY is set
     export NO_PROXY="${NO_PROXY},${DEFAULT_NO_PROXY}"
@@ -94,6 +94,10 @@ ensure_google_secret() {
 # Create or update the azure-openai-credentials secret from environment variables
 ensure_azure_secret() {
     if [[ -z "${AZURE_OPENAI_API_KEY:-}" ]]; then
+        if kubectl get secret azure-openai-credentials -n "$NAMESPACE" &>/dev/null; then
+            log_info "Using existing azure-openai-credentials secret..."
+            return 0
+        fi
         if [[ "$MODEL_PROVIDER" == "google" ]]; then
             return 0
         fi
@@ -185,11 +189,11 @@ deploy_slim() {
 
     # Set transport mode to SLIM
     export TRANSPORT_MODE=slim
-    export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-slim-node}"
+    export SLIM_GATEWAY_HOST="${SLIM_GATEWAY_HOST:-slim-node}"
     export SLIM_GATEWAY_PORT="${SLIM_GATEWAY_PORT:-46357}"
     # For SLIM mode, agents communicate via gateway, not direct HTTP
     export SCHEDULER_URL="http://scheduler-agent:10000"
-    export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
+    export UI_DASHBOARD_URL="http://ui-dashboard-agent:80/api/update"
 
     # Verify namespace exists
     if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
