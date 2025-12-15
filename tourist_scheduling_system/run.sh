@@ -50,6 +50,10 @@ _JAEGER_OTLP_HTTP_PORT="${JAEGER_OTLP_HTTP_PORT:-4318}"
 _JAEGER_UI_PORT="${JAEGER_UI_PORT:-16686}"
 _OTEL_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:${_JAEGER_OTLP_HTTP_PORT}}"
 
+# Directory settings
+_DIR_PORT="${DIR_PORT:-8888}"
+_DIRECTORY_CLIENT_SERVER_ADDRESS="${DIRECTORY_CLIENT_SERVER_ADDRESS:-localhost:${_DIR_PORT}}"
+
 # PID tracking
 _PID_FILE="${_RUN_SCRIPT_DIR}/.agent_pids"
 _PIDS=()
@@ -301,6 +305,9 @@ _run_demo() {
         export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:${_JAEGER_OTLP_HTTP_PORT}"
         # Don't set OTEL_SERVICE_NAME globally - let each agent set its own
     fi
+
+    # Export Directory Address
+    export DIRECTORY_CLIENT_SERVER_ADDRESS="${_DIRECTORY_CLIENT_SERVER_ADDRESS}"
 
     # Setup Python environment
     export PYTHONPATH="${_RUN_SCRIPT_DIR}/src:${PYTHONPATH:-}"
