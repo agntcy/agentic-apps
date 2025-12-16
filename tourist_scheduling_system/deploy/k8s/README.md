@@ -8,7 +8,8 @@ Kubernetes manifests for deploying the Tourist Scheduling System agents.
 2. **Kubernetes cluster** with access configured
 3. **kubectl** configured to access your cluster
 4. **envsubst** installed (usually comes with gettext)
-5. **Azure OpenAI** credentials
+5. **Azure OpenAI** or **Google Gemini** credentials
+6. **Agent Directory** deployed (optional but recommended for dynamic discovery)
 
 ## Transport Modes
 
@@ -31,6 +32,7 @@ The system supports two transport modes:
 | `deploy.sh` | Deployment script |
 | `spawn-agents.sh` | Scale multiple guides/tourists |
 | `templates/` | Job templates for dynamic generation |
+| `../scripts/directory.sh` | Script to deploy the Agent Directory |
 
 ## Quick Start
 
@@ -50,7 +52,14 @@ docker push $IMAGE_REGISTRY/scheduler-agent:$IMAGE_TAG
 docker push $IMAGE_REGISTRY/ui-agent:$IMAGE_TAG
 ```
 
-### 2. Deploy with HTTP Transport (Default)
+### 2. Deploy Agent Directory (Recommended)
+
+```bash
+# Deploy the Agent Directory to the cluster
+./scripts/directory.sh install
+```
+
+### 3. Deploy with HTTP Transport (Default)
 
 ```bash
 export NAMESPACE=lumuscar-jobs
@@ -180,6 +189,7 @@ kubectl logs -l app=guide-agent -n $NAMESPACE
 | `TRANSPORT_MODE` | `http` | Transport mode: `http` or `slim` |
 | `SLIM_GATEWAY_HOST` | `slim-slim-node` | SLIM gateway service name |
 | `SLIM_GATEWAY_PORT` | `46357` | SLIM gateway port |
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | `localhost:8888` | Address of the Agent Directory (e.g., `dir-service:8888`) |
 
 ## Architecture
 
