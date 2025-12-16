@@ -134,7 +134,7 @@ deploy_http() {
     # Set transport mode to HTTP
     export TRANSPORT_MODE=http
     export SCHEDULER_URL="http://scheduler-agent:10000"
-    export UI_DASHBOARD_URL="http://ui-dashboard-agent:10021"
+    export UI_DASHBOARD_URL="http://ui-dashboard-agent:80/api/update"
 
     # Verify namespace exists
     if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
