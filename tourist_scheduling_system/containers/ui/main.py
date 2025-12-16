@@ -24,10 +24,12 @@ import uvicorn
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 # Now we can import from agents and core
+import agents.ui_agent as ui_agent_module
 from agents.ui_agent import (
     get_ui_agent,
     create_ui_app,
     create_ui_a2a_components,
+    get_dashboard_state,
     DashboardState,
     SLIM_AVAILABLE,
     TRACING_AVAILABLE,
@@ -64,16 +66,29 @@ def main(host: str, port: int, transport: str, slim_endpoint: str, slim_local_id
     dashboard_app = None
     if dashboard:
         try:
-            from agents.dashboard import (
+            from core.dashboard import (
                 create_dashboard_app,
                 set_dashboard_state,
                 set_transport_mode,
+                broadcast_to_clients,
             )
-            # Create dashboard state
-            dashboard_state = DashboardState()
+            # Use global dashboard state from agent
+            dashboard_state = get_dashboard_state()
             set_dashboard_state(dashboard_state)
             set_transport_mode(transport)
             dashboard_app = create_dashboard_app()
+
+            # Setup broadcaster for agent to notify dashboard
+            async def broadcaster():
+                # Broadcast current state
+                await broadcast_to_clients({
+                    "type": "state_update",
+                    "data": dashboard_state.to_dict()
+                })
+
+            # Hook into agent's broadcaster
+            ui_agent_module._broadcaster = broadcaster
+
             logger.info(f"[ADK UI] Web dashboard enabled at http://{host}:{port}")
         except ImportError as e:
             logger.warning(f"[ADK UI] Dashboard module not available: {e}")
