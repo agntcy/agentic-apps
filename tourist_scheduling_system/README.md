@@ -1,10 +1,12 @@
 # Tourist Scheduling System - ADK Multi-Agent Demo
 
-A multi-agent scheduling system demonstrating [Agent-to-Agent (A2A)](https://github.com/google/a2a-sdk) communication
-patterns using Google's ADK framework. Tour guides and tourists are matched dynamically through an intelligent
-scheduler.
+The **Tourist Scheduling System** is a reference implementation of a multi-agent system built with Google's **Agent Development Kit (ADK)**. It demonstrates how autonomous agents—representing Tourists, Guides, and a Scheduler—can collaborate to solve complex coordination problems in real-time.
 
-The system leverages an **Agent Directory** for dynamic service discovery, allowing agents to find each other's capabilities (A2A Cards) at runtime without hardcoded configurations. It also supports optional **SLIM transport** for encrypted messaging and **OpenTelemetry** for distributed tracing.
+This application showcases advanced patterns for building production-ready agentic workflows, including:
+*   **Dynamic Service Discovery**: Agents publish their capabilities (A2A Cards) to a central **Agent Directory**, enabling runtime discovery without brittle point-to-point configuration.
+*   **Secure Agent-to-Agent (A2A) Communication**: Uses **SLIM (Secure Layer for Intelligent Messaging)** to establish encrypted, authenticated channels between agents.
+*   **Observability**: Full integration with **OpenTelemetry** and **Jaeger** to trace requests and tool executions across distributed agent processes.
+*   **Human-in-the-Loop**: A real-time **Dashboard** provides visibility into the negotiation and scheduling process.
 
 <img src="docs/tss-demo.gif" alt="TSS Demo" width="800">
 
@@ -96,11 +98,11 @@ tourist_scheduling_system/
 │   │   ├── ui_agent.py          # Dashboard web app (A2A server, port 10021)
 │   │   ├── guide_agent.py       # Tour guide agent (A2A client)
 │   │   ├── tourist_agent.py     # Tourist agent (A2A client)
-│   │   ├── dashboard.py         # Starlette dashboard app
-│   │   ├── a2a_cards.py         # Agent A2A card definitions
-│   │   ├── models.py            # Pydantic data models
 │   │   └── tools.py             # ADK tools (register, match, etc.)
 │   └── core/                    # Core utilities
+│       ├── a2a_cards.py         # Agent A2A card definitions
+│       ├── dashboard.py         # Starlette dashboard app
+│       ├── models.py            # Pydantic data models
 │       ├── slim_transport.py    # SLIM transport adapter
 │       ├── tracing.py           # OpenTelemetry setup
 │       ├── messages.py          # Message types
@@ -431,6 +433,8 @@ export SLIM_ENDPOINT=http://localhost:46357    # SLIM node URL
 export SLIM_SHARED_SECRET=your-secret          # SLIM auth secret
 export SCHED_PORT=10000                        # Scheduler port
 export UI_PORT=10021                           # Dashboard port
+export DIR_PORT=8888                           # Agent Directory port
+export DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888 # Directory address
 ```
 
 ## 🧪 Development
@@ -445,8 +449,8 @@ uv run pytest tests/
 ### Adding New Agents
 
 1. Create agent in `src/agents/`
-2. Define A2A card in `a2a_cards.py`
-3. Add tools in `tools.py`
+2. Define A2A card in `src/core/a2a_cards.py`
+3. Add tools in `src/agents/tools.py`
 4. Update `run_adk_demo.py` to spawn agent
 
 ### Logs
