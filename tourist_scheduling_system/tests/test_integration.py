@@ -135,7 +135,7 @@ class TestMultiAgentInteraction:
         """Test creating and running a guide agent."""
         from agents.guide_agent import create_guide_agent
 
-        agent = create_guide_agent(
+        agent = await create_guide_agent(
             guide_id="test_guide",
             scheduler_url="http://localhost:10000",
         )
@@ -149,7 +149,7 @@ class TestMultiAgentInteraction:
         """Test creating and running a tourist agent."""
         from agents.tourist_agent import create_tourist_agent
 
-        agent = create_tourist_agent(
+        agent = await create_tourist_agent(
             tourist_id="test_tourist",
             scheduler_url="http://localhost:10000",
         )

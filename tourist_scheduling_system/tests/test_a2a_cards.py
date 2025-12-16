@@ -14,12 +14,12 @@ class TestA2ACardLoader:
 
     def test_a2a_cards_dir_exists(self):
         """Test that the a2a_cards directory exists."""
-        from agents.a2a_cards import A2A_CARDS_DIR
+        from src.core.a2a_cards import A2A_CARDS_DIR
         assert A2A_CARDS_DIR.exists(), f"A2A cards directory not found: {A2A_CARDS_DIR}"
 
     def test_list_available_cards(self):
         """Test listing available agent cards."""
-        from agents.a2a_cards import list_available_cards
+        from src.core.a2a_cards import list_available_cards
 
         cards = list_available_cards()
         assert isinstance(cards, list)
@@ -30,7 +30,7 @@ class TestA2ACardLoader:
 
     def test_load_scheduler_card_json(self):
         """Test loading scheduler card as JSON dict."""
-        from agents.a2a_cards import load_agent_card_json
+        from src.core.a2a_cards import load_agent_card_json
 
         data = load_agent_card_json("scheduler_agent")
         assert isinstance(data, dict)
@@ -42,7 +42,7 @@ class TestA2ACardLoader:
 
     def test_load_scheduler_card(self):
         """Test loading scheduler card as AgentCard object."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
         from a2a.types import AgentCard
 
         card = load_agent_card("scheduler_agent")
@@ -54,7 +54,7 @@ class TestA2ACardLoader:
 
     def test_load_card_with_url_override(self):
         """Test loading card with URL override."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         custom_url = "http://custom-host:9999/"
         card = load_agent_card("scheduler_agent", url_override=custom_url)
@@ -62,7 +62,7 @@ class TestA2ACardLoader:
 
     def test_get_scheduler_card(self):
         """Test get_scheduler_card helper."""
-        from agents.a2a_cards import get_scheduler_card
+        from src.core.a2a_cards import get_scheduler_card
 
         card = get_scheduler_card(host="myhost", port=8080)
         assert card.url == "http://myhost:8080/"
@@ -70,7 +70,7 @@ class TestA2ACardLoader:
 
     def test_get_guide_card(self):
         """Test get_guide_card helper."""
-        from agents.a2a_cards import get_guide_card
+        from src.core.a2a_cards import get_guide_card
 
         card = get_guide_card(guide_id="marco", host="localhost", port=10001)
         assert card.url == "http://localhost:10001/"
@@ -78,7 +78,7 @@ class TestA2ACardLoader:
 
     def test_get_tourist_card(self):
         """Test get_tourist_card helper."""
-        from agents.a2a_cards import get_tourist_card
+        from src.core.a2a_cards import get_tourist_card
 
         card = get_tourist_card(tourist_id="alice", host="localhost", port=10002)
         assert card.url == "http://localhost:10002/"
@@ -86,7 +86,7 @@ class TestA2ACardLoader:
 
     def test_get_ui_card(self):
         """Test get_ui_card helper."""
-        from agents.a2a_cards import get_ui_card
+        from src.core.a2a_cards import get_ui_card
 
         card = get_ui_card(host="0.0.0.0", port=10021)
         assert card.url == "http://0.0.0.0:10021/"
@@ -94,14 +94,14 @@ class TestA2ACardLoader:
 
     def test_load_nonexistent_card_raises(self):
         """Test that loading a non-existent card raises FileNotFoundError."""
-        from agents.a2a_cards import load_agent_card_json
+        from src.core.a2a_cards import load_agent_card_json
 
         with pytest.raises(FileNotFoundError):
             load_agent_card_json("nonexistent_agent")
 
     def test_card_capabilities(self):
         """Test that card capabilities are loaded correctly."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         card = load_agent_card("scheduler_agent")
         assert card.capabilities is not None
@@ -111,7 +111,7 @@ class TestA2ACardLoader:
 
     def test_card_skills_structure(self):
         """Test that card skills have correct structure."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         card = load_agent_card("scheduler_agent")
         assert card.skills is not None
@@ -124,7 +124,7 @@ class TestA2ACardLoader:
 
     def test_guide_card_skills(self):
         """Test guide card has expected skills."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         card = load_agent_card("guide_agent")
         assert card.skills is not None
@@ -133,7 +133,7 @@ class TestA2ACardLoader:
 
     def test_tourist_card_skills(self):
         """Test tourist card has expected skills."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         card = load_agent_card("tourist_agent")
         assert card.skills is not None
@@ -142,7 +142,7 @@ class TestA2ACardLoader:
 
     def test_ui_card_skills(self):
         """Test UI card has expected skills."""
-        from agents.a2a_cards import load_agent_card
+        from src.core.a2a_cards import load_agent_card
 
         card = load_agent_card("ui_agent")
         assert card.skills is not None

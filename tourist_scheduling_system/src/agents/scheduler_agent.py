@@ -159,7 +159,7 @@ def create_scheduler_app(host: str = "localhost", port: int = 10000):
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
     # Load agent card from a2a_cards directory
-    from .a2a_cards import get_scheduler_card
+    from src.core.a2a_cards import get_scheduler_card
     agent_card = get_scheduler_card(host=host, port=port)
     logger.info(f"[ADK Scheduler] Using agent card: {agent_card.name} v{agent_card.version}")
 
@@ -192,7 +192,7 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
     from a2a.server.tasks import InMemoryTaskStore
 
     # Load agent card from a2a_cards directory
-    from .a2a_cards import get_scheduler_card
+    from src.core.a2a_cards import get_scheduler_card
     agent_card = get_scheduler_card(host=host, port=port)
     logger.info(f"[ADK Scheduler] Loaded agent card: {agent_card.name} v{agent_card.version}")
 

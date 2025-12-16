@@ -2,13 +2,16 @@
 
 A multi-agent scheduling system demonstrating [Agent-to-Agent (A2A)](https://github.com/google/a2a-sdk) communication
 patterns using Google's ADK framework. Tour guides and tourists are matched dynamically through an intelligent
-scheduler, with optional SLIM transport for encrypted messaging and distributed tracing via OpenTelemetry.
+scheduler.
+
+The system leverages an **Agent Directory** for dynamic service discovery, allowing agents to find each other's capabilities (A2A Cards) at runtime without hardcoded configurations. It also supports optional **SLIM transport** for encrypted messaging and **OpenTelemetry** for distributed tracing.
 
 <img src="docs/tss-demo.gif" alt="TSS Demo" width="800">
 
 ## 📑 Table of Contents
 
 - [Features](#-features)
+- [Integrations](#-integrations)
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
 - [Architecture](#-architecture)
@@ -23,10 +26,21 @@ scheduler, with optional SLIM transport for encrypted messaging and distributed 
 ## ✨ Features
 
 - **Multi-Agent Coordination**: Scheduler, guides, and tourists working together
+- **Dynamic Discovery**: Agents register and discover capabilities via the Agent Directory
 - **A2A Communication**: Full A2A compliance with SLIM transport support
 - **Real-Time Dashboard**: Live monitoring with WebSocket updates
 - **Distributed Tracing**: OpenTelemetry integration with Jaeger visualization
 - **LLM-Powered Agents**: Azure OpenAI and Google Gemini integration via LiteLLM
+
+## 🔌 Integrations
+
+This application leverages several key integrations to provide a robust, production-ready agent ecosystem:
+
+- **[Agent Directory](https://github.com/agntcy/agent-directory)**: A centralized registry where agents publish their A2A Cards (capabilities) and endpoints. This enables dynamic discovery, allowing the Scheduler to find available Guides and Tourists at runtime.
+- **[SLIM Transport](https://github.com/agntcy/slim)**: Secure Layer for Intelligent Messaging. Provides encrypted, authenticated communication channels between agents, ensuring data privacy and integrity.
+- **[OpenTelemetry](https://opentelemetry.io/) & [Jaeger](https://www.jaegertracing.io/)**: Comprehensive observability stack. Traces requests across agent boundaries, visualizing the full lifecycle of a scheduling task from Tourist request to Guide assignment.
+- **LLM Providers**: Flexible integration with **Azure OpenAI** and **Google Gemini** via LiteLLM, powering the intelligent decision-making of the agents.
+- **[FastAPI](https://fastapi.tiangolo.com/)**: High-performance web framework used for the Agent Directory and agent HTTP interfaces.
 
 ## 🚀 Quick Start
 
@@ -127,11 +141,18 @@ tourist_scheduling_system/
 | Dashboard | 10021 | Real-time web UI with WebSocket updates |
 | Guides | (via A2A) | LLM-powered tour guides with specializations |
 | Tourists | (via A2A) | Visitors requesting specific tour experiences |
+| **Directory** | 8888 | Service registry for agent discovery |
 
 ### Communication Flow
 
 ```
-┌──────────────┐     A2A/SLIM      ┌──────────────┐
+                                   ┌──────────────┐
+                                   │   Directory  │
+                                   │  (port 8888) │
+                                   └──────▲───────┘
+                                          │ Register/Lookup
+                                          │
+┌──────────────┐     A2A/SLIM      ┌──────▼───────┐
 │ Guide Agent  │ ◀───────────────▶ │   Scheduler  │
 └──────────────┘                   │    Agent     │
                                    │  (port 10000)│

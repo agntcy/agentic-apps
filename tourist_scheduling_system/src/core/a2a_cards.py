@@ -16,6 +16,14 @@ from typing import Optional
 
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 
+try:
+    from agntcy.dir_sdk.client import Client, Config
+    from agntcy.dir_sdk.models import search_v1
+    from google.protobuf.json_format import MessageToDict
+    DIRECTORY_AVAILABLE = True
+except ImportError:
+    DIRECTORY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # Path to the a2a_cards directory (relative to project root)
@@ -26,6 +34,9 @@ def load_agent_card_json(card_name: str) -> dict:
     """
     Load an agent card JSON file by name.
 
+    First attempts to fetch from the Agent Directory service.
+    If that fails or is unavailable, falls back to local JSON files.
+
     Args:
         card_name: Name of the agent card file (without .json extension)
                    e.g., "scheduler_agent", "guide_agent"
@@ -34,9 +45,83 @@ def load_agent_card_json(card_name: str) -> dict:
         Dictionary containing the agent card data
 
     Raises:
-        FileNotFoundError: If the card file doesn't exist
+        FileNotFoundError: If the card file doesn't exist locally and directory fetch failed
         json.JSONDecodeError: If the file contains invalid JSON
     """
+    # Try fetching from directory first
+    if DIRECTORY_AVAILABLE:
+        try:
+            # Initialize client (loads config from env vars)
+            # DIRECTORY_CLIENT_SERVER_ADDRESS should be set in env
+            client = Client()
+
+            # Search for the card by name
+            # Note: The card name in the JSON file is "Tourist Scheduling Coordinator",
+            # but the file name is "scheduler_agent".
+            # We should search by the 'name' field in the record data if possible,
+            # or we need to ensure we are searching for the correct value.
+            # The publish script pushes the content of the JSON file.
+            # The 'name' field in scheduler_agent.json is "Tourist Scheduling Coordinator".
+
+            # Let's try to search by name first (exact match on the name field)
+            query = search_v1.RecordQuery(
+                type=search_v1.RECORD_QUERY_TYPE_NAME,
+                value=card_name # This searches for "scheduler_agent" which might not match "Tourist Scheduling Coordinator"
+            )
+
+            # If card_name is a file stem (like "scheduler_agent"), we might need a mapping
+            # or we should have published it with some metadata that allows finding it by "scheduler_agent".
+            # However, for now, let's assume we want to find it by the name inside the card if we knew it,
+            # OR we rely on the fact that we might have published it with a specific name.
+
+            # Actually, the search query type NAME searches the 'name' field of the record.
+            # In our case, scheduler_agent.json has "name": "Tourist Scheduling Coordinator".
+            # So searching for "scheduler_agent" will fail.
+
+            # HACK: For this specific demo, let's map the file stems to the actual names in the JSONs
+            # or try to search loosely.
+
+            target_name = card_name
+            if card_name == "scheduler_agent":
+                target_name = "Tourist Scheduling Coordinator"
+            elif card_name == "guide_agent":
+                target_name = "Tour Guide Agent"
+            elif card_name == "tourist_agent":
+                target_name = "Tourist Agent"
+            elif card_name == "ui_agent":
+                target_name = "Dashboard Monitor"
+
+            query = search_v1.RecordQuery(
+                type=search_v1.RECORD_QUERY_TYPE_NAME,
+                value=target_name
+            )
+            req = search_v1.SearchRecordsRequest(queries=[query], limit=1)
+            results = client.search_records(req)
+
+            if results:
+                logger.info(f"Found agent card '{card_name}' in directory")
+                record = results[0].record
+                # Convert Struct to dict
+                data = MessageToDict(record.data)
+
+                # Check if it's an OAS record and extract card data
+                if "modules" in data:
+                    for module in data["modules"]:
+                        if module.get("name") == "integration/a2a":
+                            # The data field in the module might be a dict or nested
+                            module_data = module.get("data", {})
+                            if "card_data" in module_data:
+                                return module_data["card_data"]
+
+                return data
+            else:
+                logger.debug(f"Agent card '{card_name}' not found in directory")
+
+        except Exception as e:
+            # Log error but continue to fallback
+            logger.warning(f"Failed to fetch card '{card_name}' from directory: {e}")
+
+    # Fallback to local file
     card_path = A2A_CARDS_DIR / f"{card_name}.json"
 
     if not card_path.exists():

@@ -17,7 +17,7 @@ err()  { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 # ── SLIM Configuration ─────────────────────────────────────────────────────────
 SLIM_CONTAINER_NAME="slim-node"
-SLIM_IMAGE="${SLIM_IMAGE:-ghcr.io/agntcy/slim:latest}"
+SLIM_IMAGE="${SLIM_IMAGE:-ghcr.io/agntcy/slim:v0.7.0}"
 SLIM_PORT="${SLIM_PORT:-46357}"
 SLIM_SHARED_SECRET="${SLIM_SHARED_SECRET:-supersecretsharedsecret123456789}"  # Must be 32+ chars
 SLIM_TLS_INSECURE="${SLIM_TLS_INSECURE:-true}"
@@ -30,6 +30,85 @@ JAEGER_IMAGE="${JAEGER_IMAGE:-jaegertracing/all-in-one:latest}"
 JAEGER_UI_PORT="${JAEGER_UI_PORT:-16686}"
 JAEGER_OTLP_GRPC_PORT="${JAEGER_OTLP_GRPC_PORT:-4317}"
 JAEGER_OTLP_HTTP_PORT="${JAEGER_OTLP_HTTP_PORT:-4318}"
+
+# ── Directory Configuration ──────────────────────────────────────────────────────
+DIR_CONTAINER_NAME="dir-service"
+DIR_IMAGE="${DIR_IMAGE:-ghcr.io/agntcy/dir-apiserver:v0.5.7}"
+DIR_PORT="${DIR_PORT:-8888}"
+DIR_METRICS_PORT="${DIR_METRICS_PORT:-9090}"
+
+# ── Zot Configuration (OCI Registry for Directory) ─────────────────────────────
+ZOT_CONTAINER_NAME="zot-registry"
+ZOT_IMAGE="${ZOT_IMAGE:-ghcr.io/project-zot/zot:v2.1.11}"
+ZOT_PORT="${ZOT_PORT:-5001}"
+
+# ── Network Configuration ──────────────────────────────────────────────────────
+NETWORK_NAME="agentic-apps-net"
+
+# ── Network Functions ──────────────────────────────────────────────────────────
+ensure_network() {
+    if ! docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
+        log "Creating network '$NETWORK_NAME'..."
+        docker network create "$NETWORK_NAME" >/dev/null
+        ok "Network '$NETWORK_NAME' created"
+    else
+        log "Network '$NETWORK_NAME' already exists"
+    fi
+}
+
+# ── Zot Functions ──────────────────────────────────────────────────────────────
+start_zot() {
+    ensure_network
+    log "Starting Zot registry container..."
+    if docker ps --format '{{.Names}}' | grep -q "^${ZOT_CONTAINER_NAME}$"; then
+        log "Container '$ZOT_CONTAINER_NAME' is already running"
+        return 0
+    fi
+    if docker ps -a --format '{{.Names}}' | grep -q "^${ZOT_CONTAINER_NAME}$"; then
+        log "Removing stopped container '$ZOT_CONTAINER_NAME'"
+        docker rm -f "$ZOT_CONTAINER_NAME" >/dev/null
+    fi
+
+    docker run -d \
+        --name "$ZOT_CONTAINER_NAME" \
+        --network "$NETWORK_NAME" \
+        -p "${ZOT_PORT}:5000" \
+        "$ZOT_IMAGE"
+
+    log "Zot registry started on port $ZOT_PORT"
+
+    # Wait for Zot to be ready
+    log "Waiting for Zot to be ready..."
+    for i in {1..15}; do
+        if curl -s "http://localhost:${ZOT_PORT}/v2/" >/dev/null 2>&1; then
+            ok "Zot registry is ready"
+            return 0
+        fi
+        sleep 1
+    done
+    warn "Zot registry health check timed out (continuing anyway)"
+}
+
+stop_zot() {
+    log "Stopping Zot registry container..."
+    if docker ps --format '{{.Names}}' | grep -q "^${ZOT_CONTAINER_NAME}$"; then
+        docker stop "$ZOT_CONTAINER_NAME" >/dev/null
+        ok "Zot registry stopped"
+    else
+        log "Zot registry not running"
+    fi
+}
+
+remove_zot() {
+    log "Removing Zot registry container..."
+    if docker ps -a --format '{{.Names}}' | grep -q "^${ZOT_CONTAINER_NAME}$"; then
+        docker rm -f "$ZOT_CONTAINER_NAME" >/dev/null
+        ok "Zot registry removed"
+    else
+        log "Zot registry container not found"
+    fi
+}
+
 
 # ── SLIM Node Functions ────────────────────────────────────────────────────────
 start_slim_node() {
@@ -99,6 +178,73 @@ remove_slim_node() {
     else
         log "SLIM node container not found"
     fi
+}
+
+# ── Directory Functions ────────────────────────────────────────────────────────
+start_directory() {
+    start_zot
+
+    log "Starting Directory service container..."
+    if docker ps --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        log "Container '$DIR_CONTAINER_NAME' is already running"
+        return 0
+    fi
+    if docker ps -a --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        log "Removing stopped container '$DIR_CONTAINER_NAME'"
+        docker rm -f "$DIR_CONTAINER_NAME" >/dev/null
+    fi
+
+    docker run -d \
+        --name "$DIR_CONTAINER_NAME" \
+        --network "$NETWORK_NAME" \
+        -p "${DIR_PORT}:8888" \
+        -p "${DIR_METRICS_PORT}:9090" \
+        -e DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:8888 \
+        -e DIRECTORY_SERVER_AUTHN_ENABLED=false \
+        -e DIRECTORY_SERVER_STORE_PROVIDER=oci \
+        -e DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=${ZOT_CONTAINER_NAME}:5000 \
+        -e DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=dir \
+        -e DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=true \
+        -e DIRECTORY_LOGGER_LOG_LEVEL=DEBUG \
+        "$DIR_IMAGE"
+
+    log "Directory service started:"
+    log "  API:     localhost:${DIR_PORT}"
+    log "  Metrics: localhost:${DIR_METRICS_PORT}"
+
+    # Wait for Directory to be ready
+    log "Waiting for Directory service to be ready..."
+    for i in {1..15}; do
+        # Use grpc-health-probe if available, or check logs/port
+        if nc -z localhost "$DIR_PORT" 2>/dev/null; then
+            ok "Directory service is ready"
+            return 0
+        fi
+        sleep 1
+    done
+    warn "Directory service health check timed out (continuing anyway)"
+}
+
+stop_directory() {
+    log "Stopping Directory service container..."
+    if docker ps --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        docker stop "$DIR_CONTAINER_NAME" >/dev/null
+        ok "Directory service stopped"
+    else
+        log "Directory service not running"
+    fi
+    stop_zot
+}
+
+remove_directory() {
+    log "Removing Directory service container..."
+    if docker ps -a --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        docker rm -f "$DIR_CONTAINER_NAME" >/dev/null
+        ok "Directory service removed"
+    else
+        log "Directory service container not found"
+    fi
+    remove_zot
 }
 
 # ── Jaeger Functions ───────────────────────────────────────────────────────────
@@ -182,6 +328,15 @@ show_status() {
         log "Jaeger:    NOT CREATED"
     fi
 
+    # Directory status
+    if docker ps --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        ok "Directory: RUNNING - API at localhost:${DIR_PORT}"
+    elif docker ps -a --format '{{.Names}}' | grep -q "^${DIR_CONTAINER_NAME}$"; then
+        warn "Directory: STOPPED"
+    else
+        log "Directory: NOT CREATED"
+    fi
+
     echo "======================================================="
 }
 
@@ -193,6 +348,7 @@ print_env() {
     echo "export SLIM_TLS_INSECURE=\"${SLIM_TLS_INSECURE}\""
     echo "export OTEL_EXPORTER_OTLP_ENDPOINT=\"http://localhost:${JAEGER_OTLP_HTTP_PORT}\""
     echo "export OTEL_SERVICE_NAME=\"tourist-scheduling\""
+    echo "export DIRECTORY_CLIENT_SERVER_ADDRESS=\"localhost:${DIR_PORT}\""
 }
 
 # ── Help ───────────────────────────────────────────────────────────────────────
@@ -223,6 +379,10 @@ Commands:
     jaeger start          Start Jaeger only
     jaeger stop           Stop Jaeger
     jaeger remove         Remove Jaeger container
+
+    dir start             Start Directory service only
+    dir stop              Stop Directory service
+    dir remove            Remove Directory service container
 
 Environment Variables:
     SLIM_PORT             SLIM node port (default: 46357)
@@ -272,6 +432,9 @@ case "$COMMAND" in
         # Start SLIM node
         start_slim_node "$WITH_TRACING"
 
+        # Start Directory service
+        start_directory
+
         # Start Jaeger if tracing enabled
         if [[ "$WITH_TRACING" == "true" ]]; then
             start_jaeger
@@ -291,6 +454,7 @@ case "$COMMAND" in
         echo "======================================================="
         stop_slim_node
         stop_jaeger
+        stop_directory
         ok "Infrastructure stopped"
         echo "======================================================="
         ;;
@@ -322,6 +486,7 @@ case "$COMMAND" in
         # Remove infrastructure containers
         remove_slim_node
         remove_jaeger
+        remove_directory
 
         # Clean up PID file
         rm -f "${ROOT_DIR}/.agent_pids" 2>/dev/null || true
@@ -361,6 +526,19 @@ case "$COMMAND" in
             stop) stop_jaeger ;;
             remove) remove_jaeger ;;
             *) err "Unknown jaeger command: $1"; exit 1 ;;
+        esac
+        ;;
+
+    dir)
+        if [[ $# -lt 1 ]]; then
+            err "Usage: $0 dir {start|stop|remove}"
+            exit 1
+        fi
+        case "$1" in
+            start) start_directory ;;
+            stop) stop_directory ;;
+            remove) remove_directory ;;
+            *) err "Unknown dir command: $1"; exit 1 ;;
         esac
         ;;
 
