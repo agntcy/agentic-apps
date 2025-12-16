@@ -9,7 +9,7 @@ It follows the ADK GKE deployment pattern.
 
 Usage:
     python main.py --host 0.0.0.0 --port 10021 --dashboard
-    python main.py --transport slim --slim-endpoint grpc://slim:46357
+    python main.py --transport slim --slim-endpoint http://slim:46357
 """
 
 import asyncio
