@@ -11,7 +11,7 @@ This demonstrates multi-agent coordination using:
 - Tourist Agents (LLM-powered via RemoteA2aAgent)
 - UI Dashboard Agent (real-time monitoring)
 
-All agents use Azure OpenAI via LiteLLM.
+All agents use Azure OpenAI or Google Gemini via LiteLLM.
 
 Supports two transport modes:
 - HTTP: Standard HTTP-based A2A transport

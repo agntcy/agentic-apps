@@ -17,7 +17,7 @@ err()  { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 # ── SLIM Configuration ─────────────────────────────────────────────────────────
 SLIM_CONTAINER_NAME="slim-node"
-SLIM_IMAGE="${SLIM_IMAGE:-ghcr.io/agntcy/slim:v0.7.0}"
+SLIM_IMAGE="${SLIM_IMAGE:-ghcr.io/agntcy/slim:latest}"
 SLIM_PORT="${SLIM_PORT:-46357}"
 SLIM_SHARED_SECRET="${SLIM_SHARED_SECRET:-supersecretsharedsecret123456789}"  # Must be 32+ chars
 SLIM_TLS_INSECURE="${SLIM_TLS_INSECURE:-true}"

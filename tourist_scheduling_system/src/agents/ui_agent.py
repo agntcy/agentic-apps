@@ -6,7 +6,7 @@ ADK-based UI Agent
 
 A dashboard agent that monitors the tourist scheduling system and provides
 real-time visibility into system state. Uses Google ADK with Azure OpenAI
-via LiteLLM.
+or Google Gemini via LiteLLM.
 
 This agent:
 1. Connects to the scheduler as a RemoteA2aAgent to receive updates

@@ -51,7 +51,7 @@ This application leverages several key integrations to provide a robust, product
 - Python 3.12+
 - [UV](https://github.com/astral-sh/uv) package manager
 - Docker (for SLIM transport and tracing)
-- Azure OpenAI API key
+- Azure OpenAI API key or Google Gemini API key
 
 ### Installation
 
@@ -60,8 +60,12 @@ This application leverages several key integrations to provide a robust, product
 git clone https://github.com/agntcy/agentic-apps.git
 cd agentic-apps/tourist_scheduling_system
 
-# Set up the environment
-./setup.sh install
+# Create virtual environment
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv sync
 
 # Configure Azure OpenAI
 export AZURE_OPENAI_API_KEY="your-key"
@@ -176,7 +180,7 @@ SLIM provides encrypted, high-performance messaging:
 
 ```bash
 # Start SLIM node
-./setup.sh slim
+./setup.sh slim start
 
 # Configure SLIM endpoint
 export SLIM_ENDPOINT=http://localhost:46357
@@ -349,7 +353,6 @@ WebSocket provides instant updates as the scheduler processes requests.
 ### `setup.sh` - Infrastructure Management
 
 ```bash
-./setup.sh install        # Install Python dependencies with UV
 ./setup.sh start          # Start SLIM + Jaeger containers
 ./setup.sh stop           # Stop all containers
 ./setup.sh clean          # Remove containers and data
@@ -371,13 +374,15 @@ source run.sh [options]
 
 # Options
 --transport MODE          # http (default) or slim
+--provider NAME           # Model provider: azure (default) or google
 --tracing                 # Enable OpenTelemetry tracing
 --scheduler-port N        # Scheduler port (default: 10000)
 --ui-port N               # Dashboard port (default: 10021)
 --guides N                # Number of guides (default: 2)
 --tourists N              # Number of tourists (default: 3)
 --duration N              # Duration in minutes (0=single run)
---interval N              # Delay between requests (default: 1.0s)
+--interval N              # Delay between requests (default: 1.
+--real-agents             # Use real ADK guide/tourist agents instead of simulation0s)
 --no-demo                 # Start servers only, no demo traffic
 
 # Control
@@ -441,7 +446,7 @@ export DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888 # Directory address
 
 ### Running Tests
 
-```bash
+uv sync
 ./setup.sh install        # Ensure dependencies
 uv run pytest tests/
 ```

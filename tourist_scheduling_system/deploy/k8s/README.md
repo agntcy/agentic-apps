@@ -61,20 +61,39 @@ docker push $IMAGE_REGISTRY/ui-agent:$IMAGE_TAG
 
 ### 3. Deploy with HTTP Transport (Default)
 
+You can deploy using either Azure OpenAI or Google Gemini. The deployment script will automatically create the necessary secrets if you provide the environment variables.
+
+#### Option A: Using Azure OpenAI
+
 ```bash
 export NAMESPACE=lumuscar-jobs
 export IMAGE_REGISTRY=ghcr.io/your-org
 export IMAGE_TAG=latest
 
-# Create namespace and deploy
-./deploy/k8s/deploy.sh http
+# Configure Azure OpenAI
+export MODEL_PROVIDER=azure
+export AZURE_OPENAI_API_KEY="your-key"
+export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com"
+export AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
 
-# Create Azure OpenAI credentials secret
-kubectl create secret generic azure-openai-credentials \
-  --from-literal=api-key=$AZURE_OPENAI_API_KEY \
-  --from-literal=endpoint=$AZURE_OPENAI_ENDPOINT \
-  --from-literal=deployment-name=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o} \
-  -n $NAMESPACE
+# Deploy
+./deploy/k8s/deploy.sh http
+```
+
+#### Option B: Using Google Gemini
+
+```bash
+export NAMESPACE=lumuscar-jobs
+export IMAGE_REGISTRY=ghcr.io/your-org
+export IMAGE_TAG=latest
+
+# Configure Google Gemini
+export MODEL_PROVIDER=google
+export GOOGLE_API_KEY="your-google-api-key"
+export MODEL_NAME="gemini/gemini-3-pro-preview"
+
+# Deploy
+./deploy/k8s/deploy.sh http
 ```
 
 ### 3. Deploy with SLIM Transport
