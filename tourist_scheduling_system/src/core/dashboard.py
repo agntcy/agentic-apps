@@ -19,6 +19,7 @@ from starlette.applications import Starlette
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
+from starlette.requests import Request
 
 # Set up file logging
 try:
@@ -210,6 +211,39 @@ async def dashboard_endpoint(request):
     return HTMLResponse(_load_html_template())
 
 
+async def chat_endpoint(request):
+    """Handle chat requests from GenUI frontend."""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+
+        # Get the UI agent
+        from src.agents.ui_agent import get_ui_agent
+        agent = get_ui_agent()
+
+        # Run the agent
+        response_text = agent.run(message)
+
+        text_part = response_text
+        a2ui_part = []
+
+        if "---a2ui_JSON---" in response_text:
+            parts = response_text.split("---a2ui_JSON---")
+            text_part = parts[0].strip()
+            try:
+                a2ui_part = json.loads(parts[1].strip())
+            except json.JSONDecodeError:
+                logger.error("[ADK UI] Failed to parse A2UI JSON")
+
+        return JSONResponse({
+            "text": text_part,
+            "a2ui": a2ui_part
+        })
+    except Exception as e:
+        logger.error(f"[ADK UI] Chat error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 def create_dashboard_app():
     """Create the Starlette dashboard application."""
     routes = [
@@ -217,6 +251,7 @@ def create_dashboard_app():
         Route("/health", health_endpoint),
         Route("/api/state", api_state_endpoint),
         Route("/api/update", api_update_endpoint, methods=["POST"]),
+        Route("/api/chat", chat_endpoint, methods=["POST"]),
         WebSocketRoute("/ws", websocket_endpoint),
     ]
     return Starlette(routes=routes)

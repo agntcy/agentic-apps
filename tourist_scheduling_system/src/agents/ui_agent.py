@@ -33,6 +33,12 @@ try:
 except ImportError:
     TRACING_AVAILABLE = False
 
+# Import A2UI Schema
+try:
+    from .a2ui_schema import A2UI_SCHEMA
+except ImportError:
+    A2UI_SCHEMA = "{}"
+
 # Set up file logging
 try:
     from core.logging_config import setup_agent_logging
@@ -459,7 +465,7 @@ def get_ui_agent():
                 "A dashboard agent that monitors the tourist scheduling system and provides "
                 "real-time visibility into tourists, guides, assignments, and system metrics."
             ),
-            instruction="""You are the UI Dashboard Agent for the Tourist Scheduling System.
+            instruction=f"""You are the UI Dashboard Agent for the Tourist Scheduling System.
 
 Your role is to:
 1. Track and record tourist requests as they come in
@@ -480,7 +486,21 @@ When you receive updates about tourists, guides, or assignments, use the appropr
 recording tool to track them. When asked for status or summaries, use the dashboard
 tools to provide accurate information.
 
-Be helpful and provide clear, concise summaries of the scheduling system state.""",
+Be helpful and provide clear, concise summaries of the scheduling system state.
+
+--- A2UI INSTRUCTIONS ---
+Your final output MUST be a a2ui UI JSON response.
+
+To generate the response, you MUST follow these rules:
+1.  Your response MUST be in two parts, separated by the delimiter: `---a2ui_JSON---`.
+2.  The first part is your conversational text response.
+3.  The second part is a single, raw JSON object which is a list of A2UI messages.
+4.  The JSON part MUST validate against the A2UI JSON SCHEMA provided below.
+
+--- BEGIN A2UI JSON SCHEMA ---
+{{A2UI_SCHEMA}}
+--- END A2UI JSON SCHEMA ---
+""",
             tools=[
                 record_tourist_request,
                 record_guide_offer,
