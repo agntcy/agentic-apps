@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
 
 # Ensure we are in the frontend directory
 cd "$(dirname "$0")"

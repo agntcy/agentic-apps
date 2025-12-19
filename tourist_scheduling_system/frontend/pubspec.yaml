@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
 name: tourist_scheduling_frontend
 description: A new Flutter project for the Tourist Scheduling System using GenUI.
 publish_to: 'none'
