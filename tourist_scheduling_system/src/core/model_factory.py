@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import logging
 
@@ -19,6 +22,14 @@ def create_llm_model(agent_type: str = "default"):
 
     # Determine provider
     provider = os.getenv("MODEL_PROVIDER", "azure").lower()
+
+    # Clean proxy configuration if not needed
+    # This prevents LiteLLM/requests from trying to use a proxy that might not be configured correctly
+    if not os.getenv("HTTP_PROXY") and not os.getenv("HTTPS_PROXY"):
+        os.environ.pop("HTTP_PROXY", None)
+        os.environ.pop("HTTPS_PROXY", None)
+        os.environ.pop("http_proxy", None)
+        os.environ.pop("https_proxy", None)
 
     # Log proxy configuration
     http_proxy = os.getenv("HTTP_PROXY")
