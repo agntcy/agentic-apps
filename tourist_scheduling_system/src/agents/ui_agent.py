@@ -336,6 +336,7 @@ def record_assignment(
     assignment = {
         "tourist_id": tourist_id,
         "guide_id": guide_id,
+        "categories": [],
         "window": {
             "start": start_time,
             "end": end_time,
@@ -377,8 +378,10 @@ def get_dashboard_summary() -> str:
         Human-readable summary of the system state
     """
     state = get_dashboard_state()
+    logger.info(f"[ADK UI] get_dashboard_summary called. State object: {id(state)}")
     state.update_metrics()
     m = state.metrics
+    logger.info(f"[ADK UI] Metrics: tourists={m.total_tourists}, guides={m.total_guides}")
 
     summary = f"""Dashboard Summary (as of {m.last_updated}):
 
@@ -397,7 +400,9 @@ def get_dashboard_summary() -> str:
 
     # Add recent events
     for event in state.communication_events[-5:]:
-        summary += f"\n  • [{event.timestamp[:19]}] {event.summary}"
+        timestamp = event.get("timestamp", "") if isinstance(event, dict) else event.timestamp
+        summary_text = event.get("summary", "") if isinstance(event, dict) else event.summary
+        summary += f"\n  • [{timestamp[:19]}] {summary_text}"
 
     if not state.communication_events:
         summary += "\n  • No recent activity"
@@ -423,9 +428,15 @@ def get_recent_events(count: int = 10) -> str:
 
     result = f"Last {len(events)} communication events:\n"
     for i, event in enumerate(reversed(events), 1):
-        result += f"\n{i}. [{event.timestamp[:19]}] {event.message_type}\n"
-        result += f"   From: {event.source_agent} → To: {event.target_agent}\n"
-        result += f"   {event.summary}"
+        timestamp = event.get("timestamp", "") if isinstance(event, dict) else event.timestamp
+        message_type = event.get("message_type", "") if isinstance(event, dict) else event.message_type
+        source = event.get("source_agent", "") if isinstance(event, dict) else event.source_agent
+        target = event.get("target_agent", "") if isinstance(event, dict) else event.target_agent
+        summary_text = event.get("summary", "") if isinstance(event, dict) else event.summary
+
+        result += f"\n{i}. [{timestamp[:19]}] {message_type}\n"
+        result += f"   From: {source} → To: {target}\n"
+        result += f"   {summary_text}"
 
     return result
 
@@ -487,19 +498,6 @@ recording tool to track them. When asked for status or summaries, use the dashbo
 tools to provide accurate information.
 
 Be helpful and provide clear, concise summaries of the scheduling system state.
-
---- A2UI INSTRUCTIONS ---
-Your final output MUST be a a2ui UI JSON response.
-
-To generate the response, you MUST follow these rules:
-1.  Your response MUST be in two parts, separated by the delimiter: `---a2ui_JSON---`.
-2.  The first part is your conversational text response.
-3.  The second part is a single, raw JSON object which is a list of A2UI messages.
-4.  The JSON part MUST validate against the A2UI JSON SCHEMA provided below.
-
---- BEGIN A2UI JSON SCHEMA ---
-{{A2UI_SCHEMA}}
---- END A2UI JSON SCHEMA ---
 """,
             tools=[
                 record_tourist_request,
