@@ -1,0 +1,214 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Medical Symptom Triage Agent",
+  "description": "AI-powered medical triage agent that conducts intelligent symptom assessment, generates dynamic follow-up questions using advanced language models, and provides urgency recommendations with appropriate medical referrals. Compliant with A2A protocol for seamless agent-to-agent communication.",
+  "url": "",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [
+    {
+      "url": "",
+      "transport": "JSONRPC"
+    }
+  ],
+  "provider": {
+    "organization": "Cisco Outshift contributors/ssyechuri",
+    "url": ""
+  },
+  "iconUrl": "",
+  "version": "2.0.0",
+  "documentationUrl": "",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true,
+    "extensions": [
+      {
+        "uri": "",
+        "description": "AI-powered dynamic question generation for medical triage",
+        "required": false,
+        "params": {
+          "model": "gpt-4o",
+          "medical_specialization": true
+        }
+      },
+      {
+        "uri": "",
+        "description": "Real-time emergency condition detection and 911 recommendations",
+        "required": false,
+        "params": {
+          "emergency_keywords": ["chest pain", "breathing difficulty", "severe bleeding"],
+          "immediate_alert": true
+        }
+      }
+    ]
+  },
+  "securitySchemes": {
+    "apiKey": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key",
+      "description": "API key for accessing medical triage services"
+    },
+    "bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT",
+      "description": "JWT token for authenticated access"
+    }
+  },
+  "security": [
+    {"apiKey": []},
+    {"bearer": []}
+  ],
+  "defaultInputModes": [
+    "application/json",
+    "text/plain",
+    "multipart/form-data"
+  ],
+  "defaultOutputModes": [
+    "application/json",
+    "text/plain",
+    "application/pdf"
+  ],
+  "skills": [
+    {
+      "id": "medical-triage",
+      "name": "Medical Symptom Triage",
+      "description": "Conducts comprehensive medical symptom assessment using AI-generated dynamic questions. Evaluates urgency levels (emergency, urgent, routine) and provides appropriate medical care recommendations with specialist referrals.",
+      "tags": [
+        "medical",
+        "triage",
+        "healthcare",
+        "symptoms",
+        "assessment",
+        "emergency",
+        "ai-questioning",
+        "clinical-decision-support"
+      ],
+      "examples": [
+        "I have a severe headache that started this morning and is getting worse",
+        "I'm experiencing chest pain and shortness of breath after climbing stairs",
+        "My child has a fever of 102°F and isn't eating or drinking",
+        "I have abdominal pain that's sharp and located in my lower right side",
+        "I fell and hit my head, now I feel dizzy and nauseous",
+        "I have been coughing up blood for the past hour"
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json",
+        "text/plain",
+        "application/pdf"
+      ]
+    },
+    {
+      "id": "emergency-assessment",
+      "name": "Emergency Condition Assessment",
+      "description": "Rapid assessment for potentially life-threatening conditions with immediate 911 recommendations when appropriate. Uses advanced pattern recognition to identify emergency symptoms requiring immediate medical attention.",
+      "tags": [
+        "emergency",
+        "911",
+        "urgent",
+        "life-threatening",
+        "critical-care",
+        "immediate-response"
+      ],
+      "examples": [
+        "I'm having severe chest pain with sweating and pain radiating to my arm",
+        "I can't breathe properly and my lips are turning blue",
+        "I have severe bleeding from a wound that won't stop",
+        "I'm experiencing sudden severe headache unlike any I've had before",
+        "I think I'm having a stroke - my face feels numb and I can't speak clearly"
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json",
+        "text/plain"
+      ]
+    },
+    {
+      "id": "pediatric-triage",
+      "name": "Pediatric Symptom Assessment",
+      "description": "Specialized triage assessment for children and infants with age-appropriate questioning and urgency evaluation. Includes fever protocols, developmental considerations, and parent/caregiver guidance.",
+      "tags": [
+        "pediatric",
+        "children",
+        "infants",
+        "family-medicine",
+        "child-health",
+        "developmental"
+      ],
+      "examples": [
+        "My 6-month-old baby has a fever and seems very lethargic",
+        "My 4-year-old fell from the playground and is crying but conscious",
+        "My toddler has been vomiting and has diarrhea for 6 hours",
+        "My newborn hasn't been eating well and seems to have trouble breathing"
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json",
+        "text/plain"
+      ]
+    },
+    {
+      "id": "chronic-condition-monitoring",
+      "name": "Chronic Condition Assessment",
+      "description": "Assessment and monitoring for patients with existing chronic conditions (diabetes, hypertension, heart disease, etc.) to determine if current symptoms require immediate attention or routine follow-up.",
+      "tags": [
+        "chronic-conditions",
+        "diabetes",
+        "hypertension",
+        "heart-disease",
+        "monitoring",
+        "follow-up"
+      ],
+      "examples": [
+        "I have diabetes and my blood sugar has been running high with nausea",
+        "I have heart disease and I'm experiencing unusual fatigue and swelling",
+        "I have asthma and my inhaler isn't helping with my breathing today"
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json",
+        "text/plain"
+      ]
+    },
+    {
+      "id": "medication-interaction-check",
+      "name": "Medication and Symptom Interaction Assessment",
+      "description": "Evaluates if current symptoms might be related to medications, drug interactions, or side effects. Provides guidance on whether symptoms warrant immediate medical attention or medication adjustment.",
+      "tags": [
+        "medications",
+        "drug-interactions",
+        "side-effects",
+        "pharmaceutical",
+        "safety"
+      ],
+      "examples": [
+        "I started a new medication yesterday and now I have a rash",
+        "I'm taking multiple medications and feeling very dizzy and confused",
+        "I think my blood pressure medication might be causing these symptoms"
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json",
+        "text/plain"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false
+}
