@@ -1,0 +1,62 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  
+  resource:
+    attributes:
+      - key: deployment.type
+        value: "docker-compose"
+        action: upsert
+      - key: deployment.environment
+        value: "aws-ec2"
+        action: upsert  
+
+exporters:
+  clickhouse:
+    endpoint: tcp://clickhouse:9000
+    database: observability
+    username: ${CLICKHOUSE_USER}
+    password: ${CLICKHOUSE_PASSWORD}
+    logs_table_name: otel_logs
+    traces_table_name: otel_traces
+    metrics_table_name: otel_metrics
+    ttl: 72h
+
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  telemetry:
+    logs:
+      level: info         
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [debug, clickhouse]
+    traces:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [debug, clickhouse]
+    logs:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [debug, clickhouse]

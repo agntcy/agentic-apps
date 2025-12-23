@@ -1,0 +1,48 @@
+# Core Flask and web framework dependencies
+Flask==3.0.0
+Flask-CORS==4.0.0
+gunicorn==21.2.0
+
+# HTTP and JSON handling
+requests==2.31.0
+jsonschema==4.20.0
+
+# Data processing
+pandas==2.1.4
+numpy==1.24.4
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Async support
+asyncio-compat==0.2.1
+
+# Logging and monitoring
+structlog==23.2.0
+
+# Date and time handling
+python-dateutil==2.8.2
+
+# UUID and utility functions
+uuid==1.30
+
+# Optional: Enhanced JSON handling
+orjson==3.9.10
+
+# Optional: Advanced HTTP client
+httpx==0.25.2
+
+# Optional: Input validation
+pydantic==2.5.2
+
+# Optional: YAML support for config
+PyYAML==6.0.1
+
+# Optional: Enhanced async support
+aiohttp==3.9.1
+
+# Development dependencies
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# black==23.11.0
+# flake8==6.1.0
