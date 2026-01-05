@@ -461,6 +461,12 @@ export SCHED_PORT=10000                        # Scheduler port
 export UI_PORT=10021                           # Dashboard port
 export DIR_PORT=8888                           # Agent Directory port
 export DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888 # Directory address
+
+# Proxy Configuration (if behind a corporate proxy)
+export HTTP_PROXY="http://proxy.example.com:8080"
+export HTTPS_PROXY="http://proxy.example.com:8080"
+# Ensure localhost is excluded from proxy
+export NO_PROXY="localhost,127.0.0.1,::1"
 ```
 
 ## 🧪 Development

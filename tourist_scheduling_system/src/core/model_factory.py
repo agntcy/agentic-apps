@@ -25,16 +25,22 @@ def create_llm_model(agent_type: str = "default"):
 
     # Clean proxy configuration if not needed
     # This prevents LiteLLM/requests from trying to use a proxy that might not be configured correctly
+    # Also explicitly unset proxy if NO_PROXY is set but requests might still pick up env vars
     if not os.getenv("HTTP_PROXY") and not os.getenv("HTTPS_PROXY"):
         os.environ.pop("HTTP_PROXY", None)
         os.environ.pop("HTTPS_PROXY", None)
         os.environ.pop("http_proxy", None)
         os.environ.pop("https_proxy", None)
 
+    # Force trust_env=False for LiteLLM if we suspect proxy issues
+    # But LiteLLM doesn't expose this easily.
+    # Instead, let's ensure we log what's happening.
+
     # Log proxy configuration
     http_proxy = os.getenv("HTTP_PROXY")
     https_proxy = os.getenv("HTTPS_PROXY")
-    logger.info(f"Proxy configuration - HTTP_PROXY: {http_proxy}, HTTPS_PROXY: {https_proxy}")
+    no_proxy = os.getenv("NO_PROXY")
+    logger.info(f"Proxy configuration - HTTP_PROXY: {http_proxy}, HTTPS_PROXY: {https_proxy}, NO_PROXY: {no_proxy}")
 
     # Determine model name
     # 1. Try specific agent model var (e.g. GUIDE_MODEL)
@@ -56,7 +62,8 @@ def create_llm_model(agent_type: str = "default"):
         logger.info(f"Creating Gemini model: {model_name}")
         return LiteLlm(
             model=model_name,
-            api_key=api_key
+            api_key=api_key,
+            timeout=60
         )
 
     elif provider in ["azure", "openai"]:
@@ -75,6 +82,7 @@ def create_llm_model(agent_type: str = "default"):
             api_key=api_key,
             api_base=api_base,
             api_version=api_version,
+            timeout=60
         )
 
     else:
@@ -83,4 +91,4 @@ def create_llm_model(agent_type: str = "default"):
             model_name = "gpt-3.5-turbo" # Fallback
 
         logger.info(f"Creating generic LiteLLM model: {model_name}")
-        return LiteLlm(model=model_name)
+        return LiteLlm(model=model_name, timeout=60)

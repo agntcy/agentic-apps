@@ -346,6 +346,11 @@ async def chat_endpoint(request):
                 logger.warning(f"[ADK UI] Detected stuck tool call state: {e}. Resetting session.")
                 reset_session()
                 return JSONResponse({"text": "I encountered an error with my previous state. I have reset my memory. Please ask your question again.", "a2ui": []})
+
+            if "timeout" in str(e).lower():
+                 logger.error(f"[ADK UI] LLM request timed out: {e}")
+                 return JSONResponse({"text": "The request to the AI model timed out. Please check your network connection or proxy settings.", "a2ui": []})
+
             raise e
 
         print(f"DEBUG: Runner execution finished. Event count: {event_count}. Response text length: {len(response_text)}")

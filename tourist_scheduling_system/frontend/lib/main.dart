@@ -151,7 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Create a custom ContentGenerator that talks to our Python backend
     final contentGenerator = HttpContentGenerator(
-      baseUrl: 'http://localhost:10021', // UI Agent port
+      baseUrl: 'http://127.0.0.1:10021', // UI Agent port (use IP to avoid localhost resolution issues)
     );
 
     // Listen for text responses from the backend
@@ -203,7 +203,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _fetchState() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:10021/api/state'));
+      final response = await http.get(Uri.parse('http://127.0.0.1:10021/api/state'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _handleDashboardUpdate({'type': 'initial_state', 'data': data});
@@ -921,7 +921,7 @@ class HttpContentGenerator implements ContentGenerator {
         Uri.parse('$baseUrl/api/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'message': userText}),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       debugPrint('Response status: ${response.statusCode}');
       debugPrint('Response body: ${response.body}');
