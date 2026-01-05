@@ -33,6 +33,12 @@ try:
 except ImportError:
     TRACING_AVAILABLE = False
 
+# Import A2UI Schema
+try:
+    from .a2ui_schema import A2UI_SCHEMA
+except ImportError:
+    A2UI_SCHEMA = "{}"
+
 # Set up file logging
 try:
     from core.logging_config import setup_agent_logging
@@ -330,6 +336,7 @@ def record_assignment(
     assignment = {
         "tourist_id": tourist_id,
         "guide_id": guide_id,
+        "categories": [],
         "window": {
             "start": start_time,
             "end": end_time,
@@ -371,8 +378,10 @@ def get_dashboard_summary() -> str:
         Human-readable summary of the system state
     """
     state = get_dashboard_state()
+    logger.info(f"[ADK UI] get_dashboard_summary called. State object: {id(state)}")
     state.update_metrics()
     m = state.metrics
+    logger.info(f"[ADK UI] Metrics: tourists={m.total_tourists}, guides={m.total_guides}")
 
     summary = f"""Dashboard Summary (as of {m.last_updated}):
 
@@ -391,7 +400,9 @@ def get_dashboard_summary() -> str:
 
     # Add recent events
     for event in state.communication_events[-5:]:
-        summary += f"\n  • [{event.timestamp[:19]}] {event.summary}"
+        timestamp = event.get("timestamp", "") if isinstance(event, dict) else event.timestamp
+        summary_text = event.get("summary", "") if isinstance(event, dict) else event.summary
+        summary += f"\n  • [{timestamp[:19]}] {summary_text}"
 
     if not state.communication_events:
         summary += "\n  • No recent activity"
@@ -417,9 +428,15 @@ def get_recent_events(count: int = 10) -> str:
 
     result = f"Last {len(events)} communication events:\n"
     for i, event in enumerate(reversed(events), 1):
-        result += f"\n{i}. [{event.timestamp[:19]}] {event.message_type}\n"
-        result += f"   From: {event.source_agent} → To: {event.target_agent}\n"
-        result += f"   {event.summary}"
+        timestamp = event.get("timestamp", "") if isinstance(event, dict) else event.timestamp
+        message_type = event.get("message_type", "") if isinstance(event, dict) else event.message_type
+        source = event.get("source_agent", "") if isinstance(event, dict) else event.source_agent
+        target = event.get("target_agent", "") if isinstance(event, dict) else event.target_agent
+        summary_text = event.get("summary", "") if isinstance(event, dict) else event.summary
+
+        result += f"\n{i}. [{timestamp[:19]}] {message_type}\n"
+        result += f"   From: {source} → To: {target}\n"
+        result += f"   {summary_text}"
 
     return result
 
@@ -459,7 +476,7 @@ def get_ui_agent():
                 "A dashboard agent that monitors the tourist scheduling system and provides "
                 "real-time visibility into tourists, guides, assignments, and system metrics."
             ),
-            instruction="""You are the UI Dashboard Agent for the Tourist Scheduling System.
+            instruction=f"""You are the UI Dashboard Agent for the Tourist Scheduling System.
 
 Your role is to:
 1. Track and record tourist requests as they come in
@@ -480,7 +497,8 @@ When you receive updates about tourists, guides, or assignments, use the appropr
 recording tool to track them. When asked for status or summaries, use the dashboard
 tools to provide accurate information.
 
-Be helpful and provide clear, concise summaries of the scheduling system state.""",
+Be helpful and provide clear, concise summaries of the scheduling system state.
+""",
             tools=[
                 record_tourist_request,
                 record_guide_offer,

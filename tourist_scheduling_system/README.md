@@ -92,6 +92,27 @@ source run.sh --transport slim --tracing
 - Dashboard: http://localhost:10021
 - Jaeger UI: http://localhost:16686 (when tracing is enabled)
 
+### Running the Frontend (Optional)
+
+The system includes a modern Flutter-based frontend for a richer user experience.
+
+**Prerequisites:**
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) installed
+
+**Launch Instructions:**
+
+1.  Ensure the backend agents are running (see "Run the Demo" above).
+2.  Open a new terminal window.
+3.  Navigate to the frontend directory and launch the app:
+
+```bash
+cd frontend
+./setup.sh
+flutter run -d web-server
+```
+
+4.  Open the URL provided by Flutter (typically `http://localhost:web-port`) in your browser.
+
 ## 📁 Project Structure
 
 ```
@@ -440,6 +461,12 @@ export SCHED_PORT=10000                        # Scheduler port
 export UI_PORT=10021                           # Dashboard port
 export DIR_PORT=8888                           # Agent Directory port
 export DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888 # Directory address
+
+# Proxy Configuration (if behind a corporate proxy)
+export HTTP_PROXY="http://proxy.example.com:8080"
+export HTTPS_PROXY="http://proxy.example.com:8080"
+# Ensure localhost is excluded from proxy
+export NO_PROXY="localhost,127.0.0.1,::1"
 ```
 
 ## 🧪 Development

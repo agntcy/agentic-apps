@@ -1,0 +1,31 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: tourist_scheduling_frontend
+description: A new Flutter project for the Tourist Scheduling System using GenUI.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  genui: ^0.6.0
+  json_schema_builder: ^0.1.3
+  http: ^1.2.0
+  logging: ^1.2.0
+  json_annotation: ^4.8.1
+  web_socket_channel: ^3.0.3
+  fl_chart: ^1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.8
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
