@@ -36,6 +36,13 @@ services:
       dockerfile: containers/ui/Dockerfile
     image: ui-agent:latest
 
+  # Frontend - Flutter Web App
+  frontend:
+    build:
+      context: .
+      dockerfile: containers/frontend/Dockerfile
+    image: frontend:latest
+
   # Guide Agent - Client that offers tour services (Job)
   guide:
     build:

@@ -469,6 +469,20 @@ export HTTPS_PROXY="http://proxy.example.com:8080"
 export NO_PROXY="localhost,127.0.0.1,::1"
 ```
 
+## 📦 Distribution
+
+### Building the Frontend Container
+
+To distribute the frontend as a Docker container:
+
+```bash
+cd frontend
+docker build -t tourist-scheduling-frontend .
+docker run -p 8080:80 tourist-scheduling-frontend
+```
+
+Access the frontend at `http://localhost:8080`.
+
 ## 🧪 Development
 
 ### Running Tests
