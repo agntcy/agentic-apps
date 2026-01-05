@@ -13,6 +13,9 @@ containers/
 ├── ui/                 # UI dashboard agent (A2A server - Deployment)
 │   ├── Dockerfile
 │   └── main.py
+├── frontend/           # Flutter Web Frontend (Nginx - Deployment)
+│   ├── Dockerfile
+│   └── nginx.conf
 ├── guide/              # Guide agent (A2A client - Job)
 │   ├── Dockerfile
 │   └── main.py
@@ -27,6 +30,7 @@ containers/
 |-------|------|--------------|-------------|
 | scheduler | A2A Server | Deployment | Coordinates tourist-guide matching |
 | ui | A2A Server | Deployment | Real-time dashboard |
+| frontend | Web App | Deployment | Flutter Web Frontend |
 | guide | A2A Client | Job | Submits guide offers |
 | tourist | A2A Client | Job | Submits tour requests |
 
@@ -41,6 +45,7 @@ docker-compose build
 # Build individual agents
 docker build -f containers/scheduler/Dockerfile -t scheduler-agent .
 docker build -f containers/ui/Dockerfile -t ui-agent .
+docker build -f containers/frontend/Dockerfile -t frontend .
 docker build -f containers/guide/Dockerfile -t guide-agent .
 docker build -f containers/tourist/Dockerfile -t tourist-agent .
 ```

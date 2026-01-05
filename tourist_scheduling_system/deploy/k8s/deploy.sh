@@ -165,6 +165,10 @@ deploy_http() {
     log_info "Deploying UI dashboard agent..."
     envsubst < "$SCRIPT_DIR/ui-agent.yaml" | kubectl apply -f -
 
+    # Deploy frontend
+    log_info "Deploying frontend..."
+    envsubst < "$SCRIPT_DIR/frontend.yaml" | kubectl apply -f -
+
     log_info "Deployment complete!"
     log_info ""
     log_info "To deploy guide agents:"
@@ -223,6 +227,10 @@ deploy_slim() {
     # Deploy UI dashboard agent
     log_info "Deploying UI dashboard agent..."
     envsubst < "$SCRIPT_DIR/ui-agent.yaml" | kubectl apply -f -
+
+    # Deploy frontend
+    log_info "Deploying frontend..."
+    envsubst < "$SCRIPT_DIR/frontend.yaml" | kubectl apply -f -
 
     log_info "Deployment complete with SLIM transport!"
     log_info ""
