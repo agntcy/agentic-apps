@@ -3,6 +3,9 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
+# Enable web support
+RUN flutter config --enable-web
+
 # Copy pubspec files first to cache dependencies
 # Assuming build context is project root, so we copy from frontend/
 COPY frontend/pubspec.yaml frontend/pubspec.lock ./
@@ -10,6 +13,9 @@ RUN flutter pub get
 
 # Copy the rest of the application code
 COPY frontend/ .
+
+# Ensure web configuration is present (fixes "not configured for the web" error)
+RUN flutter create . --platforms web
 
 # Build the web application
 RUN flutter build web --release
