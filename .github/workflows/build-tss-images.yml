@@ -78,6 +78,9 @@ jobs:
           - name: ui-agent
             dockerfile: containers/ui/Dockerfile
             context: tourist_scheduling_system
+          - name: frontend
+            dockerfile: containers/frontend/Dockerfile
+            context: tourist_scheduling_system
           - name: guide-agent
             dockerfile: containers/guide/Dockerfile
             context: tourist_scheduling_system
