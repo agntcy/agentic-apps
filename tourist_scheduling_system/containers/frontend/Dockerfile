@@ -3,7 +3,7 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-# Enable web support
+# Enable web support (fixes "project not configured for web")
 RUN flutter config --enable-web
 
 # Copy pubspec files first to cache dependencies
