@@ -203,7 +203,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _fetchState() async {
     try {
-      final response = await http.get(Uri.parse('http://127.0.0.1:10021/api/state'));
+            final baseUrl = kReleaseMode ? Uri.base.origin : 'http://127.0.0.1:10021';
+      final response = await http.get(Uri.parse('$baseUrl/api/state'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _handleDashboardUpdate({'type': 'initial_state', 'data': data});
