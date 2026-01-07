@@ -151,7 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Create a custom ContentGenerator that talks to our Python backend
     final contentGenerator = HttpContentGenerator(
-      baseUrl: 'http://127.0.0.1:10021', // UI Agent port (use IP to avoid localhost resolution issues)
+      baseUrl: kReleaseMode ? Uri.base.origin : 'http://127.0.0.1:10021', // UI Agent port (use IP to avoid localhost resolution issues)
     );
 
     // Listen for text responses from the backend

@@ -3,7 +3,7 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-# Enable web support (fixes "project not configured for web")
+# Enable web support
 RUN flutter config --enable-web
 
 # Copy pubspec files first to cache dependencies
@@ -23,14 +23,21 @@ RUN flutter build web --release
 # Stage 2: Serve the app with Nginx
 FROM nginx:alpine
 
+# Install gettext for envsubst
+RUN apk add --no-cache gettext
+
 # Copy the build output from the previous stage
 COPY --from=build /app/build/web /usr/share/nginx/html
 
-# Copy custom Nginx configuration
-COPY containers/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom Nginx configuration template
+COPY containers/frontend/nginx.conf /etc/nginx/templates/default.conf.template
+
+# Default backend URL (can be overridden at runtime)
+# K8s service name: ui-dashboard-agent on port 80 (mapped to 10021)
+ENV BACKEND_URL=http://ui-dashboard-agent
 
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx
+# Start Nginx (envsubst is handled automatically by 20-envsubst-on-templates.sh in nginx:alpine)
 CMD ["nginx", "-g", "daemon off;"]

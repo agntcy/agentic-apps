@@ -179,7 +179,7 @@ metadata:
     app.kubernetes.io/name: ui-dashboard-agent
     app.kubernetes.io/part-of: tourist-scheduling
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - port: 80
       targetPort: 10021
