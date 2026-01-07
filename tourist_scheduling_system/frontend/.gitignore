@@ -52,3 +52,6 @@ linux/
 macos/
 web/
 windows/
+
+# Un-ignore lib/ (ignored by root .gitignore)
+!lib/
