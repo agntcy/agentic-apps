@@ -5,6 +5,7 @@
 #   ./spawn-agents.sh guides 5           # Spawn 5 guide agents
 #   ./spawn-agents.sh tourists 10        # Spawn 10 tourist agents
 #   ./spawn-agents.sh both 5 10          # Spawn 5 guides and 10 tourists
+#   ./spawn-agents.sh simulate 10 both   # Simulate agents arriving every 10s
 #   ./spawn-agents.sh clean              # Remove all agent jobs
 #   ./spawn-agents.sh status             # Show agent job status
 #
@@ -137,6 +138,39 @@ spawn_tourists() {
     log_info "Spawned ${count} tourist agents"
 }
 
+simulate() {
+    local interval=${1:-10}
+    local agent_type=${2:-both} # guides, tourists, both
+
+    log_info "Starting agent simulation (interval: ${interval}s, type: ${agent_type}). Press Ctrl+C to stop."
+
+    local counter=1000
+
+    trap "echo; log_info 'Simulation stopped'; exit 0" SIGINT
+
+    while true; do
+        counter=$((counter + 1))
+
+        case $agent_type in
+            guides)
+                spawn_guide $counter
+                ;;
+            tourists)
+                spawn_tourist $counter
+                ;;
+            both)
+                if [ $((RANDOM % 2)) -eq 0 ]; then
+                    spawn_guide $counter
+                else
+                    spawn_tourist $counter
+                fi
+                ;;
+        esac
+
+        sleep $interval
+    done
+}
+
 clean() {
     log_info "Removing all agent jobs from ${NAMESPACE}..."
 
@@ -180,6 +214,7 @@ show_usage() {
     echo "  guides <count>         Spawn specified number of guide agents (default: 5)"
     echo "  tourists <count>       Spawn specified number of tourist agents (default: 10)"
     echo "  both <guides> <tourists>  Spawn both guides and tourists"
+    echo "  simulate [interval] [type] Simulate agents arriving over time (e.g. simulate 10 both)"
     echo "  clean                  Remove all agent jobs"
     echo "  status                 Show agent job status"
     echo "  logs <type> <id>       Show logs for specific agent (e.g., logs guide 1)"
@@ -193,6 +228,7 @@ show_usage() {
     echo "  $0 guides 10           # Deploy 10 guides"
     echo "  $0 tourists 20         # Deploy 20 tourists"
     echo "  $0 both 5 15           # Deploy 5 guides and 15 tourists"
+    echo "  $0 simulate 10 both    # Simulate agents arriving every 10s"
     echo "  $0 clean               # Remove all agents"
 }
 
@@ -207,6 +243,9 @@ case "${1:-}" in
     both)
         spawn_guides "${2:-5}"
         spawn_tourists "${3:-10}"
+        ;;
+    simulate)
+        simulate "${2:-10}" "${3:-both}"
         ;;
     clean)
         clean
