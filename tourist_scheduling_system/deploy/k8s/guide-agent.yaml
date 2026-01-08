@@ -122,13 +122,17 @@ spec:
                   name: agent-config
                   key: SCHEDULER_SLIM_TOPIC
                   optional: true
+          command: ["/bin/sh", "-c"]
           args:
-            - "--guide-id=g1"
-            - "--categories=culture,history,food"
-            - "--available-start=2025-06-01T10:00:00"
-            - "--available-end=2025-06-01T14:00:00"
-            - "--hourly-rate=50"
-            - "--max-group-size=5"
+            - |
+              python main.py \
+                --guide-id=g1 \
+                --categories=culture,history,food \
+                --available-start=2025-06-01T10:00:00 \
+                --available-end=2025-06-01T14:00:00 \
+                --hourly-rate=50 \
+                --max-group-size=5 \
+                && echo "Agent finished. Sleeping..." && sleep 3600
           resources:
             requests:
               memory: "128Mi"
@@ -245,13 +249,17 @@ spec:
                   name: agent-config
                   key: SCHEDULER_SLIM_TOPIC
                   optional: true
+          command: ["/bin/sh", "-c"]
           args:
-            - "--guide-id=g2"
-            - "--categories=art,architecture"
-            - "--available-start=2025-06-01T09:00:00"
-            - "--available-end=2025-06-01T13:00:00"
-            - "--hourly-rate=75"
-            - "--max-group-size=3"
+            - |
+              python main.py \
+                --guide-id=g2 \
+                --categories=art,architecture \
+                --available-start=2025-06-01T09:00:00 \
+                --available-end=2025-06-01T13:00:00 \
+                --hourly-rate=75 \
+                --max-group-size=3 \
+                && echo "Agent finished. Sleeping..." && sleep 3600
           resources:
             requests:
               memory: "128Mi"

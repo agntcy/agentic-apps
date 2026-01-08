@@ -63,6 +63,31 @@ spec:
           env:
             - name: PORT
               value: "10021"
+            # Azure OpenAI configuration
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: api-key
+                  optional: true
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: endpoint
+                  optional: true
+            - name: AZURE_OPENAI_DEPLOYMENT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: deployment-name
+                  optional: true
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: AZURE_OPENAI_API_VERSION
+                  optional: true
             # Google Gemini configuration
             - name: GOOGLE_API_KEY
               valueFrom:

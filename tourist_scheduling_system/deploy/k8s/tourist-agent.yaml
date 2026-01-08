@@ -122,12 +122,16 @@ spec:
                   name: agent-config
                   key: SCHEDULER_SLIM_TOPIC
                   optional: true
+          command: ["/bin/sh", "-c"]
           args:
-            - "--tourist-id=t1"
-            - "--preferences=culture,history"
-            - "--availability-start=2025-06-01T09:00:00"
-            - "--availability-end=2025-06-01T17:00:00"
-            - "--budget=100"
+            - |
+              python main.py \
+                --tourist-id=t1 \
+                --preferences=culture,history \
+                --availability-start=2025-06-01T09:00:00 \
+                --availability-end=2025-06-01T17:00:00 \
+                --budget=100 \
+                && echo "Agent finished. Sleeping..." && sleep 3600
           resources:
             requests:
               memory: "128Mi"
@@ -244,12 +248,16 @@ spec:
                   name: agent-config
                   key: SCHEDULER_SLIM_TOPIC
                   optional: true
+          command: ["/bin/sh", "-c"]
           args:
-            - "--tourist-id=t2"
-            - "--preferences=art,food"
-            - "--availability-start=2025-06-01T10:00:00"
-            - "--availability-end=2025-06-01T15:00:00"
-            - "--budget=80"
+            - |
+              python main.py \
+                --tourist-id=t2 \
+                --preferences=art,food \
+                --availability-start=2025-06-01T10:00:00 \
+                --availability-end=2025-06-01T15:00:00 \
+                --budget=80 \
+                && echo "Agent finished. Sleeping..." && sleep 3600
           resources:
             requests:
               memory: "128Mi"
