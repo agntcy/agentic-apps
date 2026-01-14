@@ -1,0 +1,59 @@
+name: Test Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Backend (Python)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.11"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "tourist_scheduling_system/pyproject.toml"
+
+      - name: Install Python dependencies
+        working-directory: tourist_scheduling_system
+        run: |
+          uv sync --all-extras --dev
+
+      - name: Run Python tests with coverage
+        working-directory: tourist_scheduling_system
+        run: |
+          uv run pytest --cov=src --cov-report=xml:coverage.xml
+
+      # Frontend (Flutter)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Flutter dependencies
+        working-directory: tourist_scheduling_system/frontend
+        run: flutter pub get
+
+      - name: Run Flutter tests with coverage
+        working-directory: tourist_scheduling_system/frontend
+        run: flutter test --coverage
+
+      # Upload to Codecov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./tourist_scheduling_system/coverage.xml,./tourist_scheduling_system/frontend/coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

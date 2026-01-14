@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.14"
 dependencies = [
     # A2A SDK with HTTP server support
     "a2a-sdk[http-server]>=0.3.20",
