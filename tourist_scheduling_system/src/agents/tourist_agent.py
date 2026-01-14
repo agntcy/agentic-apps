@@ -74,6 +74,7 @@ async def create_tourist_agent(
     from google.adk.agents.llm_agent import LlmAgent
     from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
     from google.adk.models.lite_llm import LiteLlm
+    from google.adk.tools import load_memory
 
     transport_mode = get_transport_mode()
     logger.info(f"[Tourist {tourist_id}] Creating agent with transport mode: {transport_mode}")
@@ -129,6 +130,7 @@ When you want to request a tour, communicate with the scheduler sub-agent.
 After sending your request, you should receive a schedule proposal with matched guides.
 Be polite and clear in describing what kind of tour experience you're looking for.""",
         sub_agents=[scheduler_remote],
+        tools=[load_memory],
     )
 
     return tourist_agent
@@ -154,7 +156,10 @@ async def run_tourist_agent(
         budget: Maximum hourly budget in dollars
     """
     # Import ADK runner at runtime
-    from google.adk.runners import InMemoryRunner
+    from google.adk.runners import Runner
+    from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from src.core.memory import FileMemoryService
 
     transport_mode = get_transport_mode()
     print(f"[Tourist {tourist_id}] Starting with ADK (transport: {transport_mode})...")
@@ -197,7 +202,13 @@ async def run_tourist_agent(
 
     # Create the tourist agent
     agent = await create_tourist_agent(tourist_id, scheduler_url, a2a_client_factory)
-    runner = InMemoryRunner(agent=agent)
+    runner = Runner(
+        agent=agent,
+        app_name=f"tourist_{tourist_id}",
+        artifact_service=InMemoryArtifactService(),
+        session_service=InMemorySessionService(),
+        memory_service=FileMemoryService(f"tourist_memory_{tourist_id}.json")
+    )
 
     # Create request message
     message = create_tourist_request_message(
