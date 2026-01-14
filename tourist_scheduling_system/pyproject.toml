@@ -26,21 +26,21 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     # A2A SDK with HTTP server support
-    "a2a-sdk[http-server]>=0.3.0",
+    "a2a-sdk[http-server]>=0.3.20",
     # CLI and HTTP
     "click>=8.0.0",
-    "httpx>=0.24.0",
+    "httpx>=0.28.1",
     # Web framework
-    "uvicorn>=0.23.0",
-    "fastapi>=0.100.0",
+    "uvicorn>=0.40.0",
+    "fastapi>=0.115.0,<0.124.0",
     "websockets>=11.0.0",
     # AI/LLM
-    "openai>=1.0.0",
-    "google-adk==1.20.0",
-    "litellm>=1.80.5",
+    "openai>=2.15.0",
+    "google-adk==1.22.1",
+    "litellm>=1.80.16",
     # Configuration
     "python-dotenv>=1.0.0",
-    "pydantic==2.12.3",
+    "pydantic==2.12.5",
     "pydantic-settings>=2.0.0",
     # OpenTelemetry for distributed tracing
     "opentelemetry-api>=1.20.0",
@@ -48,7 +48,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.20.0",
     "slimrpc==0.2.1",
     "slima2a==0.2.2",
-    "agntcy-dir>=0.5.7",
+    "agntcy-dir>=0.6.0",
 ]
 
 [project.optional-dependencies]
@@ -119,4 +119,5 @@ strict_equality = true
 [dependency-groups]
 dev = [
     "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
 ]
