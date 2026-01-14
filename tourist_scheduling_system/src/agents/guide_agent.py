@@ -81,6 +81,7 @@ async def create_guide_agent(
     from google.adk.agents.llm_agent import LlmAgent
     from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
     from google.adk.models.lite_llm import LiteLlm
+    from google.adk.tools import load_memory
 
     transport_mode = get_transport_mode()
     logger.info(f"[Guide {guide_id}] Creating agent with transport mode: {transport_mode}")
@@ -135,6 +136,7 @@ When you want to offer your services, communicate with the scheduler sub-agent.
 
 Be helpful and professional in describing your tour offerings.""",
         sub_agents=[scheduler_remote],
+        tools=[load_memory],
     )
 
     return guide_agent
@@ -162,7 +164,10 @@ async def run_guide_agent(
         max_group_size: Maximum tourists per tour
     """
     # Import ADK runner at runtime
-    from google.adk.runners import InMemoryRunner
+    from google.adk.runners import Runner
+    from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from src.core.memory import FileMemoryService
 
     transport_mode = get_transport_mode()
     print(f"[Guide {guide_id}] Starting with ADK (transport: {transport_mode})...")
@@ -205,7 +210,13 @@ async def run_guide_agent(
 
     # Create the guide agent
     agent = await create_guide_agent(guide_id, scheduler_url, a2a_client_factory)
-    runner = InMemoryRunner(agent=agent)
+    runner = Runner(
+        agent=agent,
+        app_name=f"guide_{guide_id}",
+        artifact_service=InMemoryArtifactService(),
+        session_service=InMemorySessionService(),
+        memory_service=FileMemoryService(f"guide_memory_{guide_id}.json")
+    )
 
     # Create offer message
     message = create_guide_offer_message(
