@@ -1,4 +1,5 @@
 # Agentic Apps Monorepo
+[![codecov](https://codecov.io/gh/agntcy/agentic-apps/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/agentic-apps)
 
 Collection of experimental and reference agent applications built on the A2A protocol and SDK. Each subfolder is a self-contained agent system or demo (some with autonomous LLM behavior, real-time dashboards, or network orchestration).
 
