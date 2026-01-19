@@ -70,7 +70,7 @@ jobs:
           docker image inspect "$IMAGE_REF" >/dev/null 2>&1
 
       - name: Run Trivy vulnerability scan (image)
-        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.24.0
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.24.0
         with:
           image-ref: ${{ matrix.repo }}:${{ matrix.version }}
           format: sarif
