@@ -28,6 +28,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: 🧹 Conventional Commits
-        uses: webiny/action-conventional-commits@v1.3.0
+        uses: webiny/action-conventional-commits@v1.3.1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
