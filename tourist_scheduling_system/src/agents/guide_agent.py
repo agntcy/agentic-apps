@@ -166,7 +166,7 @@ async def run_guide_agent(
     # Import ADK runner at runtime
     from google.adk.runners import Runner
     from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.adk.sessions import DatabaseSessionService
     from src.core.memory import FileMemoryService
 
     transport_mode = get_transport_mode()
@@ -214,7 +214,7 @@ async def run_guide_agent(
         agent=agent,
         app_name=f"guide_{guide_id}",
         artifact_service=InMemoryArtifactService(),
-        session_service=InMemorySessionService(),
+        session_service=DatabaseSessionService(db_url=f"sqlite+aiosqlite:///guide_sessions_{guide_id}.db"),
         memory_service=FileMemoryService(f"guide_memory_{guide_id}.json")
     )
 

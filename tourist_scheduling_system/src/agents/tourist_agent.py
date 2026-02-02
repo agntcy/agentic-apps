@@ -158,7 +158,7 @@ async def run_tourist_agent(
     # Import ADK runner at runtime
     from google.adk.runners import Runner
     from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
-    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.adk.sessions import DatabaseSessionService
     from src.core.memory import FileMemoryService
 
     transport_mode = get_transport_mode()
@@ -206,7 +206,7 @@ async def run_tourist_agent(
         agent=agent,
         app_name=f"tourist_{tourist_id}",
         artifact_service=InMemoryArtifactService(),
-        session_service=InMemorySessionService(),
+        session_service=DatabaseSessionService(db_url=f"sqlite+aiosqlite:///tourist_sessions_{tourist_id}.db"),
         memory_service=FileMemoryService(f"tourist_memory_{tourist_id}.json")
     )
 

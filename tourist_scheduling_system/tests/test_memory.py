@@ -120,12 +120,21 @@ class TestFileMemoryService:
     @pytest.mark.asyncio
     async def test_search_memory_malformed_event(self, memory_service):
         import json
+
+        # Create a valid event with empty parts
+        event_content = types.Content(role="user", parts=[])
+        event_empty_parts = Event(
+            author="user",
+            content=event_content,
+            timestamp=1704067200
+        ).model_dump(mode='json')
+
         # Write directly to the file backend used by memory_service
         data = {
             "app/user": {
                 "sess1": [
                     {"garbage": "data"},
-                    {"role": "user", "content": {"parts": []}},   # Valid event, empty parts
+                    event_empty_parts
                 ]
             }
         }
