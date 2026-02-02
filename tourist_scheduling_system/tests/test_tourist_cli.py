@@ -101,6 +101,51 @@ class TestTouristCLI:
             assert "a2a_client_factory" in call_kwargs
             assert call_kwargs["a2a_client_factory"] is not None
 
+    @pytest.mark.asyncio
+    async def test_run_tourist_agent_slim_import_error(self, mock_dependencies):
+        """Test fallback to HTTP when SLIM import fails."""
+        with patch.dict(os.environ, {"TRANSPORT_MODE": "slim"}), \
+             patch("core.slim_transport.create_slim_client_factory", side_effect=ImportError("No SLIM")), \
+             patch("src.core.slim_transport.create_slim_client_factory", side_effect=ImportError("No SLIM")):
+
+            await tourist_agent.run_tourist_agent(
+                "t1", "http://localhost", ["history"], "start", "end", 100.0
+            )
+
+            # Verify fallback to HTTP transport
+            mock_dependencies["MockRemote"].assert_called()
+            call_kwargs = mock_dependencies["MockRemote"].call_args.kwargs
+            assert isinstance(call_kwargs.get("agent_card"), str)
+
+    @pytest.mark.asyncio
+    async def test_run_tourist_agent_slim_generic_error(self, mock_dependencies):
+        """Test exception propagation when SLIM creation fails."""
+        with patch.dict(os.environ, {"TRANSPORT_MODE": "slim"}), \
+             patch("core.slim_transport.create_slim_client_factory", side_effect=ValueError("Boom")), \
+             patch("core.slim_transport.config_from_env"), \
+             patch("src.core.slim_transport.create_slim_client_factory", side_effect=ValueError("Boom")), \
+             patch("src.core.slim_transport.config_from_env"):
+
+            with pytest.raises(ValueError, match="Boom"):
+                await tourist_agent.run_tourist_agent(
+                    "t1", "http://localhost", ["history"], "start", "end", 100.0
+                )
+
+    @pytest.mark.asyncio
+    async def test_run_tourist_agent_retry_failure(self, mock_dependencies):
+        """Test retry logic failure."""
+        mock_runner = mock_dependencies["MockRunner"].return_value
+        mock_runner.run_debug.side_effect = Exception("Connection failed")
+
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+             with pytest.raises(Exception, match="Connection failed"):
+                await tourist_agent.run_tourist_agent(
+                    "t1", "http://localhost", ["history"], "start", "end", 100.0
+                )
+
+             assert mock_runner.run_debug.call_count == 30
+             assert mock_sleep.call_count == 29
+
     def test_main(self, mock_dependencies):
         runner = CliRunner()
         with patch("sys.exit"), \

@@ -101,6 +101,56 @@ class TestGuideCLI:
                  assert False, "Neither core nor src.core mocks were called"
 
 
+    @pytest.mark.asyncio
+    async def test_run_guide_agent_slim_import_error(self, mock_dependencies):
+        """Test fallback to HTTP when SLIM import fails."""
+        with patch.dict(os.environ, {"TRANSPORT_MODE": "slim"}), \
+             patch("core.slim_transport.create_slim_client_factory", side_effect=ImportError("No SLIM")), \
+             patch("src.core.slim_transport.create_slim_client_factory", side_effect=ImportError("No SLIM")):
+
+            # Should not raise, just log error and fallback to http (which uses RemoteA2aAgent with URL)
+            await guide_agent.run_guide_agent(
+                 "g1", "http://localhost", ["art"], "start", "end", 50.0
+            )
+
+            # Verify fallback to HTTP transport
+            mock_dependencies["MockRemote"].assert_called()
+            # The agent card should be a string (URL) not an object
+            call_kwargs = mock_dependencies["MockRemote"].call_args.kwargs
+            assert isinstance(call_kwargs.get("agent_card"), str)
+
+    @pytest.mark.asyncio
+    async def test_run_guide_agent_slim_generic_error(self, mock_dependencies):
+        """Test exception propagation when SLIM creation fails with generic error."""
+        with patch.dict(os.environ, {"TRANSPORT_MODE": "slim"}), \
+             patch("core.slim_transport.create_slim_client_factory", side_effect=ValueError("Boom")), \
+             patch("core.slim_transport.config_from_env"), \
+             patch("src.core.slim_transport.create_slim_client_factory", side_effect=ValueError("Boom")), \
+             patch("src.core.slim_transport.config_from_env"):
+
+            with pytest.raises(ValueError, match="Boom"):
+                await guide_agent.run_guide_agent(
+                     "g1", "http://localhost", ["art"], "start", "end", 50.0
+                )
+
+    @pytest.mark.asyncio
+    async def test_run_guide_agent_retry_failure(self, mock_dependencies):
+        """Test retry logic failure."""
+        mock_runner = mock_dependencies["MockRunner"].return_value
+        # Make run_debug raise exceptions
+        mock_runner.run_debug.side_effect = Exception("Connection failed")
+
+        # Speed up retry delay
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+             with pytest.raises(Exception, match="Connection failed"):
+                await guide_agent.run_guide_agent(
+                    "g1", "http://localhost", ["art"], "start", "end", 50.0
+                )
+
+             # Should have retried multiple times (max_retries=30)
+             assert mock_runner.run_debug.call_count == 30
+             assert mock_sleep.call_count == 29
+
     def test_main(self, mock_dependencies):
         runner = CliRunner()
         with patch("sys.exit"), \
