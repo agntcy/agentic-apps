@@ -9,6 +9,8 @@ Collection of experimental and reference agent applications built on the A2A pro
 |---------|-------------|----------|
 | [`tourist_scheduling_system/`](tourist_scheduling_system/README.md) | Multi-agent tourist scheduling with scheduler, UI dashboard, and autonomous guide/tourist agents | A2A SDK, Google ADK, SLIM, FastAPI, WebSockets, OpenTelemetry |
 | [`network_of_assistants/`](network_of_assistants/README.md) | Network-of-assistants stack (moderator, math, file, web, user proxy) | FastAPI, Docker, A2A SDK |
+| [`agntcity/`](agntcity/README.md) | Multi-agent news app that scrapes Moltbook agent conversations, summarizes stories, and serves a daily digest UI | FastAPI, LangGraph, A2A SDK, NATS, React/Vite, MCP |
+
 
 See each project's README for installation, configuration, and usage instructions.
 
