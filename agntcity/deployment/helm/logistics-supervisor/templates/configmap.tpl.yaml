@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  AZURE_API_BASE: "{{ .Values.config.azureApiBase }}"
+  AZURE_API_VERSION: "{{ .Values.config.azureApiVersion }}"
+  LLM_MODEL: "{{ .Values.config.llmModel }}"
+  TRANSPORT_SERVER_ENDPOINT: "{{ .Values.config.transportServerEndpoint }}"
+  DEFAULT_MESSAGE_TRANSPORT: "{{ .Values.config.defaultMessageTransport }}"
+  OTLP_HTTP_ENDPOINT: "{{ .Values.config.otlpHttpEndpoint }}"
+  EXPERIMENTAL_FEATURE: "{{ .Values.config.experimentalFeature }}"

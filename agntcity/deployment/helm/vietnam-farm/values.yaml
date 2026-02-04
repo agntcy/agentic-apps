@@ -1,0 +1,49 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+appName: vietnam-farm
+appVersion: v1
+replicaCount: 1
+
+image:
+  repository: ghcr.io/agntcy/coffee-agntcy/vietnam-farm
+  tag: latest
+  pullPolicy: Always
+  pullSecret:
+
+service:
+  port: 9999
+
+config:
+  azureApiBase: ""
+  azureApiVersion: ""
+  llmModel: ""
+  transportServerEndpoint: ""
+  defaultMessageTransport: ""
+  otlpHttpEndpoint: ""
+  # Identity configuration
+  identityApiServerUrl: "" # Identity API endpoint
+  identityServiceApiKey: ""
+  identityAuthEnabled: "false"
+  mcpPaymentServiceUrl: ""
+#  llmStreaming: False
+
+# You can use your own config here for service account
+serviceaccount:
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_WITH_ROLE_ARN
+
+probes:
+  livenessProbeEnabled: false
+  readinessProbeEnabled: false
+  port: 9999
+  endpoint: /v1/health
+
+resources:
+  enabled: false
+  limits:
+    cpu: 2000m
+    memory: 2500Mi
+  requests:
+    cpu: 200m
+    memory: 500Mi
