@@ -15,9 +15,7 @@ from unittest.mock import MagicMock
 import sys
 from pathlib import Path
 
-# Add src to path for imports
-src_path = Path(__file__).parent.parent.parent / "src"
-sys.path.insert(0, str(src_path))
+# src path is added by conftest.py
 
 from agents.tools import (
     register_tourist_request,
