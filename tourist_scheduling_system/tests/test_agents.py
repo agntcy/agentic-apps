@@ -13,9 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
 # Add src to path for imports
-src_path = Path(__file__).parent.parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
+# src path is added by conftest.py
 
 # Check if ADK is available
 try:
