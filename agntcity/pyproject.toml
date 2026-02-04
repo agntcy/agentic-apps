@@ -1,0 +1,80 @@
+[project]
+name = "lungo"
+version = "0.1.0"
+description = ""
+authors = [{ name = "Shridhar Shah", email = "shridhsh@cisco.com" }]
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "a2a-sdk==0.3.2",
+    "click>=8.1.8",
+    "coloredlogs>=15.0.1",
+    "dotenv>=0.9.9",
+    "fastapi>=0.116.0",
+    "httpx>=0.23.0",
+    "langchain-anthropic>=0.3.13",
+    "langchain-google-genai>=2.1.4",
+    "langchain-openai>=0.3.16",
+    "langgraph>=0.4.1",
+    "langgraph-supervisor>=0.0.26",
+    "pydantic>=2.11.4",
+    "python-dotenv>=1.1.0",
+    "requests",
+    "starlette>=0.49.1",
+    "uvicorn>=0.29.0",
+    "mcp[cli]>=1.10.0",
+    "ioa-observe-sdk==1.0.24",
+    "agntcy-identity-service-sdk==0.0.7",
+    "llama-index-llms-azure-openai==0.4.2",
+    "langchain>=0.3.27",
+    "langchain-litellm>=0.3.0",
+    "llama-index-llms-litellm==0.6.3",
+    "llama-index-core==0.14.9",
+    "litellm==1.81.1",
+    "google-adk==1.22.1",
+    "agntcy-app-sdk==0.4.6",
+    "azure-core==1.38.0",
+
+    # Vulnerability fix for requests
+    "langchain-core>=1.2.5",
+    "urllib3>=2.6.3",
+    "aiohttp>=3.13.3",
+    "pyasn1>=0.6.2",
+    "pypdf>=6.6.0",
+    "filelock>=3.20.3",
+    "marshmallow>=3.26.2",
+    "PyNaCl>=1.6.2",
+    "mcp>=1.23.0",
+
+    "cryptography>=44.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=7.0",
+    "pytest-asyncio>=0.17.0,<0.18",
+    "pytest-cov>=4.0.0,<5",
+    "typing-extensions>=4.12.2,<5",
+    "openai>=2.8.0,<3.0",
+    "coloredlogs>=15.0.1,<16",
+    "langchain-openai>=0.3.14,<0.4",
+    "sentence-transformers>=5.1.1",
+    "agntcy-oasf-sdk-grpc-python==1.75.0.1.20250917120021+8b2bf93bf8dc",
+    "agntcy-oasf-sdk-protocolbuffers-python==32.1.0.1.20250917120021+8b2bf93bf8dc",
+    "agntcy-dir>=0.6.0",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["farm", "exchange"]

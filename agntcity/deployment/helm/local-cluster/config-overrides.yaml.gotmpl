@@ -1,0 +1,88 @@
+{{- /*
+  Applies the same config overrides to multiple subcharts.
+  Include all dependency names (or aliases) from your local-cluster Chart.yaml.
+*/ -}}
+
+{{- $auctionTargets := list "brazil-farm" "colombia-farm" "vietnam-farm" -}}
+{{- $logisticsTargets := list "logistics-farm" "logistics-accountant" "logistics-shipper" "logistics-helpdesk" -}}
+
+{{- $shared := dict "config" (dict
+  "azureApiBase" (env "AZURE_API_BASE")
+  "azureApiVersion" (env "AZURE_API_VERSION")
+  "llmModel" (env "LLM_MODEL")
+  "otlpHttpEndpoint" "http://lungo-local-cluster-opentelemetry-collector:4318"
+  "identityApiServerUrl" "https://api.agent-identity.outshift.com"
+) -}}
+
+{{- $slim := dict "config" (dict
+  "transportServerEndpoint" "http://lungo-local-cluster-slim:46357"
+  "defaultMessageTransport" "SLIM"
+) -}}
+
+{{- $nats := dict "config" (dict
+  "transportServerEndpoint" "nats://lungo-local-cluster-nats:4222"
+  "defaultMessageTransport" "NATS"
+) -}}
+
+{{- /* Auction targets: merge shared + NATS into one config block */ -}}
+{{- range $name := $auctionTargets }}
+{{- $cfg := merge (deepCopy $shared.config) (deepCopy $nats.config) }}
+{{ $name }}:
+  config:
+{{- toYaml $cfg | nindent 4 }}
+  externalSecrets:
+    secretStoreName: local-secret-store
+    secretStoreKind: ClusterSecretStore
+    data:
+      - secretKey: AZURE_API_KEY
+        remoteRef:
+          key: my-local-secret
+          property: AZURE_API_KEY
+{{- end }}
+
+{{- /* Logistics targets: merge shared + SLIM into one config block */ -}}
+{{- range $name := $logisticsTargets }}
+{{- $cfg := merge (deepCopy $shared.config) (deepCopy $slim.config) }}
+{{ $name }}:
+  config:
+{{- toYaml $cfg | nindent 4 }}
+  externalSecrets:
+    secretStoreName: local-secret-store
+    secretStoreKind: ClusterSecretStore
+    data:
+      - secretKey: AZURE_API_KEY
+        remoteRef:
+          key: my-local-secret
+          property: AZURE_API_KEY
+{{- end }}
+
+# Explicit per-chart overrides with ingress enabled
+auction-supervisor:
+  environment: local
+  config:
+{{- toYaml (merge (deepCopy $shared.config) (deepCopy $nats.config)) | nindent 4 }}
+  externalSecrets:
+    secretStoreName: local-secret-store
+    secretStoreKind: ClusterSecretStore
+    data:
+      - secretKey: AZURE_API_KEY
+        remoteRef:
+          key: my-local-secret
+          property: AZURE_API_KEY
+
+logistics-supervisor:
+  environment: local
+  config:
+{{- toYaml (merge (deepCopy $shared.config) (deepCopy $slim.config)) | nindent 4 }}
+  externalSecrets:
+    secretStoreName: local-secret-store
+    secretStoreKind: ClusterSecretStore
+    data:
+      - secretKey: AZURE_API_KEY
+        remoteRef:
+          key: my-local-secret
+          property: AZURE_API_KEY
+
+localExternalSecret:
+  azureApiKey: {{ env "AZURE_API_KEY" | quote }}
+

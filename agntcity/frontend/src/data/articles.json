@@ -1,0 +1,19 @@
+{
+  "articles": {
+    "article1": {
+      "title": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+      "summary": "Short summary here.",
+      "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus venenatis justo eget mauris cursus, eu laoreet orci aliquam. Sed enim ipsum, condimentum non tellus ac, sollicitudin varius nulla. Integer in euismod metus. Phasellus non malesuada mi. Nam et sapien et elit dignissim condimentum non sed quam. Praesent egestas mi ipsum, et laoreet est hendrerit id. Mauris justo tortor, vestibulum et risus eget, posuere pretium tortor. Phasellus porttitor orci nec elementum elementum. Ut a dolor sit amet purus varius consectetur. Praesent vulputate convallis lacus in lacinia.\n\nCurabitur leo justo, imperdiet ac molestie vitae, vehicula ut purus. Donec auctor dolor ac lorem vehicula ornare. Sed suscipit pulvinar arcu, faucibus tincidunt erat. Proin enim diam, convallis ac ultricies quis, lacinia sit amet felis. Quisque molestie felis ac velit pellentesque, vel molestie lacus tincidunt. Cras elementum tincidunt lorem, at elementum magna eleifend id. Nulla blandit purus ac nibh semper, sed ultricies mauris sagittis. Etiam mollis consectetur leo vel convallis. Aliquam nulla nulla, volutpat eu pulvinar et, convallis et neque. Suspendisse imperdiet imperdiet pharetra. Quisque lorem lacus, ornare vel dolor in, interdum dapibus risus. Morbi ac nulla turpis. Proin ornare commodo mauris, in tempus libero euismod sed. Pellentesque sollicitudin a risus vel euismod. Nulla sed aliquam lorem. Morbi pretium ligula a ligula euismod finibus.\n\nNunc lobortis eros quis faucibus congue. Sed dapibus ligula vitae libero dictum dictum. Fusce vel volutpat sapien. Donec condimentum, neque a imperdiet egestas, nunc nulla tempus enim, ut imperdiet dolor eros sed neque. Proin eget purus dictum, molestie quam vel, vehicula eros. Etiam maximus egestas est. Nulla sollicitudin, urna quis interdum mollis, orci mauris consectetur augue, vitae lacinia magna lacus consectetur risus. Curabitur sit amet congue urna. Aenean ut urna at ante porta elementum. Sed rhoncus nisi augue, ac tempus nulla dictum a.\n\nPhasellus non arcu et ante ornare fringilla. Suspendisse ut nulla nisi. Vivamus sagittis leo dapibus dictum interdum. Vestibulum blandit orci ante, eget mattis eros aliquam eget. Maecenas dapibus, libero vel laoreet bibendum, velit quam aliquam nisi, sed fermentum dolor tellus suscipit dui. Vivamus nunc dolor, finibus ac arcu non, dictum aliquet libero. Nulla vel tellus egestas, lacinia elit in, scelerisque nisl. Curabitur fermentum lacus et ultricies molestie. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Mauris velit est, sollicitudin ac ante eu, varius mattis libero. Nullam maximus eu nisl eget elementum. Aenean fermentum vulputate nisl a pretium. Sed tempor nulla non magna dapibus, eget dapibus tortor dapibus."
+    },
+    "article2": {
+      "title": "Sed do eiusmod tempor incididunt ut labore et dolore",
+      "summary": "Short summary here.",
+      "content": "Full article content text goes here."
+    },
+    "article3": {
+      "title": "Ut enim ad minim veniam, quis nostrud exercitation",
+      "summary": "Short summary here.",
+      "content": "Full article content text goes here."
+    }
+  }
+}
