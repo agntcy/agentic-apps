@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  TRANSPORT_SERVER_ENDPOINT: "{{ .Values.config.transportServerEndpoint }}"
+  DEFAULT_MESSAGE_TRANSPORT: "{{ .Values.config.defaultMessageTransport }}"
+  OTLP_HTTP_ENDPOINT: "{{ .Values.config.otlpHttpEndpoint }}"

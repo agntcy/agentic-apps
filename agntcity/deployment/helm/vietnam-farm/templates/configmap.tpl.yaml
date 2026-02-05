@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  AZURE_API_BASE: "{{ .Values.config.azureApiBase }}"
+  AZURE_API_VERSION: "{{ .Values.config.azureApiVersion }}"
+  LLM_MODEL: "{{ .Values.config.llmModel }}"
+  TRANSPORT_SERVER_ENDPOINT: "{{ .Values.config.transportServerEndpoint }}"
+  DEFAULT_MESSAGE_TRANSPORT: "{{ .Values.config.defaultMessageTransport }}"
+  OTLP_HTTP_ENDPOINT: "{{ .Values.config.otlpHttpEndpoint }}"
+  IDENTITY_API_SERVER_URL: "{{ .Values.config.identityApiServerUrl }}"
+  IDENTITY_AUTH_ENABLED: "{{ .Values.config.identityAuthEnabled }}"
+  IDENTITY_SERVICE_API_KEY: "{{ .Values.config.identityServiceApiKey }}"
+  MCP_PAYMENT_SERVICE_URL : "{{ .Values.config.mcpPaymentServiceUrl }}"

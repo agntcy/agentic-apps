@@ -1,0 +1,26 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install wget, curl, and ping (iputils)
+RUN apk add --no-cache wget curl iputils
+
+# Copy package.json and package-lock.json, then install dependencies
+COPY coffeeAGNTCY/coffee_agents/lungo/frontend/package.json coffeeAGNTCY/coffee_agents/lungo/frontend/package-lock.json ./
+
+# Copy application files, including assets
+COPY coffeeAGNTCY/coffee_agents/lungo/frontend/ .
+
+# This build step is simply for checking the validity of the build:
+# running type checks, linting, and making sure the build is functional.
+RUN ["npm", "install", "--verbose"]
+RUN ["npm", "run", "build", "--verbose"]
+RUN ["npm", "cache", "clean", "--force"]
+
+# Expose port 3000
+EXPOSE 3000
+
+# Copy the script to build and serve the UI
+COPY coffeeAGNTCY/coffee_agents/lungo/docker/ui-build-and-serve.sh ./ui-build-and-serve.sh
+# Start the application
+CMD ["sh", "./ui-build-and-serve.sh"]

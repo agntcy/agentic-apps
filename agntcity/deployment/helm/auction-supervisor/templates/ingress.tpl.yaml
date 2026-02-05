@@ -1,0 +1,59 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.ingress.serviceName }}
+                port:
+                  number: {{ .Values.ingress.servicePort }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecret }}
+{{- end }}
+
+{{/* Optional second ingress for a specific path prefix and annotations */}}
+{{- if .Values.extraIngress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.extraIngress.name | quote }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- range $key, $value := .Values.extraIngress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.extraIngress.className }}
+  rules:
+    - host: {{ .Values.extraIngress.host }}
+      http:
+        paths:
+          - path: {{ .Values.extraIngress.path }}
+            pathType: {{ .Values.extraIngress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ .Values.extraIngress.serviceName }}
+                port:
+                  number: {{ .Values.extraIngress.servicePort }}
+  tls:
+    - hosts:
+        - {{ .Values.extraIngress.host }}
+      secretName: {{ .Values.extraIngress.tlsSecret }}
+{{- end }}

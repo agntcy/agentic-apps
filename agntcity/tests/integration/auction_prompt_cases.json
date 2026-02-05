@@ -1,0 +1,70 @@
+{
+  "cases": [
+    {
+      "id": "brazil_create_order",
+      "prompt": "I'd like to buy 200 lbs of coffee at USD 500 price from Brazil.",
+      "reference_responses": [
+        "Unfortunately, I cannot process orders from Brazil at this time due to logistical constraints.",
+        "I'm sorry, I was unable to complete your order request for all items. An issue occurred for some parts. Please try again later.",
+        "Regrettably, I am unable to fulfill orders from Brazil currently due to supply chain issues.",
+        "I encountered some issues retrieving information for your request. Some parts could not be completed at this time due to a technical issue. Please try again later.",
+        "The user's request to buy coffee could not be processed due to an identity verification error with the farm. The conversation cannot proceed without resolving this issue, and the user has not provided any further instructions or questions.",
+        "I'm sorry, I was unable to complete your order request for all items. An issue occurred for some parts. Please try again later.",
+        "I'm sorry, but your request to buy X lbs of coffee at USD X from Brazil could not be completed due to an issue with the order process. Unfortunately, the farm is currently unreachable or there was an error in processing the request. If you have any other requests or need further assistance, please let me know!",
+        "Authentication or authorization failed. Please check your credentials and try again."
+      ],
+      "expected_min_similarity": 0.6
+    },
+    {
+      "id": "brazil_inventory",
+      "prompt": "What is the inventory of coffee in Brazil?",
+      "reference_responses": [
+        "The response provides the current coffee inventory for Brazil, including a numeric quantity and pounds/lbs unit."
+      ]
+    },
+    {
+      "id": "colombia_create_order",
+      "prompt": "I'd like to buy 200 lbs of coffee at USD 500 price from Colombia.",
+      "reference_responses": [
+        "Your order from Colombia has been successfully created and includes an Order ID and a Tracking Number.",
+        "Order created successfully from Colombia; details include Order ID and Tracking Number."
+      ]
+    },
+    {
+      "id": "vietnam_create_order",
+      "prompt": "I'd like to buy 200 lbs of coffee at USD 500 price from Vietnam.",
+      "reference_responses": [
+        "Your order from Vietnam has been successfully created and includes an Order ID and a Tracking Number.",
+        "Order created successfully from Vietnam; details include Order ID and Tracking Number."
+      ]
+    },
+    {
+      "id": "all_farms_yield",
+      "prompt": "What yield do the farms have?",
+      "reference_responses": [
+        "The response lists current coffee yields for Vietnam, Brazil, and Colombia in pounds."
+      ]
+    },
+    {
+      "id": "vietnam_inventory",
+      "prompt": "What is the inventory of coffee in Vietnam?",
+      "reference_responses": [
+        "The response provides the current coffee inventory for the Vietnam farm, including a numeric quantity and pounds/lbs unit."
+      ]
+    },
+    {
+      "id": "colombia_inventory",
+      "prompt": "What is the inventory of coffee in the Colombia farm?",
+      "reference_responses": [
+        "The response provides the current coffee inventory for the Colombia farm, including a numeric quantity and pounds/lbs unit."
+      ]
+    },
+    {
+      "id": "invalid_prompt",
+      "prompt": "What is a group of crows called?",
+      "reference_responses": [
+        "I'm not sure how to handle that. Could you please clarify?"
+      ]
+    }
+  ]
+}
