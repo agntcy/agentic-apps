@@ -10,9 +10,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Add src to path for imports
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
+# src path is added by conftest.py
 
 # Check if ADK is available
 try:
