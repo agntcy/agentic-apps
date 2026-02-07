@@ -36,11 +36,11 @@ dependencies = [
     "websockets>=11.0.0",
     # AI/LLM
     "openai>=2.15.0",
-    "google-adk==1.22.1",
+    "google-adk>=1.22.1",
     "litellm>=1.80.16",
     # Configuration
     "python-dotenv>=1.0.0",
-    "pydantic==2.12.5",
+    "pydantic>=2.12.5",
     "pydantic-settings>=2.0.0",
     # OpenTelemetry for distributed tracing
     "opentelemetry-api>=1.20.0",
