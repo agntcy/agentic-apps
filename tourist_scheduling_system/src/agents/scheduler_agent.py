@@ -78,6 +78,7 @@ def get_scheduler_agent():
         # Import ADK components at runtime
         from google.adk.agents.llm_agent import LlmAgent
         from google.adk.models.lite_llm import LiteLlm
+        from google.adk.tools import load_memory
 
         # Get model configuration from environment
         from core.model_factory import create_llm_model
@@ -127,6 +128,7 @@ Example: "Register guide marco" -> call register_guide_offer with guide_id="marc
                 run_scheduling,
                 get_schedule_status,
                 clear_scheduler_state,
+                load_memory,
             ],
         )
 
@@ -157,18 +159,33 @@ def create_scheduler_app(host: str = "localhost", port: int = 10000):
     """
     # Import ADK components at runtime
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
+    from google.adk.runners import Runner
+    from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+    from google.adk.sessions import DatabaseSessionService
+    from src.core.memory import FileMemoryService
 
     # Load agent card from a2a_cards directory
     from src.core.a2a_cards import get_scheduler_card
     agent_card = get_scheduler_card(host=host, port=port)
     logger.info(f"[ADK Scheduler] Using agent card: {agent_card.name} v{agent_card.version}")
 
+    agent = get_scheduler_agent()
+
+    runner = Runner(
+        agent=agent,
+        app_name="scheduler_agent",
+        artifact_service=InMemoryArtifactService(),
+        session_service=DatabaseSessionService(db_url="sqlite+aiosqlite:///scheduler_sessions.db"),
+        memory_service=FileMemoryService("scheduler_memory.json")
+    )
+
     return to_a2a(
-        get_scheduler_agent(),
+        agent,
         host=host,
         port=port,
         protocol="http",
         agent_card=agent_card,
+        runner=runner,
     )
 
 
@@ -199,7 +216,18 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
     agent = get_scheduler_agent()
 
     # Create runner for the agent
-    runner = InMemoryRunner(agent=agent)
+    from google.adk.runners import Runner
+    from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+    from google.adk.sessions import DatabaseSessionService
+    from src.core.memory import FileMemoryService
+
+    runner = Runner(
+        agent=agent,
+        app_name="scheduler_agent",
+        artifact_service=InMemoryArtifactService(),
+        session_service=DatabaseSessionService(db_url="sqlite+aiosqlite:///scheduler_sessions.db"),
+        memory_service=FileMemoryService("scheduler_memory.json")
+    )
 
     # Create A2A executor wrapping the ADK runner
     agent_executor = A2aAgentExecutor(runner=runner)
@@ -216,13 +244,22 @@ def create_scheduler_a2a_components(host: str = "localhost", port: int = 10000):
 async def run_console_demo():
     """Run a console demo of the scheduler agent."""
     # Import ADK runner at runtime
-    from google.adk.runners import InMemoryRunner
+    from google.adk.runners import Runner
+    from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+    from google.adk.sessions import DatabaseSessionService
+    from src.core.memory import FileMemoryService
 
     print("=" * 60)
     print("ADK Scheduler Agent - Console Demo")
     print("=" * 60)
 
-    runner = InMemoryRunner(agent=get_scheduler_agent())
+    runner = Runner(
+        agent=get_scheduler_agent(),
+        app_name="scheduler_console_demo",
+        artifact_service=InMemoryArtifactService(),
+        session_service=DatabaseSessionService(db_url="sqlite+aiosqlite:///scheduler_demo_sessions.db"),
+        memory_service=FileMemoryService("scheduler_demo_memory.json")
+    )
 
     # Demo messages
     demo_messages = [
