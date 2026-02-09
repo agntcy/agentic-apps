@@ -40,7 +40,7 @@ dependencies = [
     "litellm>=1.80.16",
     # Configuration
     "python-dotenv>=1.0.0",
-    "pydantic>=2.9.0",
+    "pydantic>=2.12.5",
     "pydantic-settings>=2.0.0",
     # OpenTelemetry for distributed tracing
     "opentelemetry-api>=1.20.0",
