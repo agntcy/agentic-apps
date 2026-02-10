@@ -35,6 +35,9 @@ RUN useradd -m user
 # Copy venv from builder with just the dependencies we need + our package
 COPY --from=builder --chown=user:user /app /app
 
+# Hack: instrument tools for the autogen agent
+COPY ./noa-web-surfer/_multimodal_web_surfer.py /app/lib/python3.13/site-packages/autogen_ext/agents/web_surfer/_multimodal_web_surfer.py
+
 # Ensure the environment is set up for the user
 ENV PATH="/app/bin:${PATH}"
 

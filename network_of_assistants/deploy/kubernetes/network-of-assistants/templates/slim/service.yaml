@@ -10,8 +10,13 @@ metadata:
 spec:
   type: {{ .Values.networkOfAssistants.slim.service.type }}
   ports:
-    - port: {{ .Values.networkOfAssistants.slim.service.port }}
+    - port: {{ .Values.networkOfAssistants.slim.service.dataPlane.port }}
       targetPort: 46357
       protocol: TCP
+      name: data-plane
+    - port: {{ .Values.networkOfAssistants.slim.service.controller.port }}
+      targetPort: 46358
+      protocol: TCP
+      name: controller
   selector:
     {{- include "network-of-assistants.slim.selectorLabels" . | nindent 4 }}

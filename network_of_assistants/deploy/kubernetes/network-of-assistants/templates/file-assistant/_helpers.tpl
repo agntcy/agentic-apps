@@ -1,9 +1,13 @@
+{{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
 
 {{/*
 Base name for the assistant component
 */}}
 {{- define "network-of-assistants.file-assistant.name" -}}
-{{- printf "%s-file-assistant" (include  "network-of-assistants.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- printf "file-assistant" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*

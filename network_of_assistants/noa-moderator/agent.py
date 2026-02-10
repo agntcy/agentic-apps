@@ -11,7 +11,7 @@ from typing import List, Literal, Union, Annotated
 
 from llm import load_llm
 
-from ioa_observe.sdk.decorators import agent, workflow, graph
+from ioa_observe.sdk.decorators import agent, graph
 
 log = logging.getLogger(__name__)
 
@@ -99,10 +99,16 @@ Query: {query_message}
 Your answer:
 """
 
-PROMPT_TEMPLATE = ChatPromptTemplate([("system", SYSTEM_PROMPT), ("user", INPUT_PROMPT)])
+PROMPT_TEMPLATE = ChatPromptTemplate(
+    [("system", SYSTEM_PROMPT), ("user", INPUT_PROMPT)]
+)
 
 
-@agent(name="moderator-agent", description="Orchestrates the agents in the chat, granting them the right to speak when needed.")
+@agent(
+    name="noa-moderator",
+    description="Orchestrates the agents in the chat, granting them the right to speak when needed.",
+    application_id="NOA",
+)
 class ModeratorAgent:
     def __init__(self, assistants_dir):
         class ChatMessage(BaseModel):
@@ -116,7 +122,11 @@ class ModeratorAgent:
             target: str
 
         class ModelAnswer(BaseModel):
-            messages: List[Annotated[Union[ChatMessage, RequestToSpeak], Field(discriminator="type")]]
+            messages: List[
+                Annotated[
+                    Union[ChatMessage, RequestToSpeak], Field(discriminator="type")
+                ]
+            ]
 
         self.assistants_dir = assistants_dir
         self.assistants = {}
@@ -127,7 +137,6 @@ class ModeratorAgent:
 
         self.chain = PROMPT_TEMPLATE | llm | parser
 
-    #@workflow(name="moderator-agent-chatbot")
     def invoke(self, input):
         input["agents_list"] = self.assistants
         return self.chain.invoke(input=input)
@@ -144,7 +153,8 @@ class ModeratorAgent:
                         data = json.load(file)
                         available_agents_list.append(
                             {
-                                "name": "noa-" + data["name"].lower().strip().replace(" ", "-"),
+                                "name": "noa-"
+                                + data["name"].lower().strip().replace(" ", "-"),
                                 "description": data["description"],
                             }
                         )

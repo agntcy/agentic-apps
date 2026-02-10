@@ -4,9 +4,12 @@
 apiVersion: v2
 name: network-of-assistants
 description: Helm chart for the Network of Assistants
+maintainers:
+  - name: tfeltin
+    email: tfeltin@cisco.com
 
 type: application
 
-version: 0.1.0
+version: 0.1.1
 
-appVersion: "0.1.0"
+appVersion: "0.1.1"

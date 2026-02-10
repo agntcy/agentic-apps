@@ -1,25 +1,31 @@
-
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-
-externalSecrets: []
-
 observability:
   enabled: false
   opentelemetry:
-    endpoint: ""
+    http:
+      endpoint: ""
+    grpc:
+      endpoint: ""
   executionID: ""
 
+externalSecrets: []
+
 networkOfAssistants:
+
+  environment: {}
 
   slim:
     image:
       repository: 'ghcr.io/agntcy/slim'
       pullPolicy: IfNotPresent
-      tag: "0.3.15"
+      tag: "0.5.0"
     service:
       type: ClusterIP
-      port: 46357
+      dataPlane:
+        port: 46357
+      controller:
+        port: 46358
 
   userProxy:
     image:
@@ -29,7 +35,7 @@ networkOfAssistants:
     service:
       type: ClusterIP
       port: 8000
-  
+
   moderator:
     assistantDirectoryPath: /home/user/dir/datamodels
     image:
@@ -41,12 +47,12 @@ networkOfAssistants:
       model: gpt-4o-mini
       remoteAPISecret:
         existingSecret: ""
-        address: ""
-        key: ""
+        address: "https://api.openai.com/v1/models"
+        key: "api-key"
         secretKeys:
           key: key
           address: address
-    
+
   webSurferAssistant:
     image:
       repository: 'ghcr.io/cisco-eti/ioa-observe/container-images/noa-web-surfer'
@@ -57,8 +63,8 @@ networkOfAssistants:
       model: gpt-4o-mini
       remoteAPISecret:
         existingSecret: ""
-        address: ""
-        key: ""
+        address: "https://api.openai.com/v1/models"
+        key: "api-key"
         secretKeys:
           key: key
           address: address
@@ -73,8 +79,8 @@ networkOfAssistants:
       model: gpt-4o-mini
       remoteAPISecret:
         existingSecret: ""
-        address: ""
-        key: ""
+        address: "https://api.openai.com/v1/models"
+        key: "api-key"
         secretKeys:
           key: key
           address: address
@@ -83,8 +89,8 @@ networkOfAssistants:
       model: text-embedding-3-large
       remoteAPISecret:
         existingSecret: ""
-        address: ""
-        key: ""
+        address: "https://api.openai.com/v1/models"
+        key: "api-key"
         secretKeys:
           key: key
           address: address
@@ -104,11 +110,11 @@ networkOfAssistants:
       model: gpt-4o-mini
       remoteAPISecret:
         existingSecret: ""
-        address: ""
-        key: ""
+        address: "https://api.openai.com/v1/models"
+        key: "api-key"
         secretKeys:
           key: key
-          address: address      
+          address: address
 
 replicaCount: 1
 
@@ -141,6 +147,9 @@ ingress:
   tls: []
 
 resources: {}
+
+livenessProbe: {}
+readinessProbe: {}
 
 autoscaling:
   enabled: false

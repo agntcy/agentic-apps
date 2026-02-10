@@ -63,7 +63,7 @@ Follow these steps to deploy and run your own Network of Assistants! 🌟
 
 ## Roadmap
 
-See the [open issues](https://github.com/agntcy/network-of-assistants/issues) for a list
+See the [open issues](https://github.com/agntcy/agentic-apps/issues) for a list
 of proposed features (and known issues).
 
 ## Contributing

@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "network-of-assistants.slim.labels" . | nindent 4 }}
 data:
-  server-config.yaml: |
+  config.yaml: |
     # Copyright AGNTCY Contributors (https://github.com/agntcy)
     # SPDX-License-Identifier: Apache-2.0
 
@@ -23,11 +23,16 @@ data:
       drain_timeout: 10s
 
     services:
-      gateway/0:
-        pubsub:
+      slim/0:
+        dataplane:
           servers:
-            - endpoint: "0.0.0.0:{{ .Values.networkOfAssistants.slim.service.port }}"
+            - endpoint: "0.0.0.0:{{ .Values.networkOfAssistants.slim.service.dataPlane.port }}"
               tls:
                 insecure: true
 
           clients: []
+        controller:
+          servers:
+            - endpoint: "0.0.0.0:{{ .Values.networkOfAssistants.slim.service.controller.port }}"
+              tls:
+                insecure: true
