@@ -1,0 +1,36 @@
+{
+  "buyer": [
+    {
+      "prompt": "What yield do the farms have?",
+      "description": "Uses broadcast communication to query all farms for their yield information."
+    },
+    {
+      "prompt": "I'd like to buy 200 lbs quantity of coffee and who can fulfill it?",
+      "description": "Uses broadcast communication to identify farms with sufficient inventory to fulfill the request."
+    },
+    {
+      "prompt": "What is the current inventory for Brazil farm?",
+      "description": "With Identity Authentication enabled, this prompt will intentionally fail because the Brazil farm does not have a verified Identity badge. Uses direct communication with the Brazil farm."
+    },
+    {
+      "prompt": "What is the current inventory for Colombia farm?",
+      "description": "With Identity TBAC enabled, this prompt verifies agent-level policies. Uses direct communication with the Colombia farm."
+    },
+    {
+      "prompt": "What is the current inventory for Vietnam farm?",
+      "description": "Uses direct communication with the Vietnam farm to retrieve its current inventory."
+    }
+  ],
+  "purchaser": [
+    {
+      "prompt": "I'd like to buy 200 lbs quantity of coffee at USD 500 price from Colombia",
+      "description": "With Identity TBAC enabled, this prompt verifies tool-level policies. Uses direct communication with the Colombia farm."
+    }
+  ],
+  "streaming_prompts": [
+    {
+      "prompt": "What yield do the farms have?",
+      "description": "Uses broadcast communication with streaming to query all farms for their yield information and streams responses as they arrive."
+    }
+  ]
+}

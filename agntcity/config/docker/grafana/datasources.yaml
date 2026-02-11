@@ -1,0 +1,51 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    uid: clickhouse-ds
+    access: proxy
+    editable: true
+    isDefault: true
+    jsonData:
+      host: clickhouse-server
+      port: 9000
+      protocol: native
+      secure: false
+      username: admin
+      defaultDatabase: default
+
+      traces:
+        defaultDatabase: default
+        defaultTable: otel_traces
+        otelEnabled: true
+        otelVersion: latest
+        
+        # Core columns
+        traceIdColumn: TraceId
+        spanIdColumn: SpanId
+        parentSpanIdColumn: ParentSpanId
+        serviceNameColumn: ServiceName
+        operationNameColumn: SpanName
+        startTimeColumn: Timestamp
+        durationTimeColumn: Duration
+        durationUnit: nanoseconds
+        
+        # Attribute columns
+        tagsColumn: SpanAttributes
+        serviceTagsColumn: ResourceAttributes
+        
+        # Status
+        statusCodeColumn: StatusCode
+        statusMessageColumn: StatusMessage
+        
+        # These exist in your schema
+        kindColumn: SpanKind
+        stateColumn: TraceState
+        
+        # Nested arrays - use the prefix format
+        eventsPrefix: Events
+        linksPrefix: Links
+
+    secureJsonData:
+      password: "admin"

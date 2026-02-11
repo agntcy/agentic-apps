@@ -1,0 +1,42 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+appName: payment-mcp-server
+appVersion: v1
+replicaCount: 1
+
+transportServerEndpoint: ""
+otlpHttpEndpoint: ""
+defaultMessageTransport: ""
+
+identityServiceApiKey: ""
+identityAuthEnabled: "false"
+
+image:
+  repository: ghcr.io/agntcy/coffee-agntcy/payment-mcp-server
+  tag: latest
+  pullPolicy: Always
+  pullSecret:
+
+service:
+  port: 8125
+
+resources:
+  enabled: false
+  limits:
+    cpu: 2000m
+    memory: 2500Mi
+  requests:
+    cpu: 200m
+    memory: 500Mi
+
+probes:
+  endpoint: /
+  port: 8125
+  readinessProbeEnabled: true
+  livenessProbeEnabled: true
+
+# You can use your own config here for service account
+serviceaccount:
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_WITH_ROLE_ARN
