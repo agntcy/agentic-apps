@@ -5,14 +5,17 @@ import uuid
 from typing import List, Sequence, cast
 
 from llama_index.core.agent.react.types import ActionReasoningStep, BaseReasoningStep
-from llama_index.core.agent.workflow.workflow_events import AgentInput, AgentOutput, AgentStream
+from llama_index.core.agent.workflow.workflow_events import (
+    AgentInput,
+    AgentOutput,
+    AgentStream,
+)
 from llama_index.core.bridge.pydantic import BaseModel
 from llama_index.core.llms import ChatMessage
 from llama_index.core.llms.llm import ToolSelection
 from llama_index.core.memory import BaseMemory
 from llama_index.core.tools import AsyncBaseTool
 from llama_index.core.workflow import Context
-import requests
 
 
 async def take_step(
@@ -35,13 +38,17 @@ async def take_step(
     react_chat_formatter.context = system_prompt
 
     # Format initial chat input
-    current_reasoning: list[BaseReasoningStep] = await ctx.get(self.reasoning_key, default=[])
+    current_reasoning: list[BaseReasoningStep] = await ctx.get(
+        self.reasoning_key, default=[]
+    )
     input_chat = react_chat_formatter.format(
         tools,
         chat_history=llm_input,
         current_reasoning=current_reasoning,
     )
-    ctx.write_event_to_stream(AgentInput(input=input_chat, current_agent_name=self.name))
+    ctx.write_event_to_stream(
+        AgentInput(input=input_chat, current_agent_name=self.name)
+    )
 
     # Initial LLM call
     response = await self.llm.achat(input_chat)
@@ -72,9 +79,7 @@ async def take_step(
     try:
         reasoning_step = output_parser.parse(message_content, is_streaming=False)
     except ValueError as e:
-        error_msg = (
-            f"Error: Could not parse output. Please follow the thought-action-input format. Try again. Details: {e!s}"
-        )
+        error_msg = f"Error: Could not parse output. Please follow the thought-action-input format. Try again. Details: {e!s}"
         await memory.aput(last_chat_response.message)
         await memory.aput(ChatMessage(role="user", content=error_msg))
 
@@ -96,7 +101,9 @@ async def take_step(
 
     # If response step, we're done
     raw = (
-        last_chat_response.raw.model_dump() if isinstance(last_chat_response.raw, BaseModel) else last_chat_response.raw
+        last_chat_response.raw.model_dump()
+        if isinstance(last_chat_response.raw, BaseModel)
+        else last_chat_response.raw
     )
     if reasoning_step.is_done:
         return AgentOutput(

@@ -109,7 +109,9 @@ async def amain(args):
         }
         llm = Ollama(**kwargs)
     else:
-        raise Exception(f"LLM type {args.llm_type} is not supported. Must be azure, openai, or ollama.")
+        raise Exception(
+            f"LLM type {args.llm_type} is not supported. Must be azure, openai, or ollama."
+        )
 
     if args.rag_type == "openai":
         embed_model = OpenAIEmbedding(
@@ -118,7 +120,9 @@ async def amain(args):
             api_base=args.rag_base_url,
         )
     else:
-        raise Exception(f"RAG type {args.rag_type} is not supported. Only supported type is openai.")
+        raise Exception(
+            f"RAG type {args.rag_type} is not supported. Only supported type is openai."
+        )
 
     Settings.embed_model = embed_model
 
@@ -161,10 +165,16 @@ async def amain(args):
     @process_slim_msg("noa-file-assistant")
     async def on_message_received(message: bytes):
         decoded_message = message.decode("utf-8")
-        data = json.loads(decoded_message)
-
+        try:
+            data = json.loads(decoded_message)
+        except Exception as e:
+            # Message is not json, discard it
+            log.warning(f"Failed to decode message: {decoded_message} ({e})")
+            return
         if data["type"] == "ChatMessage":
-            memory.put(ChatMessage(role="user", content=f"{data['author']}: {data['message']}"))
+            memory.put(
+                ChatMessage(role="user", content=f"{data['author']}: {data['message']}")
+            )
 
         elif data["type"] == "RequestToSpeak" and data["target"] == args.assistant_id:
             log.info("Moderator requested me to speak")
@@ -191,30 +201,78 @@ async def amain(args):
 def run():
     parser = argparse.ArgumentParser(description="File reader assistant.")
     parser.add_argument(
-        "--slim-endpoint", type=str, default=os.getenv("SLIM_ENDPOINT", "http://localhost:12345"), help="SLIM endpoint"
+        "--slim-endpoint",
+        type=str,
+        default=os.getenv("SLIM_ENDPOINT", "http://localhost:12345"),
+        help="SLIM endpoint",
     )
     parser.add_argument(
-        "--assistant-id", type=str, default=os.getenv("ASSISTANT_ID", "noa-file-assistant"), help="Assistant ID"
-    )
-    parser.add_argument("--llm-api-key", type=str, default=os.getenv("ASSISTANT_LLM_API_KEY"), help="Assistant LLM key")
-    parser.add_argument("--llm-model", type=str, default=os.getenv("ASSISTANT_LLM_MODEL"), help="Assistant LLM model")
-    parser.add_argument(
-        "--doc-dir", type=str, default=os.getenv("ASSISTANT_DOC_DIR"), help="Assistant documentation directory"
+        "--assistant-id",
+        type=str,
+        default=os.getenv("ASSISTANT_ID", "noa-file-assistant"),
+        help="Assistant ID",
     )
     parser.add_argument(
-        "--llm-type", type=str, default=os.getenv("ASSISTANT_LLM_TYPE", "openai"), help="Assistant LLM type"
+        "--llm-api-key",
+        type=str,
+        default=os.getenv("ASSISTANT_LLM_API_KEY"),
+        help="Assistant LLM key",
     )
     parser.add_argument(
-        "--llm-base-url", type=str, default=os.getenv("ASSISTANT_LLM_BASE_URL"), help="Assistant LLM base URL"
+        "--llm-model",
+        type=str,
+        default=os.getenv("ASSISTANT_LLM_MODEL"),
+        help="Assistant LLM model",
     )
-    parser.add_argument("--rag-type", type=str, default=os.getenv("ASSISTANT_RAG_TYPE", "openai"), help="RAG type")
     parser.add_argument(
-        "--rag-model", type=str, default=os.getenv("ASSISTANT_RAG_MODEL", "text-embedding-3-large"), help="RAG model"
+        "--doc-dir",
+        type=str,
+        default=os.getenv("ASSISTANT_DOC_DIR"),
+        help="Assistant documentation directory",
     )
-    parser.add_argument("--rag-api-key", type=str, default=os.getenv("ASSISTANT_RAG_API_KEY"), help="RAG API key")
-    parser.add_argument("--rag-base-url", type=str, default=os.getenv("ASSISTANT_RAG_BASE_URL"), help="RAG base URL")
+    parser.add_argument(
+        "--llm-type",
+        type=str,
+        default=os.getenv("ASSISTANT_LLM_TYPE", "openai"),
+        help="Assistant LLM type",
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        type=str,
+        default=os.getenv("ASSISTANT_LLM_BASE_URL"),
+        help="Assistant LLM base URL",
+    )
+    parser.add_argument(
+        "--rag-type",
+        type=str,
+        default=os.getenv("ASSISTANT_RAG_TYPE", "openai"),
+        help="RAG type",
+    )
+    parser.add_argument(
+        "--rag-model",
+        type=str,
+        default=os.getenv("ASSISTANT_RAG_MODEL", "text-embedding-3-large"),
+        help="RAG model",
+    )
+    parser.add_argument(
+        "--rag-api-key",
+        type=str,
+        default=os.getenv("ASSISTANT_RAG_API_KEY"),
+        help="RAG API key",
+    )
+    parser.add_argument(
+        "--rag-base-url",
+        type=str,
+        default=os.getenv("ASSISTANT_RAG_BASE_URL"),
+        help="RAG base URL",
+    )
 
-    parser.add_argument("--file-url", type=str, default=os.getenv("FILE_URL"), help="File URL to download and analyze")
+    parser.add_argument(
+        "--file-url",
+        type=str,
+        default=os.getenv("FILE_URL"),
+        help="File URL to download and analyze",
+    )
 
     args = parser.parse_args()
 

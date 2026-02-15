@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
         "slim",
-        "autogen>=0.8.6",
-        "autogen-ext>=0.5.2",
-        "autogen-agentchat>=0.5.2",
+        "autogen==0.9.6", # needed to get tool spans
+        "autogen-ext==0.6.1", # needed to get tool spans
+        "autogen-agentchat==0.6.1", # needed to get tool spans
         "openai",
         "tiktoken>=0.9.0",
         "aiofiles",
@@ -16,8 +16,8 @@ dependencies = [
         "pydantic-settings>=2.8.1",
         "ollama>=0.4.7",
         "azure-ai-inference>=1.0.0b9",
-        "ioa-observe-sdk>=1.0.12",
-        "slim-bindings>=0.3.5",
+        "ioa-observe-sdk>=1.0.20",
+        "slim-bindings>=0.5.0",
     ]
 
 [tool.uv.sources]

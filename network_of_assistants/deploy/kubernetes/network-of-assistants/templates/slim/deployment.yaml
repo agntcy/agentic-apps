@@ -42,10 +42,11 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           image: "{{ .Values.networkOfAssistants.slim.image.repository }}:{{ .Values.networkOfAssistants.slim.image.tag | default .Chart.AppVersion }}"
+          command:
+            - "/slim"
           args:
-            - /gateway
-            - --config
-            - /config/server-config.yaml
+            - "--config"
+            - "/config/config.yaml"
           imagePullPolicy: {{ .Values.networkOfAssistants.slim.image.pullPolicy }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
@@ -56,12 +57,10 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-          {{- if .Values.networkOfAssistants.slim.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.slim.environment }}
-            - name: {{ $key }}
-              value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
+            - name: SLIM_SVC_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           {{- if .Values.networkOfAssistants.environment }}
           {{- range $key, $val := .Values.networkOfAssistants.environment }}
             - name: {{ $key }}

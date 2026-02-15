@@ -14,6 +14,8 @@ spec:
   selector:
     matchLabels:
       {{- include "network-of-assistants.file-assistant.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -54,7 +56,7 @@ spec:
           {{- end }}
           env:
             - name: SLIM_ENDPOINT
-              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.port }}"
+              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.dataPlane.port }}"
             - name: ASSISTANT_DOC_DIR
               value: "{{ .Values.networkOfAssistants.fileAssistant.volume.mountPath }}"
             - name: WITH_OBS
@@ -69,10 +71,7 @@ spec:
               value: "{{ .Values.networkOfAssistants.fileAssistant.llm.model }}"
             - name: FILE_URL
               value: "{{ .Values.networkOfAssistants.fileAssistant.fileURL }}"
-            {{ $llmSecretName := include "network-of-assistants.file-assistant.llmRemoteAPISecretName" . }}
-            {{- if .Values.networkOfAssistants.fileAssistant.llm.remoteAPISecret.existingSecret }}
-            {{ $llmSecretName = .Values.networkOfAssistants.fileAssistant.llm.remoteAPISecret.existingSecret }}
-            {{- end }}
+            {{ $llmSecretName := .Values.networkOfAssistants.fileAssistant.llm.remoteAPISecret.existingSecret | default (include "network-of-assistants.file-assistant.llmRemoteAPISecretName" .) -}}
             - name: ASSISTANT_LLM_BASE_URL
               valueFrom:
                 secretKeyRef:
@@ -87,10 +86,7 @@ spec:
               value: "{{ .Values.networkOfAssistants.fileAssistant.rag.type }}"
             - name: ASSISTANT_RAG_MODEL
               value: "{{ .Values.networkOfAssistants.fileAssistant.rag.model }}"
-            {{ $ragSecretName := include "network-of-assistants.file-assistant.ragRemoteAPISecretName" . }}
-            {{- if .Values.networkOfAssistants.fileAssistant.rag.remoteAPISecret.existingSecret }}
-            {{ $ragSecretName = .Values.networkOfAssistants.fileAssistant.rag.remoteAPISecret.existingSecret }}
-            {{- end }}
+            {{ $ragSecretName := .Values.networkOfAssistants.fileAssistant.rag.remoteAPISecret.existingSecret | default (include "network-of-assistants.file-assistant.ragRemoteAPISecretName" .) -}}
             - name: ASSISTANT_RAG_BASE_URL
               valueFrom:
                 secretKeyRef:
@@ -101,18 +97,12 @@ spec:
                 secretKeyRef:
                   name: {{ $ragSecretName }}
                   key: {{ .Values.networkOfAssistants.fileAssistant.rag.remoteAPISecret.secretKeys.key }}
-          {{- if .Values.networkOfAssistants.fileAssistant.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.fileAssistant.environment }}
+            {{- if .Values.networkOfAssistants.environment }}
+            {{- range $key, $val := .Values.networkOfAssistants.environment }}
             - name: {{ $key }}
               value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
-          {{- if .Values.networkOfAssistants.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.environment }}
-            - name: {{ $key }}
-              value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
+            {{- end }}
+            {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

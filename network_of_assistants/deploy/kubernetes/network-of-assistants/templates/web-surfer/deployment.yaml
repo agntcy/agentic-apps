@@ -53,7 +53,7 @@ spec:
           {{- end }}
           env:
             - name: SLIM_ENDPOINT
-              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.port }}"
+              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.dataPlane.port }}"
             - name: WITH_OBS
               value: "{{ .Values.observability.enabled }}"
             - name: OTLP_HTTP_ENDPOINT
@@ -64,28 +64,29 @@ spec:
               value: "{{ .Values.networkOfAssistants.webSurferAssistant.llm.type }}"
             - name: WEB_SURFER_LLM_MODEL
               value: "{{ .Values.networkOfAssistants.webSurferAssistant.llm.model }}"
+            {{ $llmSecretName := .Values.networkOfAssistants.webSurferAssistant.llm.remoteAPISecret.existingSecret | default (include "network-of-assistants.web-surfer.llmRemoteAPISecretName" .) -}}
             - name: WEB_SURFER_LLM_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.networkOfAssistants.webSurferAssistant.llm.remoteAPISecret.existingSecret }}
+                  name: {{ $llmSecretName }}
                   key: {{ .Values.networkOfAssistants.webSurferAssistant.llm.remoteAPISecret.secretKeys.address }}
             - name: WEB_SURFER_LLM_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.networkOfAssistants.webSurferAssistant.llm.remoteAPISecret.existingSecret }}
+                  name: {{ $llmSecretName }}
                   key: {{ .Values.networkOfAssistants.webSurferAssistant.llm.remoteAPISecret.secretKeys.key }}
-          {{- if .Values.networkOfAssistants.webSurferAssistant.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.webSurferAssistant.environment }}
+            {{- if .Values.networkOfAssistants.webSurferAssistant.environment }}
+            {{- range $key, $val := .Values.networkOfAssistants.webSurferAssistant.environment }}
             - name: {{ $key }}
               value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
-          {{- if .Values.networkOfAssistants.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.environment }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.networkOfAssistants.environment }}
+            {{- range $key, $val := .Values.networkOfAssistants.environment }}
             - name: {{ $key }}
               value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
+            {{- end }}
+            {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

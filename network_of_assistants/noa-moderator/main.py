@@ -54,6 +54,12 @@ async def main(args):
     moderator_agent = ModeratorAgent(agents_dir)
     log.info("Moderator agent is ready.")
 
+    # Send hello on slim to create the session
+    # This is needed to make sure that all the agents inside the group session receives the session_info
+    log.debug("Sending hello!")
+    await slim.publish(msg="hello".encode("utf-8"))
+    log.debug("hello sent")
+
     @process_slim_msg("noa-moderator")
     async def on_message_received(message: bytes):
         nonlocal chat_history, moderator_agent
@@ -64,10 +70,13 @@ async def main(args):
             moderator_agent.init_run()
 
         decoded_message = message.decode("utf-8")
-        json_message = json.loads(decoded_message)
-
-        log.info(f"Received message: {json_message}")
-        chat_history.append(json_message)
+        try:
+            json_message = json.loads(decoded_message)
+        except Exception as e:
+            # Message is not json, discard
+            log.warning(f"Failed to decode message: {decoded_message} ({e})")
+            return
+        log.debug(f"Received message: {json_message}")
 
         if json_message["type"] == "ChatMessage":
             try:
@@ -77,6 +86,7 @@ async def main(args):
                         "query_message": json_message,
                     }
                 )
+                chat_history.append(json_message)
 
                 if "messages" not in answers_list:
                     answers_list = {"messages": [answers_list]}
@@ -85,7 +95,10 @@ async def main(args):
                     log.info(f"Sending answer: {answer}")
                     chat_history.append(answer)
                     answer_str = json.dumps(answer)
-                    if answer["type"] == "RequestToSpeak" and answer["target"] == "noa-user-proxy":
+                    if (
+                        answer["type"] == "RequestToSpeak"
+                        and answer["target"] == "noa-user-proxy"
+                    ):
                         chat_history = []
                     await slim.publish(msg=answer_str.encode("utf-8"))
 

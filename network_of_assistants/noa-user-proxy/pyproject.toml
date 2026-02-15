@@ -7,7 +7,7 @@ dependencies = [
     "slim",
     "fastapi>=0.115.9",
     "uvicorn>=0.34.0",
-    "ioa-observe-sdk>=1.0.12"
+    "ioa-observe-sdk>=1.0.20",
 ]
 
 [tool.uv.sources]
