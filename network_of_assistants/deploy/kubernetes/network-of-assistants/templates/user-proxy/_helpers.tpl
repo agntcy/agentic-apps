@@ -1,8 +1,13 @@
 {{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{/*
 Base name for the assistant component
 */}}
 {{- define "network-of-assistants.user-proxy.name" -}}
-{{- printf "%s-user-proxy" (include  "network-of-assistants.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- printf "user-proxy" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*

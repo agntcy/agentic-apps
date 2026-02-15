@@ -1,8 +1,13 @@
 {{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{/*
 Base name for the assistant component
 */}}
 {{- define "network-of-assistants.web-surfer.name" -}}
-{{- printf "%s-web-surfer" (include  "network-of-assistants.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- printf "web-surfer" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*

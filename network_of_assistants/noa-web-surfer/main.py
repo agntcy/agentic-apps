@@ -22,7 +22,12 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-@agent(name="web-surfer-agent", description="A web surfer agent that can browse the web and answer questions using a multimodal LLM.")
+
+@agent(
+    name="noa-web-surfer",
+    description="A web surfer agent that can browse the web and answer questions using a multimodal LLM.",
+    application_id="NOA",
+)
 def get_web_surfer_agent(llm):
     # Define an agent
     web_surfer_agent = MultimodalWebSurfer(
@@ -30,6 +35,7 @@ def get_web_surfer_agent(llm):
         model_client=llm,
     )
     return web_surfer_agent
+
 
 async def main(args):
     with_obs = os.getenv("WITH_OBS", "False").lower() == "true"
@@ -61,16 +67,26 @@ async def main(args):
         nonlocal lastquery, web_surfer_agent, agent_team
         # Decode the message from bytes to string
         decoded_message = message.decode("utf-8")
-        json_message = json.loads(decoded_message)
-
+        try:
+            json_message = json.loads(decoded_message)
+        except Exception as e:
+            # Message is not json, discard
+            log.warning(f"Failed to decode message: {decoded_message} ({e})")
+            return
         if json_message["type"] == "ChatMessage":
             lastquery = json_message["message"]
 
-        elif json_message["type"] == "RequestToSpeak" and json_message["target"] == args.id:
+        elif (
+            json_message["type"] == "RequestToSpeak"
+            and json_message["target"] == args.id
+        ):
             try:
+                current_message = json_message.get("message", "")
+                if current_message == "":
+                    current_message = lastquery
                 # Run the team and stream messages to the console
-                log.info(f"Processing request: {lastquery}")
-                stream = agent_team.run_stream(task=lastquery)
+                log.info(f"Processing request: {current_message}")
+                stream = agent_team.run_stream(task=current_message)
 
                 messages = []
                 async for message in stream:

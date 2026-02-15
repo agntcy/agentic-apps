@@ -7,10 +7,10 @@ from langgraph.prebuilt import create_react_agent
 import math
 
 from llm import load_llm
-from ioa_observe.sdk.decorators import agent, tool, workflow
+from ioa_observe.sdk.decorators import agent, tool
 
 
-@tool(name="evaluate_expression")
+@tool(name="evaluate_expression", application_id="NOA")
 def evaluate_expression(query: str) -> str:
     """
     This tool evaluates mathematical expressions provided in string format.
@@ -25,7 +25,11 @@ def evaluate_expression(query: str) -> str:
         return f"Error evaluating expression: {e}"
 
 
-@agent(name="math-assistant", description="A math assistant agent that evaluates mathematical expressions.")
+@agent(
+    name="noa-math-assistant",
+    description="A math assistant agent that evaluates mathematical expressions.",
+    application_id="NOA",
+)
 class MathAssistant:
     def __init__(self):
         # Load the LLM with the appropriate environment prefix
@@ -41,7 +45,6 @@ class MathAssistant:
             prompt="You are a helpful math assistant.",
         )
 
-    #@workflow(name="math_workflow")
     def ask_math_question(self, query: str) -> str:
         """
         Ask a math question to the agent and get the response.
@@ -50,4 +53,6 @@ class MathAssistant:
             raise ValueError("Agent must be initialized before asking questions.")
 
         # Use the agent to process the query
-        return self.agent.invoke({"messages": [{"role": "user", "content": query}]})["messages"][-1].content
+        return self.agent.invoke({"messages": [{"role": "user", "content": query}]})[
+            "messages"
+        ][-1].content

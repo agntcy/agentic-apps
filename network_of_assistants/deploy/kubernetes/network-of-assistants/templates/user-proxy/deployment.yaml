@@ -53,15 +53,9 @@ spec:
           {{- end }}
           env:
             - name: SLIM_ENDPOINT
-              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.port }}"
+              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.dataPlane.port }}"
             - name: PORT
               value: "{{ .Values.networkOfAssistants.userProxy.service.port }}"
-          {{- if .Values.networkOfAssistants.userProxy.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.userProxy.environment }}
-            - name: {{ $key }}
-              value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
           {{- if .Values.networkOfAssistants.environment }}
           {{- range $key, $val := .Values.networkOfAssistants.environment }}
             - name: {{ $key }}

@@ -53,7 +53,7 @@ spec:
           {{- end }}
           env:
             - name: SLIM_ENDPOINT
-              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.port }}"
+              value: "http://{{ include "network-of-assistants.slim.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.networkOfAssistants.slim.service.dataPlane.port }}"
             - name: WITH_OBS
               value: "{{ .Values.observability.enabled }}"
             - name: OTLP_HTTP_ENDPOINT
@@ -64,28 +64,23 @@ spec:
               value: "{{ .Values.networkOfAssistants.mathAssistant.llm.type }}"
             - name: MATH_ASSISTANT_LLM_MODEL
               value: "{{ .Values.networkOfAssistants.mathAssistant.llm.model }}"
+            {{ $llmSecretName := .Values.networkOfAssistants.mathAssistant.llm.remoteAPISecret.existingSecret | default (include "network-of-assistants.math-assistant.llmRemoteAPISecretName" .) -}}
             - name: MATH_ASSISTANT_LLM_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.networkOfAssistants.mathAssistant.llm.remoteAPISecret.existingSecret }}
+                  name: {{ $llmSecretName }}
                   key: {{ .Values.networkOfAssistants.mathAssistant.llm.remoteAPISecret.secretKeys.address }}
             - name: MATH_ASSISTANT_LLM_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.networkOfAssistants.mathAssistant.llm.remoteAPISecret.existingSecret }}
+                  name: {{ $llmSecretName }}
                   key: {{ .Values.networkOfAssistants.mathAssistant.llm.remoteAPISecret.secretKeys.key }}
-          {{- if .Values.networkOfAssistants.mathAssistant.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.mathAssistant.environment }}
+            {{- if .Values.networkOfAssistants.environment }}
+            {{- range $key, $val := .Values.networkOfAssistants.environment }}
             - name: {{ $key }}
               value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
-          {{- if .Values.networkOfAssistants.environment }}
-          {{- range $key, $val := .Values.networkOfAssistants.environment }}
-            - name: {{ $key }}
-              value: "{{ $val }}"
-          {{- end }}
-          {{- end }}
+            {{- end }}
+            {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

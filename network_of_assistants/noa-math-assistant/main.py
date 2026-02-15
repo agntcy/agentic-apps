@@ -58,17 +58,27 @@ async def main(args):
         nonlocal lastquery, math_assistant
         # Decode the message from bytes to string
         decoded_message = message.decode("utf-8")
-        json_message = json.loads(decoded_message)
-
+        try:
+            json_message = json.loads(decoded_message)
+        except Exception as e:
+            # Message is not json, discard
+            log.warning(f"Failed to decode message: {decoded_message} ({e})")
+            return
         if json_message["type"] == "ChatMessage":
             lastquery = json_message["message"]
 
-        elif json_message["type"] == "RequestToSpeak" and json_message["target"] == args.id:
+        elif (
+            json_message["type"] == "RequestToSpeak"
+            and json_message["target"] == args.id
+        ):
+            current_message = json_message.get("message", "")
+            if current_message == "":
+                current_message = lastquery
             # Run the team and stream messages to the console
-            log.info(f"Processing request: {lastquery}")
+            log.info(f"Processing request: {current_message}")
 
             try:
-                response = math_assistant.ask_math_question(json_message["message"])
+                response = math_assistant.ask_math_question(current_message)
 
                 message = {
                     "type": "ChatMessage",

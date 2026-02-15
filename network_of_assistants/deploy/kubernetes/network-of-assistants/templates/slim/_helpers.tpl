@@ -1,8 +1,13 @@
 {{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{/*
 Base name for the assistant component
 */}}
 {{- define "network-of-assistants.slim.name" -}}
-{{- printf "%s-slim" (include  "network-of-assistants.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- printf "slim" | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{/*
