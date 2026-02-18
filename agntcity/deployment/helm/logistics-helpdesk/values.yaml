@@ -1,0 +1,59 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+appName: logistics-helpdesk
+appVersion: v1
+replicaCount: 1
+
+image:
+  repository: ghcr.io/agntcy/coffee-agntcy/logistics-helpdesk
+  tag: latest
+  pullPolicy: Always
+  pullSecret:
+
+service:
+  port: 9094
+
+config:
+  azureApiBase: ""
+  azureApiVersion: ""
+  llmModel: ""
+  transportServerEndpoint: ""
+  defaultMessageTransport: ""
+  otlpHttpEndpoint: ""
+#  llmStreaming: False
+
+# You can use your own config here for service account
+serviceaccount:
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_WITH_ROLE_ARN
+
+# You can use your own ingress stack of operators and letsencrypt mechanism
+ingress:
+  enabled: false  # If set to true, configure the values below for your ingress setup
+  name: ""
+  className: ""
+  host: ""
+  serviceName: ""
+  servicePort: ""
+  tlsSecret: ""
+  annotations: {}
+
+probes:
+  livenessProbeEnabled: false
+  readinessProbeEnabled: false
+  port: 9090
+  endpoint: /v1/health
+  initialDelaySeconds: 300  # Wait 5 minutes before the first check
+  periodSeconds: 300       # Check every 5 minutes
+  timeoutSeconds: 30
+  failureThreshold: 3
+
+resources:
+  enabled: false
+  limits:
+    cpu: 2000m
+    memory: 2500Mi
+  requests:
+    cpu: 200m
+    memory: 500Mi

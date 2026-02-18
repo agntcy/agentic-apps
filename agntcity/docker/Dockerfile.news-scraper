@@ -1,0 +1,23 @@
+FROM python:3.13.0-slim
+
+# Install system dependencies, including ping, curl, and wget
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git curl wget iputils-ping && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv and create virtual environment
+RUN pip install --no-cache-dir uv && \
+    uv venv -q /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Set PYTHONPATH to include the application directory
+ENV PYTHONPATH="/app"
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-editable
+
+COPY . .
+
+CMD ["uv", "run", "python", "agents/news/scraper/server.py"]

@@ -1,0 +1,62 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path | default "/" | quote }}
+            pathType: {{ .Values.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ .Values.ingress.serviceName }}
+                port:
+                  number: {{ .Values.ingress.servicePort }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecret }}
+{{- end }}
+
+{{- range $i, $x := .Values.ingress.extraIngresses }}
+{{- if $x.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $x.name | default (printf "%s-extra-%d" $.Values.ingress.name $i) }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    {{- range $key, $value := $x.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $x.className | default $.Values.ingress.className }}
+  rules:
+    - host: {{ $x.host | default $.Values.ingress.host }}
+      http:
+        paths:
+          {{- range $p := $x.paths }}
+          - path: {{ $p.path | quote }}
+            pathType: {{ $p.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $p.serviceName | default $x.serviceName | default $.Values.ingress.serviceName }}
+                port:
+                  number: {{ $p.servicePort | default $x.servicePort | default $.Values.ingress.servicePort }}
+          {{- end }}
+  tls:
+    - hosts:
+        - {{ $x.host | default $.Values.ingress.host }}
+      secretName: {{ $x.tlsSecret | default $.Values.ingress.tlsSecret }}
+{{- end }}
+{{- end }}

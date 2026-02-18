@@ -1,0 +1,41 @@
+helmDefaults:
+  wait: true
+  timeout: 600
+
+repositories:
+  - name: nats
+    url: https://nats-io.github.io/k8s/helm/charts
+  - name: opentelemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+  - name: grafana
+    url: oci://ghcr.io/grafana/helm-charts
+    oci: true
+  - name: bitnamicharts
+    url: oci://registry-1.docker.io/bitnamicharts
+    oci: true
+  - name: slim
+    url: oci://ghcr.io/agntcy/slim/helm
+    oci: true
+  - name: external-secrets
+    url: https://charts.external-secrets.io
+
+releases:
+  - name: external-secrets
+    namespace: external-secrets
+    chart: external-secrets/external-secrets
+    version: 0.9.3
+    values:
+      - installCRDs: true   # ensures CRDs get installed
+  - name: lungo-local-cluster
+    namespace: default
+    createNamespace: false
+    chart: .
+    needs:
+      - external-secrets/external-secrets
+    disableValidation: true
+    disableOpenAPIValidation: true
+    values:
+      - ./values.yaml
+      - ./config-overrides.yaml.gotmpl
+      - ./grafana-values.yaml
+      - ./otel-values.yaml

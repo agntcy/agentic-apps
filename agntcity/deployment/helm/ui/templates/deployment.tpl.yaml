@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ .Values.appName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    version: {{ .Values.appVersion }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app:  {{ .Values.appName }}
+      version: {{ .Values.appVersion }}
+  template:
+    metadata:
+      labels:
+        app:  {{ .Values.appName }}
+        version: {{ .Values.appVersion }}
+    spec:
+    {{ if .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+    {{ end }}
+      serviceAccountName: {{ .Values.appName }}-sa
+      containers:
+      - name: {{ .Values.appName }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{ if .Values.resources.enabled }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+        {{ end }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        {{ if .Values.probes.readinessProbeEnabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.probes.endpoint }}
+            port: {{ .Values.probes.port }}
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        {{ end }}
+        {{ if .Values.probes.livenessProbeEnabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.probes.endpoint }}
+            port: {{ .Values.probes.port }}
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        {{ end }}
+        envFrom:
+          - configMapRef:
+              name: {{ .Values.appName }}-configmap
+        {{ if .Values.externalSecrets }}
+          - secretRef:
+              name: {{ .Values.appName }}-secrets
+        {{ end }}

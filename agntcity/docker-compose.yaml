@@ -1,0 +1,310 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: lungo-nats
+    ports:
+      - "4222:4222"
+      - "4223:4223"
+      - "6222:6222"
+      - "8222:8222"
+
+  slim:
+    image: ghcr.io/agntcy/slim:0.6.1
+    container_name: lungo-slim
+    ports:
+      - "46357:46357"
+    environment:
+      - PASSWORD=${SLIM_GATEWAY_PASSWORD:-dummy_password}
+      - CONFIG_PATH=/config.yaml
+    volumes:
+      - ./config/docker/slim/server-config.yaml:/config.yaml
+    command: ["/slim", "--config", "/config.yaml"]
+
+  ui:
+    build:
+      context: ../../..
+      dockerfile: coffeeAGNTCY/coffee_agents/lungo/docker/Dockerfile.ui
+    image: ghcr.io/agntcy/coffee-agntcy/lungo-ui:latest
+    container_name: lungo-ui
+    environment:
+      - VITE_EXCHANGE_APP_API_URL=http://127.0.0.1:8000
+      - VITE_LOGISTICS_APP_API_URL=http://127.0.0.1:9090
+      - VITE_NEWS_APP_API_URL=http://127.0.0.1:8001
+      - VITE_GRAFANA_URL=http://127.0.0.1:3001
+    ports:
+      - "3000:3000"
+
+  weather-mcp-server:
+    build:
+      context: ../../..
+      dockerfile: coffeeAGNTCY/coffee_agents/lungo/docker/Dockerfile.weather-mcp
+    image: ghcr.io/agntcy/coffee-agntcy/weather-mcp-server:latest
+    container_name: weather-mcp-server
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
+
+  payment-mcp-server:
+    build:
+      context: ../../..
+      dockerfile: coffeeAGNTCY/coffee_agents/lungo/docker/Dockerfile.payment-mcp
+    image: ghcr.io/agntcy/coffee-agntcy/payment-mcp-server:latest
+    container_name: payment-mcp-server
+    ports:
+      - "8081:8081"
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=${TRANSPORT_SERVER_ENDPOINT:-nats://nats:4222}
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-http://otel-collector:4318}
+      - IDENTITY_AUTH_ENABLED=${IDENTITY_AUTH_ENABLED:-} # Disabled by default
+      - IDENTITY_SERVICE_API_KEY=${IDENTITY_SERVICE_API_KEY_PAYMENT_MCP:-dummy_api_key}
+
+  clickhouse-server:
+    image: clickhouse/clickhouse-server
+    container_name: lungo-clickhouse-server
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    environment:
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: admin
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: lungo-otel-collector
+    restart: unless-stopped
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./config/docker/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    command: ["--config", "/etc/otel-collector-config.yaml"]
+    depends_on:
+      clickhouse-server:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana-lungo
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./config/docker/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./config/docker/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./config/docker/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      clickhouse-server:
+        condition: service_healthy
+
+  # News Supervisor App
+  news-supervisor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.news-supervisor
+    image: ghcr.io/agntcy/coffee-agntcy/news-supervisor:latest
+    container_name: news-supervisor
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=nats://nats:4222  # Force Docker service name, ignore .env
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./agents/supervisors/news:/app/agents/supervisors/news:ro
+      - ./common:/app/common:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - nats
+
+  # News Scraper Worker
+  news-scraper:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.news-scraper
+    image: ghcr.io/agntcy/coffee-agntcy/news-scraper:latest
+    container_name: news-scraper
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=nats://nats:4222  # Force Docker service name, ignore .env
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-}
+      - ENABLE_HTTP=true
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./agents/news:/app/agents/news:ro
+      - ./common:/app/common:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - nats
+
+  # Moltbook Supervisor App
+  moltbook-supervisor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.moltbook-supervisor
+    image: ghcr.io/agntcy/coffee-agntcy/moltbook-supervisor:latest
+    container_name: moltbook-supervisor
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=nats://nats:4222  # Force Docker service name, ignore .env
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-}
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./agents/supervisors/moltbook:/app/agents/supervisors/moltbook:ro
+      - ./agents/moltbook:/app/agents/moltbook:ro
+      - ./common:/app/common:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - nats
+
+  # Moltbook Community Worker
+  moltbook-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.moltbook-community-worker
+    image: ghcr.io/agntcy/coffee-agntcy/moltbook-worker:latest
+    container_name: moltbook-worker
+    env_file:
+      - .env
+    environment:
+      - DEFAULT_MESSAGE_TRANSPORT=${DEFAULT_MESSAGE_TRANSPORT:-NATS}
+      - TRANSPORT_SERVER_ENDPOINT=nats://nats:4222  # Force Docker service name, ignore .env
+      - OTLP_HTTP_ENDPOINT=${OTLP_HTTP_ENDPOINT:-}
+      - ENABLE_HTTP=false
+    ports:
+      - "9002:9002"
+    volumes:
+      - ./agents/moltbook:/app/agents/moltbook:ro
+      - ./common:/app/common:ro
+      - ./config:/app/config:ro
+    depends_on:
+      - nats
+
+  mce-api-layer:
+    image: ghcr.io/agntcy/obs-api:0.1.1
+    container_name: lungo-mce-api-layer
+    ports:
+      - "8080:8080"
+    environment:
+      - CLICKHOUSE_URL=clickhouse-server
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASS=admin
+      - CLICKHOUSE_DB=default
+      - SERVER_PORT=8080
+      - PORT=8080
+    depends_on:
+      clickhouse-server:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/keepAlive"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  metrics-computation-engine:
+    image: ghcr.io/agntcy/mce:1.2.1
+    container_name: lungo-metrics-computation-engine
+    ports:
+      - "8001:8000"
+    environment:
+      - API_BASE_URL=http://mce-api-layer:8080
+      - LLM_BASE_MODEL_URL=${AZURE_API_BASE:-${OPENAI_ENDPOINT}}
+      - LLM_MODEL_NAME=${AZURE_API_VERSION:-${OPENAI_MODEL_NAME}}
+      - LLM_API_KEY=${AZURE_API_KEY:-${OPENAI_API_KEY}}
+    depends_on:
+      mce-api-layer:
+        condition: service_healthy
+
+  dir-api-server:
+    image: ghcr.io/agntcy/dir-apiserver:v0.6.0
+    container_name: dir-api-server
+    env_file:
+      - ./config/docker/dir/apiserver.env
+    ports:
+      - 8888:8888
+      - 8889:8889
+    depends_on:
+      - zot
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8889/healthz/ready || exit 1
+      interval: 10s
+      retries: 60
+      start_period: 10s
+
+  dir-mcp-server:
+    image: ghcr.io/agntcy/dir-ctl:latest
+    container_name: dir-mcp-server
+    stdin_open: true
+    tty: false
+    command: ["mcp", "serve"]
+    environment:
+      - DIRECTORY_CLIENT_SERVER_ADDRESS=dir-api-server:8888
+      - DIRECTORY_CLIENT_TLS_SKIP_VERIFY=true
+      - OASF_API_VALIDATION_DISABLE=true
+    depends_on:
+      - dir-api-server
+
+  zot:
+    image: ghcr.io/project-zot/zot:v2.1.10
+    container_name: zot
+    ports:
+      - 5555:5000
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: curl -f http://localhost:5000/v2/ || exit 1
+      interval: 5s
+      retries: 60
+      start_period: 15s
+
+  oasf-translation-service:
+    image: ghcr.io/agntcy/oasf-sdk:v0.0.14
+    container_name: oasf-translation-service
+    ports:
+      - "31234:31234"
+    profiles:
+      - oasf-translate

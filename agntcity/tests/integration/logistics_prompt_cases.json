@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {
+      "id": "logistics_order",
+      "prompt": "I want to order coffee $3.50 per pound for 500 lbs of coffee from the Tatooine farm"
+    }
+  ]
+}
