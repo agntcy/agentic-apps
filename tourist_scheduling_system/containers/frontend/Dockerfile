@@ -1,5 +1,8 @@
 # Stage 1: Build the Flutter web app
 FROM ghcr.io/cirruslabs/flutter:stable AS build
+RUN apk add --no-cache --upgrade 'libexpat=2.7.4-r0'
+RUN apk add --no-cache --upgrade 'libpng=1.6.55-r0'
+RUN apk add --no-cache --upgrade 'zlib=1.3.2-r0'
 
 WORKDIR /app
 
@@ -22,6 +25,9 @@ RUN flutter build web --release
 
 # Stage 2: Serve the app with Nginx
 FROM nginx:alpine
+RUN apk add --no-cache --upgrade 'libexpat=2.7.4-r0'
+RUN apk add --no-cache --upgrade 'libpng=1.6.55-r0'
+RUN apk add --no-cache --upgrade 'zlib=1.3.2-r0'
 
 # Install gettext for envsubst
 RUN apk add --no-cache gettext
