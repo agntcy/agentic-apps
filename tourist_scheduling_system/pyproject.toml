@@ -32,11 +32,11 @@ dependencies = [
     "httpx>=0.28.1",
     # Web framework
     "uvicorn>=0.40.0",
-    "fastapi>=0.115.0,<0.124.0",
+    "fastapi>=0.115.0,<0.129.0",
     "websockets>=11.0.0",
     # AI/LLM
     "openai>=2.15.0",
-    "google-adk>=1.22.1",
+    "google-adk==1.23.0",
     "litellm>=1.80.16",
     # Configuration
     "python-dotenv>=1.0.0",
