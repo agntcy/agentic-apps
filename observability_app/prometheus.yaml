@@ -1,0 +1,12 @@
+# Prometheus configuration for SLIM Demo
+global:
+  scrape_interval: 1s
+  evaluation_interval: 1s
+
+scrape_configs:
+  # Scrape metrics from OTel Collector's Prometheus exporter
+  - job_name: 'slim-demo'
+    static_configs:
+      - targets: ['host.docker.internal:8889']
+        labels:
+          environment: 'demo'
