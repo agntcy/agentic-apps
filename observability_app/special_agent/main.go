@@ -46,10 +46,10 @@ func main() {
 	}()
 
 	// Check for Azure API key and endpoint
-	apiKey := os.Getenv("AZURE_API_KEY")
+	apiKey := os.Getenv("AZURE_OPENAI_API_KEY")
 	if apiKey == "" {
-		log.Error("AZURE_API_KEY environment variable is required")
-		panic("AZURE_API_KEY environment variable is required")
+		log.Error("AZURE_OPENAI_API_KEY environment variable is required")
+		panic("AZURE_OPENAI_API_KEY environment variable is required")
 	}
 
 	azureEndpoint := os.Getenv("AZURE_OPENAI_ENDPOINT")

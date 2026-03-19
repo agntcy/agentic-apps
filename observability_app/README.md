@@ -5,14 +5,16 @@ This application shows how to use SLIM for a simple AI-powered root cause analys
 ## Applications
 
 ### 1. Monitored Application (`monitored_app`)
-Simulates an application that receives and serves requests. It cycles between periods of low and high request load to simulate differt traffic patterns:
+Simulates an application that receives and serves requests. It cycles between periods of low and high request load to simulate different traffic patterns:
 - **Low Load Period**: 20 seconds with low request volume (latency around 50ms, few connections)
-- **High Load Period**: 20 seconds with high request volume (high latecy over 200ms due to higher connections)
+- **High Load Period**: 20 seconds with high request volume (high latency over 200ms due to higher connections)
 - **Automatic Cycling**: Continuously alternates between these states
 
 The application produces two metrics via OpenTelemetry based on the simulated load:
 - `processing_latency_ms`: Request processing latency (increases under high load)
 - `active_connections`: Number of active connections (higher during peak load)
+
+The application uses the SLIM OTel SDK to export metrics directly to a SLIM channel.
 
 ### 2. Monitor Application (`monitor_app`)
 Creates and manages the SLIM channel for telemetry monitoring.
@@ -23,19 +25,19 @@ Creates and manages the SLIM channel for telemetry monitoring.
 - Removes the Special Agent after analysis is complete
 
 ### 3. Special Agent (`special_agent`)
-An AI-powered analysis agent that performs root cause analysis:
-- Waits for invitation from the Monitor Agent
+An agent that performs root cause analysis:
+- Waits for invitation from the Monitor Application
 - Collects metrics for 10 seconds once invited
 - Performs statistical analysis (mean, standard deviation, min/max values)
-- Uses a model to generate insights and actionable recommendations
-- Notifies the Monitor Application when the analisys is done
+- Uses Azure OpenAI to generate insights and actionable recommendations
+- Notifies the Monitor Application when the analysis is done
 
 ## Architecture
 
 ```mermaid
 graph TB
     subgraph APPS[Applications]
-        MA[Monitored App<br/><i>SLIM OTEL SDK</i>]
+        MA[Monitored App<br/><i>SLIM OTel SDK</i>]
         MON[Monitor App]
         SA[Special Agent]
     end
@@ -76,16 +78,19 @@ graph TB
 
 ### Data Flow
 
-1. **Monitored Application** generates metrics and sends them to the **SLIM Node** via OTLP
-2. **SLIM Node** distributes the metrics to:
-   - **OTEL Collector** for persistence and Prometheus export
-   - **Monitor Agent** for real-time monitoring
-   - **Special Agent** (when invited) for analysis
-3. **OTEL Collector** exposes a Prometheus scrape endpoint on port 8889
-4. **Monitor Agent** watches for latency spikes and invites **Special Agent** when issues are detected
-5. **Special Agent** collects metrics, analyzes them with **Azure OpenAI**, and reports findings
-6. **Prometheus** scrapes metrics from the collector and stores them
-7. **Grafana** visualizes metrics from Prometheus
+1. **Monitor Application** starts up and creates a telemetry SLIM channel, inviting the **Monitored Application** and the **OTEL Collector** as participants
+
+2. **Monitored Application** generates metrics using the SLIM OTel SDK and sends them directly to the SLIM channel via OTLP. The SLIM node broadcasts these metrics to all channel participants
+
+3. **OTEL Collector** receives the telemetry through its SLIM Receiver component, processes the metrics through a batch processor, and exposes them via a Prometheus exporter. **Prometheus** continuously scrapes metrics from the OTEL Collector's endpoint. **Grafana** connects to Prometheus as a data source and visualizes the metrics through dashboards
+
+4. **Monitor Application** simultaneously receives the same telemetry stream from the SLIM channel and continuously analyzes the metrics in real-time to detect performance issues
+
+5. When the **Monitor Application** detects high latency (consecutive samples above 200ms threshold), it invites the **Special Agent** to join the SLIM channel session
+
+6. **Special Agent** begins receiving metrics from the SLIM channel, collects data for 10 seconds, performs statistical analysis, and queries **Azure OpenAI** to identify the root cause of the performance degradation
+
+7. **Special Agent** reports its findings back to the Monitor Application and leaves the session, allowing the cycle to repeat
 
 ## Configuration Files
 
@@ -101,7 +106,7 @@ graph TB
 - Go 1.26.1 or later
 - Docker and Docker Compose
 - [Task](https://taskfile.dev/) (task runner)
-- Azure OpenAI API credentials (for Special Agent)
+- Azure OpenAI API credentials (required only for the Special Agent)
 
 ## Setup Instructions
 
@@ -114,26 +119,19 @@ task collector:docker:build
 ```
 
 This will:
-- Install OpenTelemetry Collector Builder (ocb) v0.145.0
-- Generate the collector code with SLIM receiver and exporter
-- Download Go dependencies
-- Set up SLIM native bindings
-- Build the collector binary with CGO enabled
-- Create a Docker image
+- Install OpenTelemetry Collector Builder (ocb)
+- Generate the collector code with SLIM receiver and exporter using the **`builder-config.yaml`** file
+- Create a Docker image for the collector based on the **`Dockerfile`**
 
 ### 2. Start Infrastructure
 
-Start all infrastructure services (SLIM, Collector, Prometheus, Grafana):
+Start all infrastructure services:
 
 ```bash
 task infra:start
 ```
 
-This will start:
-- **SLIM Node** on port 46357
-- **OTEL Collector** on port 8889 (Prometheus scrape endpoint)
-- **Prometheus** on port 9090
-- **Grafana** on port 3000 (login: admin/admin)
+This will start the SLIM Node, the OTEL Collector, Prometheus, and Grafana
 
 Verify all services are running:
 
@@ -147,19 +145,8 @@ task infra:status
 2. Login with credentials: `admin` / `admin`
 3. Navigate to **Dashboards** → **Import**
 4. Upload the `graphana-dashboard.json` file
-5. Select the Prometheus data source
-6. Click **Import**
 
-### 4. Set Up Azure OpenAI Credentials
-
-Export your Azure OpenAI credentials as environment variables:
-
-```bash
-export AZURE_API_KEY="your-api-key"
-export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
-```
-
-### 5. Run the Applications
+### 4. Run the Applications
 
 Open three separate terminal windows and run each application:
 
@@ -168,53 +155,34 @@ Open three separate terminal windows and run each application:
 task monitored-application:run
 ```
 
-**Terminal 2 - Monitor Agent:**
+**Terminal 2 - Monitor Application:**
 ```bash
 task monitor-application:run
 ```
 
 **Terminal 3 - Special Agent:**
+The Special Agent requires Azure OpenAI credentials. Export your credentials as environment variables before running the Special Agent.
 ```bash
+export AZURE_OPENAI_API_KEY="your-api-key"
+export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
+export AZURE_OPENAI_DEPLOYMENT="gpt-4o"  # Optional, defaults to gpt-4o
 task special-agent:run
 ```
 
-### 6. Observe the Demo
+### 5. Observe the Demo
 
 1. Watch the terminal outputs to see the cycle:
-   - Monitored app will cycle through normal and high latency states
-   - Monitor agent will detect high latency after 5 consecutive samples > 200ms
-   - Monitor agent will invite the Special Agent
+   - Monitored application will cycle through normal and high latency states
+   - Monitor application will detect high latency after 5 consecutive samples > 200ms
+   - Monitor application will invite the Special Agent
    - Special Agent will collect metrics and perform AI analysis
    - Special Agent will send analysis results and disconnect
-   - Monitor agent will reset and wait for the next cycle
+   - Monitor application will reset and wait for the next cycle
 
 2. View metrics in Grafana:
    - Open http://localhost:3000
    - Navigate to the imported dashboard
-   - Observe `processing_latency_ms` and `active_connections` metrics
-
-3. Query Prometheus directly (optional):
-   - Open http://localhost:9090
-   - Search for metrics: `processing_latency_ms`, `active_connections`
-
-## Available Task Commands
-
-### Collector Management
-- `task collector:build` - Build the collector locally
-- `task collector:docker:build` - Build the collector Docker image
-- `task collector:run` - Run the collector locally
-- `task collector:clean` - Clean the collector build directory
-
-### Infrastructure Management
-- `task infra:start` - Start all infrastructure services
-- `task infra:stop` - Stop all infrastructure services
-- `task infra:logs` - View logs from all services
-- `task infra:status` - Check status of all services
-
-### Application Runners
-- `task monitored-application:run` - Run the monitored application
-- `task monitor-application:run` - Run the monitor agent
-- `task special-agent:run` - Run the special agent
+   - Observe `Active Connections` and `Service Latency` metrics
 
 ## Stopping the Demo
 
@@ -225,42 +193,3 @@ Stop the infrastructure:
 ```bash
 task infra:stop
 ```
-
-## Troubleshooting
-
-### Collector Build Issues
-If the collector build fails, clean and rebuild:
-```bash
-task collector:clean
-task collector:docker:build
-```
-
-### SLIM Connection Issues
-Verify SLIM is running and accessible:
-```bash
-docker logs observability_app-slim-1
-```
-
-### Missing Native Bindings
-The SLIM bindings require CGO and are set up automatically during build. If you encounter issues, ensure:
-- CGO is enabled (`CGO_ENABLED=1`)
-- The `slim-bindings-setup` step completed successfully
-
-### Azure OpenAI Issues
-Ensure environment variables are set correctly:
-```bash
-echo $AZURE_API_KEY
-echo $AZURE_OPENAI_ENDPOINT
-```
-
-## Architecture Notes
-
-- **SLIM Protocol**: Provides secure, low-latency message passing between components
-- **Channel-based Communication**: All telemetry flows through a shared SLIM channel
-- **Session-based Invitations**: Monitor agent dynamically invites Special Agent only when needed
-- **Stateless Agents**: Both monitor and special agents can restart without losing context
-- **Continuous Cycling**: The demo runs indefinitely, showcasing automated monitoring and analysis
-
-## License
-
-See the LICENSE file in the repository root.
