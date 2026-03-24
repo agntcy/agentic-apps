@@ -1,0 +1,112 @@
+# Taskfile for observability_app collector build
+
+version: '3'
+
+silent: true
+
+vars:
+  ROOT_DIR:
+    sh: pwd
+  # OpenTelemetry Collector Builder settings
+  OCB_VERSION: 0.145.0
+  GOOS:
+    sh: go env GOOS
+  GOARCH:
+    sh: go env GOARCH
+  OCB_BINARY: ocb_{{.OCB_VERSION}}_{{.GOOS}}_{{.GOARCH}}
+  OCB_URL: https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/cmd%2Fbuilder%2Fv{{.OCB_VERSION}}/{{.OCB_BINARY}}
+  COLLECTOR_OUTPUT: ./slim-otelcol
+
+env:
+  GOTOOLCHAIN: "go1.26.0+auto"
+
+tasks:
+  default:
+    cmds:
+      - task -l
+
+  download-ocb:
+    internal: true
+    desc: Download OpenTelemetry Collector Builder for current architecture
+    cmds:
+      - echo "Downloading OCB {{.OCB_VERSION}} for {{.GOOS}}/{{.GOARCH}} from {{.OCB_URL}}..."
+      - curl --proto '=https' --tlsv1.2 -fL -o ocb "{{.OCB_URL}}"
+      - chmod +x ocb
+      - echo "OCB downloaded successfully"
+    status:
+      - test -f ocb
+
+  collector:build:
+    desc: Build the SLIM OpenTelemetry Collector including both slimexporter and slimreceiver
+    deps:
+      - download-ocb
+    cmds:
+      - echo "Generating collector sources..."
+      - ./ocb --config builder-config.yaml --skip-compilation
+      - echo "Setting up SLIM bindings..."
+      - cd {{.COLLECTOR_OUTPUT}} && go mod download
+      - cd {{.COLLECTOR_OUTPUT}} && go run github.com/agntcy/slim-bindings-go/cmd/slim-bindings-setup
+      - echo "Compiling with CGO enabled..."
+      - cd {{.COLLECTOR_OUTPUT}} && CGO_ENABLED=1 go build -trimpath -o slim-otelcol -ldflags="-s -w"
+      - echo "Collector built successfully at {{.COLLECTOR_OUTPUT}}/slim-otelcol"
+
+  collector:clean:
+    desc: Clean the generated collector directory
+    cmds:
+      - go clean -cache -modcache
+      - rm -rf {{.COLLECTOR_OUTPUT}}
+      - rm -f ocb
+      - echo "Collector build directory cleaned"
+
+  collector:docker:build:
+    desc: Build the SLIM OpenTelemetry Collector Docker image
+    cmds:
+      - echo "Building collector Docker image..."
+      - docker build -t slim-otelcol:latest -f Dockerfile .
+      - echo "Docker image built successfully as slim-otelcol:latest"
+
+  collector:run:
+    desc: Run the SLIM OpenTelemetry Collector
+    cmds:
+      - echo "Running SLIM OpenTelemetry Collector..."
+      - "{{.COLLECTOR_OUTPUT}}/slim-otelcol --config collector-config.yaml"
+
+  monitor-application:run:
+    desc: Run the Monitor App
+    cmds:
+      - echo "Running Monitor Agent..."
+      - cd monitor_app && go run main.go
+
+  special-agent:run:
+    desc: Run the Special Agent
+    cmds:
+      - echo "Running Special Agent..."
+      - cd special_agent && go run main.go
+
+  monitored-application:run:
+    desc: Run the Monitored App
+    cmds:
+      - echo "Running Monitored App..."
+      - cd monitored_app && go run main.go
+
+  infra:start:
+    desc: Start infrastructure (SLIM, Collector, Prometheus, Grafana)
+    cmds:
+      - bash start-infrastructure.sh
+
+  infra:stop:
+    desc: Stop infrastructure (SLIM, Collector, Prometheus, Grafana)
+    cmds:
+      - echo "Stopping infrastructure..."
+      - docker-compose down
+      - echo "✅ Infrastructure stopped"
+
+  infra:logs:
+    desc: Show infrastructure logs
+    cmds:
+      - docker-compose logs -f
+
+  infra:status:
+    desc: Show infrastructure status
+    cmds:
+      - docker-compose ps
