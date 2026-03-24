@@ -37,7 +37,7 @@ dependencies = [
     # AI/LLM
     "openai>=2.15.0",
     "google-adk>=1.22.1",
-    "litellm>=1.80.16",
+    "litellm==1.81.7",
     # Configuration
     "python-dotenv>=1.0.0",
     "pydantic>=2.12.5",
