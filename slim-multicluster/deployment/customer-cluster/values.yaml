@@ -1,0 +1,286 @@
+kubernetes-mcp-server:
+  fullnameOverride: "multicluster-demo-kubernetes-mcp-server"
+  replicaCount: 1
+
+  image:
+    registry: quay.io
+    repository: containers/kubernetes_mcp_server
+    version: "v0.0.60"
+    pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    annotations: {}
+
+  rbac:
+    create: true
+    # Create ClusterRole with read permissions across the entire cluster
+    extraClusterRoles:
+      - name: kubernetes-mcp-server-reader
+        rules:
+          # Core Kubernetes resources (needed by default "core" toolset)
+          - apiGroups: [""]
+            resources:
+              - pods
+              - pods/log
+              - pods/status
+              - services
+              - endpoints
+              - events
+              - namespaces
+              - nodes
+              - persistentvolumes
+              - persistentvolumeclaims
+              - configmaps  # Optional: if you want to read configs
+              - secrets     # Optional: be careful with this
+            verbs: ["get", "list", "watch"]
+
+          # Apps resources (deployments, replicasets, etc.)
+          - apiGroups: ["apps"]
+            resources:
+              - deployments
+              - replicasets
+              - statefulsets
+              - daemonsets
+            verbs: ["get", "list", "watch"]
+
+          # Batch resources (jobs, cronjobs)
+          - apiGroups: ["batch"]
+            resources:
+              - jobs
+              - cronjobs
+            verbs: ["get", "list", "watch"]
+
+          # Networking resources
+          - apiGroups: ["networking.k8s.io"]
+            resources:
+              - ingresses
+              - networkpolicies
+            verbs: ["get", "list", "watch"]
+
+    # Bind the ClusterRole to the kubernetes-mcp-server ServiceAccount
+    extraClusterRoleBindings:
+      - name: kubernetes-mcp-server-reader-binding
+        roleRef:
+          name: kubernetes-mcp-server-reader
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+  # MCP server configuration — rendered as /etc/kubernetes-mcp-server/config.toml
+  config:
+    port: "{{ .Values.service.port }}"
+    cluster_provider_strategy: in-cluster
+    # Stateless mode: disables server-sent notifications (tools/list_changed etc.)
+    # Recommended for container deployments and load-balanced environments.
+    stateless: true
+    read_only: false
+
+  metrics:
+    serviceMonitor:
+      enabled: false
+    prometheusRule:
+      enabled: false
+
+mcp-proxy:
+  fullnameOverride: "multicluster-demo-mcp-proxy"
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/agntcy/slim-mcp-rust/mcp-proxy
+    pullPolicy: IfNotPresent
+    tag: "0.2.5"
+
+  # MCP Proxy Configuration
+  proxy:
+    name: "customer1/on-prem-cluster/k8s-mcp-proxy"
+    instanceId: ""
+    mcpServer:
+      # URL of the MCP server to connect to
+      url: "http://multicluster-demo-kubernetes-mcp-server:8080/mcp"
+
+    # Authentication configuration
+    auth:
+      spire:
+        enabled: true
+        socketPath: "/tmp/spire-agent/public/spire-agent.sock"
+        jwtAudiences: "slim"
+
+    slim:
+      serviceName: "slim/0"
+      server:
+        # SLIM server endpoint
+        endpoint: "http://multicluster-demo-slim-node:46357"
+        tls:
+          insecure: true
+      tracing:
+        logLevel: "info"
+        displayThreadNames: true
+        displayThreadIds: true
+
+  volumeMounts:
+    - name: spire-agent-socket
+      mountPath: /tmp/spire-agent/public
+      readOnly: true
+
+  volumes:
+    - name: spire-agent-socket
+      hostPath:
+        path: /run/spire/agent-sockets
+        type: DirectoryOrCreate
+
+slim:
+  fullnameOverride: "multicluster-demo-slim-node"
+  slim:
+    replicaCount: 1
+
+    image:
+      repository: ghcr.io/agntcy/slim
+      pullPolicy: Always
+      tag: "test5"
+
+    service:
+      type: ClusterIP
+      headless: false
+      data:
+        - port: 46357
+          name: dataplane
+
+    extraEnv:
+      - name: HTTP_PROXY
+        value: ""
+      - name: HTTPS_PROXY
+        value: ""
+      - name: http_proxy
+        value: ""
+      - name: https_proxy
+        value: ""
+      - name: no_proxy
+        value: ""
+      - name: NO_PROXY
+        value: ""
+
+    config:
+      tracing:
+        log_level: debug
+        display_thread_names: true
+        display_thread_ids: true
+      runtime:
+        n_cores: 0
+        thread_name: "slim-data-plane"
+        drain_timeout: 10s
+      services:
+        slim/0:
+          # Required when running multiple replicas connected to the same Controller
+          # Should be unique for each SLIM instance
+          node_id: ${env:SLIM_SVC_ID}
+          # Required in case of multi-cluster setup
+          # Used by the Controller to identify which group a SLIM node belongs to
+          group_name: "gls-cluster"
+          dataplane:
+            servers:
+              - endpoint: "0.0.0.0:{{ (index .Values.slim.service.data 0).port }}"
+                tls:
+                  insecure: true
+          controller:
+            clients:
+              # setup the right controller address 
+              - endpoint: "https://public-controller-address:443"
+                tls:
+                  insecure: false
+                  include_system_ca_certs_pool: true
+                auth:
+                  type: spire
+                  jwt_audiences:
+                    - "slim"
+                  socket_path: /tmp/spire-agent/public/spire-agent.sock
+
+  serviceAccount:
+    create: true
+    automount: true
+    name: "slim"
+
+  spire:
+    enabled: true
+
+atlassianMcpServer:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/sooperset/mcp-atlassian
+    tag: "0.21.1"
+    pullPolicy: IfNotPresent
+
+  # setup the JIRA related values with your Jira instance information
+  jiraUrl: "https://your-domain.atlassian.net"
+  jiraUsername: "your-username"
+  jiraApiToken: "your-api-token"
+  jiraProjectsFilter: ""
+
+  service:
+    port: 9000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+mcp-proxy-atlassian:
+  fullnameOverride: "multicluster-demo-atlassian-mcp-proxy"
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/agntcy/slim-mcp-rust/mcp-proxy
+    pullPolicy: IfNotPresent
+    tag: "0.2.5"
+
+  proxy:
+    name: "customer1/on-prem-cluster/atlassian-mcp-proxy"
+    instanceId: ""
+    mcpServer:
+      url: "http://multicluster-demo-atlassian-mcp-server:9000/mcp"
+
+    auth:
+      spire:
+        enabled: true
+        socketPath: "/tmp/spire-agent/public/spire-agent.sock"
+        jwtAudiences: "slim"
+
+    slim:
+      serviceName: "slim/0"
+      server:
+        endpoint: "http://multicluster-demo-slim-node:46357"
+        tls:
+          insecure: true
+      tracing:
+        logLevel: "info"
+        displayThreadNames: true
+        displayThreadIds: true
+
+  volumeMounts:
+    - name: spire-agent-socket
+      mountPath: /tmp/spire-agent/public
+      readOnly: true
+
+  volumes:
+    - name: spire-agent-socket
+      hostPath:
+        path: /run/spire/agent-sockets
+        type: DirectoryOrCreate
