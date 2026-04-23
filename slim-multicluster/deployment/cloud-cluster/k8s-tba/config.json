@@ -1,0 +1,5 @@
+{
+  "chart_repo": "ghcr.io",
+  "chart_name": "agntcy/slim/multicluster-demo/helm/k8s-troubleshooting-agent",
+  "chart_version": "0.1.3"
+}
