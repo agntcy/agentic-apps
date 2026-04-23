@@ -16,20 +16,17 @@ task build
 # Build and place binary in the skill's scripts/ directory
 task build-skill
 
-# Build and place binary in the Copilot skill's scripts/ directory
-task build-copilot-skill
-
 # Build, copy to scripts/, and zip the skill for distribution
 task package-skill
 
 # Install to GOPATH/bin (adds to PATH)
 task install
 
+# Install the Claude skill to ~/.claude/skills/a2acli
+task install-claude-skill
+
 # Install the Copilot skill to ~/.copilot/skills/a2acli
 task install-copilot-skill
-
-# Install both the Claude and Copilot skill variants
-task install-all-skills
 ```
 
 `CGO_ENABLED=1` is set automatically by the Taskfile. The `setup` step is also run automatically as a dependency of `build`, `build-skill`, and `install`.
@@ -194,7 +191,7 @@ a2acli send-message \
 - `a2acli/` contains the existing Claude-oriented skill.
 - `../copilot-skills/a2acli/` contains the Copilot skill source that is kept alongside the multicluster demo.
 
-Run `task install-skill` to refresh `~/.claude/skills/a2acli`, or `task install-copilot-skill` to refresh `~/.copilot/skills/a2acli` for the locally installed `copilot` app.
+Run `task install-claude-skill` to refresh `~/.claude/skills/a2acli`, or `task install-copilot-skill` to refresh `~/.copilot/skills/a2acli` for the locally installed `copilot` app.
 
 The Copilot skill assumes:
 
