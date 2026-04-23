@@ -1,0 +1,37 @@
+# a2acli configuration file
+# Copy to .a2acli.yaml in your working directory or ~/.a2acli.yaml
+# All fields are optional. Command-line flags take precedence over this file.
+
+# Path to the agents directory containing AgentCard JSON files.
+# Defaults to .a2aagents in the current directory, then ~/.a2aagents.
+# agents-dir: /path/to/my/.a2aagents
+
+# SLIM RPC transport settings.
+# Set slim.endpoint to enable communication with agents deployed behind a SLIM node.
+slim:
+  endpoint: "http://localhost:46357"
+  local-name: "agntcy/cli/a2acli"
+
+  # Shared-secret auth (used when spire.socket-path is not set)
+  secret: "my_shared_secret"
+
+  # Skip TLS certificate verification (https:// endpoints only). Default: false.
+  # tls-skip-verify: false
+
+  # SPIRE dynamic identity auth (takes precedence over secret when socket-path is set)
+  # spire:
+  #   socket-path: "/tmp/spire-agent/public/api.sock"
+  #   target-spiffe-id: "spiffe://example.org/agent"   # optional
+  #   jwt-audiences:                                    # optional
+  #     - "my-audience"
+
+# Multicluster demo example using a local SPIRE agent and a target SLIM dataplane.
+# For local use, prefer generating .a2acli.yaml via `task a2acli-config` from
+# the parent multicluster-demo directory. That keeps the endpoint in .env.local.
+# slim:
+#   endpoint: "https://<slim-dataplane-host>:443"
+#   local-name: "agntcy/cli/a2acli"
+#   spire:
+#     socket-path: "/tmp/spire-agent/public/api.sock"
+#     jwt-audiences:
+#       - "slim"
