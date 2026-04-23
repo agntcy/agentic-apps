@@ -50,7 +50,7 @@ spec:
               echo "Sending health check message..."
               
               # Define the health check message
-              MESSAGE="Check the health status of pods in namespace slim-multicluster-demo. "
+              MESSAGE="Check the health status of the pods in the cluster. "
               MESSAGE="${MESSAGE}If you see any issue, create a Jira ticket to track it. The ticket must be a bug. "
               MESSAGE="${MESSAGE}The Jira issue must contain all the relevant logs, the relevant k8s events and the "
               MESSAGE="${MESSAGE}information of the faulty pod such as its name and the node where it runs. "
