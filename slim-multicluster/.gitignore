@@ -1,0 +1,38 @@
+# laptop-setup local files
+laptop-setup/.env.local
+laptop-setup/bin/
+laptop-setup/spire/data/
+laptop-setup/.a2acli.yaml
+
+# a2acli-skill local files
+a2acli-skill/.env.local
+a2acli-skill/.a2acli.yaml
+a2acli-skill/bin/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.task/
