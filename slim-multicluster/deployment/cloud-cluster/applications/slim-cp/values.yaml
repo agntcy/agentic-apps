@@ -1,10 +1,5 @@
 replicaCount: 1
 
-image:
-  repository: "ghcr.io/agntcy/slim/control-plane"
-  pullPolicy: IfNotPresent
-  tag: "1.0.0-dev.07"
-
 config:
   northbound:
     httpHost: 0.0.0.0
@@ -43,7 +38,37 @@ service:
   north:
     port: 50051
 
-ingress:
+ingressSouth:
+  enabled: true
+  className: "nginx-internal"
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/backend-protocol: GRPC
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-stream-timeout: '3600'
+    nginx.ingress.kubernetes.io/server-snippet: |
+      grpc_socket_keepalive on;
+      keepalive_timeout 3600s;
+      grpc_read_timeout 3600s;
+      grpc_send_timeout 3600s;
+      client_header_timeout 60m;
+      client_body_timeout 60m;
+      http2_max_requests 10000;
+      http2_max_concurrent_streams 128;
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+  hosts:
+    - host: control-plane-south-public-address
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: slim-control-plane-south-tls
+      hosts:
+        - control-plane-south-public-address
+
+ingressNorth:
   enabled: true
   className: "nginx-internal"
   annotations:
@@ -58,15 +83,14 @@ ingress:
       client_header_timeout 60m;
       client_body_timeout 60m;
   hosts:
-    - host: control-plane-public-address
+    - host: control-plane-north-public-address
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: slim-control-plane-tls
+    - secretName: slim-control-plane-north-tls
       hosts:
-        - control-plane-public-address
-
+        - control-plane-north-public-address
 resources:
   requests:
     cpu: 100m

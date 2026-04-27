@@ -1,0 +1,5 @@
+{
+  "chart_repo": "https://spiffe.github.io/helm-charts-hardened",
+  "chart_name": "spire-crds",
+  "chart_version": "0.5.0"
+}

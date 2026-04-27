@@ -1,0 +1,108 @@
+# Ref: https://github.com/spiffe/helm-charts-hardened/blob/main/charts/spire/values.yaml
+
+global:
+  spire:
+    clusterName: ""
+    trustDomain: ""
+    ingressControllerType: other
+    tools:
+      kubectl:
+        tag: "v1.28.0"
+
+  installAndUpgradeHooks:
+    enabled: false
+
+  deleteHooks:
+    enabled: false
+
+spire-server:
+  ingress:
+    enabled: true
+    className: "nginx-internal"
+    controllerType: "other"
+    host: spire-server-public-address
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: spire-server-public-address
+      external-dns.alpha.kubernetes.io/ttl: "300"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    tls:
+      - hosts:
+          - spire-server-public-address
+    hosts:
+      - host: spire-server-public-address
+        paths:
+          - path: /
+            pathType: Prefix
+
+  federation:
+    enabled: true
+    tls:
+      spire:
+        enabled: false
+      certManager:
+        enabled: true
+        issuer:
+          create: false
+        certificate:
+          issuerRef:
+            kind: ClusterIssuer
+            name: letsencrypt
+    ingress:
+      enabled: true
+      className: "nginx-internal"
+      controllerType: "other"
+      host: spire-bundle-public-address
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: spire-bundle-public-address
+        external-dns.alpha.kubernetes.io/ttl: "300"
+        nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+        nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+        nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+        nginx.ingress.kubernetes.io/proxy-ssl-name: "spire-bundle-public-address"
+        nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+      tls:
+        - hosts:
+            - spire-bundle-public-address
+          secretName: spire-slim-root-mc-demo-dev-argoapp-server-federation-cert
+      hosts:
+        - host: spire-bundle-public-address
+          paths:
+            - path: /
+              pathType: Prefix
+
+  controllerManager:
+    watchClassless: true
+    className: "mc-demo-spire"
+    identities:
+      clusterSPIFFEIDs:
+        oidc-discovery-provider:
+          enabled: false
+        test-keys:
+          enabled: false
+      # Parent ID must match the additional SPIFFE ID assigned when minting the
+      # GLS upstream bootstrap token:
+      # spire-server token generate -spiffeID spiffe://spiffie-id
+      clusterStaticEntries:
+        gls-cluster-0-child-server:
+          spiffeID: spiffe:/spiffe-id
+          parentID: spiffe://spiffe-prent-id
+          selectors:
+            - k8s:ns:spire-system
+            - k8s:sa:spire-server-downstream
+          downstream: true
+
+  externalControllerManagers:
+    enabled: false
+
+  nodeAttestor:
+    externalK8sPSAT:
+      enabled: false
+
+  bundlePublisher:
+    externalK8sConfigMap:
+      enabled: false
+
+spiffe-oidc-discovery-provider:
+  enabled: false

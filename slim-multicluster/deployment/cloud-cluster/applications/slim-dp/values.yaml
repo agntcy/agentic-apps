@@ -1,11 +1,6 @@
 slim:
   replicaCount: 1
 
-  image:
-    repository: ghcr.io/agntcy/slim
-    pullPolicy: Always
-    tag: "1.3.0-dev03"
-
   service:
     type: ClusterIP
     port: 46357
