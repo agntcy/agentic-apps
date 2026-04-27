@@ -1,0 +1,85 @@
+slim:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 46357
+
+  config:
+    tracing:
+      log_level: debug
+      display_thread_names: true
+      display_thread_ids: true
+    runtime:
+      n_cores: 0
+      thread_name: "slim-data-plane"
+      drain_timeout: 10s
+    services:
+      slim/0:
+        # Required when running multiple replicas connected to the same Controller
+        # Should be unique for each SLIM instance
+        node_id: ${env:SLIM_SVC_ID}
+        # Required in case of multi-cluster setup
+        # Used by the Controller to identify which group a SLIM node belongs to
+        group_name: "aws-cluster"
+        dataplane:
+          servers:
+            # endpoint for local connection
+            - endpoint: "0.0.0.0:{{ .Values.slim.service.port }}"
+              keepalive:
+                time: "20s"
+              metadata:
+                local_endpoint: ${env:MY_POD_IP}
+                external_endpoint: "dataplane-public-address:443"
+                client_config:
+                  keepalive:
+                    keep_alive_while_idle: true
+                  tls:
+                    insecure: false
+                    include_system_ca_certs_pool: true
+              tls:
+                insecure: true
+                # trust_domain: "mc-demo.dev.eticloud.io"                
+        controller:
+          clients:
+            - endpoint: "http://slim-control:50052"
+              tls:
+                insecure: true
+
+  ingress:
+    enabled: true
+    className: "nginx-internal"
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600s"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600s"
+      nginx.ingress.kubernetes.io/proxy-stream-timeout: "3600s"
+      nginx.ingress.kubernetes.io/server-snippet: |
+        grpc_socket_keepalive on;
+        keepalive_timeout 3600s;
+        grpc_read_timeout 3600s;
+        grpc_send_timeout 3600s;
+        client_header_timeout 60m;
+        client_body_timeout 60m;
+        http2_max_requests 10000;
+        http2_max_concurrent_streams 128; 
+    hosts:
+      - host: dataplane-public-address
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: slim-dataplane-tls
+        hosts:
+          - dataplane-public-address
+
+  serviceAccount:
+    create: true
+    automount: true
+    name: "slim"
+
+  spire:
+    enabled: true

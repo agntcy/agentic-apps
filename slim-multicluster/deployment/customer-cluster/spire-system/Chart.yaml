@@ -1,0 +1,13 @@
+apiVersion: v2
+name: spire-system
+description: Spire system deployment
+type: application
+version: "0.0.1"
+appVersion: "0.0.1"
+dependencies:
+  - name: spire-crds
+    version: "0.5.0"
+    repository: https://spiffe.github.io/helm-charts-hardened
+  - name: slim-spire
+    version: "v1.4.0-rc.0"
+    repository: oci://ghcr.io/agntcy/slim/helm
