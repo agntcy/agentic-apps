@@ -4,14 +4,14 @@ go 1.25.2
 
 require (
 	github.com/a2aproject/a2a-go/v2 v2.1.0
-	github.com/agntcy/slim-a2a-go v0.1.2-0.20260401172246-70b6faa0fdcf
+	github.com/agntcy/slim-a2a-go v0.2.0
 	github.com/agntcy/slim-bindings-go v1.2.0
 	github.com/spf13/cobra v1.8.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/a2aproject/a2a-go v0.3.12 // indirect
+	github.com/a2aproject/a2a-go v0.3.13 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
