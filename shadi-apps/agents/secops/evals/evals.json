@@ -1,0 +1,255 @@
+{
+  "skill_name": "secops",
+  "description": "Evals for the SecOps ADK agent. Each prompt is a realistic user message sent to the avatar agent, which forwards commands to the SecOps A2A server. Expected tool chains follow SKILL.md decision guide.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "scan-and-report",
+      "prompt": "Run a security scan on all monitored repos and give me the report.",
+      "expected_tool_chain": ["fetch_security_alerts", "generate_security_report"],
+      "expected_output": "A Markdown security report written to the workspace. Response summarises critical/high alert counts per repo and the report file path.",
+      "assertions": [
+        {
+          "name": "calls-fetch-before-report",
+          "description": "fetch_security_alerts is called before generate_security_report",
+          "type": "tool_order"
+        },
+        {
+          "name": "report-file-path-in-response",
+          "description": "Response contains the path to the written .md report",
+          "type": "contains",
+          "pattern": "secops_security_report"
+        },
+        {
+          "name": "no-re-scan-skipped",
+          "description": "Agent does NOT call get_latest_report instead of fetching fresh data",
+          "type": "tool_not_called",
+          "tool": "get_latest_report"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "remediate-no-prs",
+      "prompt": "There are some critical Dependabot alerts in our repos. Please remediate them but don't open PRs yet — I want to review the branches first.",
+      "expected_tool_chain": ["fetch_security_alerts", "generate_security_report", "remediate_vulnerabilities"],
+      "expected_output": "Remediation runs with create_prs=False. Response lists repos where branches were pushed, status is pending_pr_approval, and mentions secops_pending_prs.json.",
+      "assertions": [
+        {
+          "name": "remediate-called",
+          "description": "remediate_vulnerabilities is called",
+          "type": "tool_called",
+          "tool": "remediate_vulnerabilities"
+        },
+        {
+          "name": "create-prs-false",
+          "description": "create_prs is NOT set to True (user explicitly said no PRs yet)",
+          "type": "arg_not_set",
+          "tool": "remediate_vulnerabilities",
+          "arg": "create_prs",
+          "value": true
+        },
+        {
+          "name": "pending-prs-mentioned",
+          "description": "Response mentions pending PR queue or secops_pending_prs.json",
+          "type": "contains",
+          "pattern": "pending"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "remediate-and-open-prs",
+      "prompt": "Go ahead and remediate all critical vulnerabilities and open the pull requests directly — I trust the patches.",
+      "expected_tool_chain": ["fetch_security_alerts", "generate_security_report", "remediate_vulnerabilities"],
+      "expected_output": "remediate_vulnerabilities called with create_prs=True. Response lists pr_url for each repo where a PR was created.",
+      "assertions": [
+        {
+          "name": "create-prs-true",
+          "description": "remediate_vulnerabilities is called with create_prs=True",
+          "type": "arg_set",
+          "tool": "remediate_vulnerabilities",
+          "arg": "create_prs",
+          "value": true
+        },
+        {
+          "name": "pr-url-in-response",
+          "description": "Response mentions at least one PR URL or pr_created status",
+          "type": "contains_any",
+          "patterns": ["pr_url", "github.com", "pull request", "PR created"]
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "show-latest-report",
+      "prompt": "Show me the findings from the last security scan — no need to re-run it.",
+      "expected_tool_chain": ["get_latest_report"],
+      "expected_output": "Contents of the saved secops_security_report.md returned without calling fetch_security_alerts.",
+      "assertions": [
+        {
+          "name": "get-latest-report-called",
+          "description": "get_latest_report is called",
+          "type": "tool_called",
+          "tool": "get_latest_report"
+        },
+        {
+          "name": "no-fresh-fetch",
+          "description": "fetch_security_alerts is NOT called (user said no re-run)",
+          "type": "tool_not_called",
+          "tool": "fetch_security_alerts"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "approve-queued-prs",
+      "prompt": "I reviewed the branches — please go ahead and open the pull requests for the remediation branches that are queued.",
+      "expected_tool_chain": ["approve_queued_prs"],
+      "expected_output": "approve_queued_prs called. Response lists repos and their new PR URLs.",
+      "assertions": [
+        {
+          "name": "approve-prs-called",
+          "description": "approve_queued_prs is called",
+          "type": "tool_called",
+          "tool": "approve_queued_prs"
+        },
+        {
+          "name": "no-re-remediate",
+          "description": "remediate_vulnerabilities is NOT called again (PRs already queued)",
+          "type": "tool_not_called",
+          "tool": "remediate_vulnerabilities"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "lookup-cve-by-id",
+      "prompt": "Can you look up CVE-2023-44487 for me? I want to know the CVSS score and what to do about it.",
+      "expected_tool_chain": ["lookup_cve"],
+      "expected_output": "lookup_cve called with cve_id='CVE-2023-44487'. Response includes CVSS score, severity (CRITICAL/HIGH), description of HTTP/2 rapid reset attack, and reference URLs.",
+      "assertions": [
+        {
+          "name": "lookup-cve-called-with-id",
+          "description": "lookup_cve is called with cve_id set to CVE-2023-44487",
+          "type": "arg_set",
+          "tool": "lookup_cve",
+          "arg": "cve_id",
+          "value": "CVE-2023-44487"
+        },
+        {
+          "name": "cvss-score-in-response",
+          "description": "Response includes a CVSS base score",
+          "type": "contains_any",
+          "patterns": ["cvss", "score", "7.", "8.", "9.", "10.", "CRITICAL", "HIGH"]
+        },
+        {
+          "name": "no-scan-triggered",
+          "description": "fetch_security_alerts is NOT called — this is a standalone CVE lookup",
+          "type": "tool_not_called",
+          "tool": "fetch_security_alerts"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "lookup-cve-by-package",
+      "prompt": "What CVEs exist for the requests library version 2.28? We might be using an old version.",
+      "expected_tool_chain": ["lookup_cve"],
+      "expected_output": "lookup_cve called with package_name containing 'requests'. Response lists matching CVEs with severity and references.",
+      "assertions": [
+        {
+          "name": "lookup-cve-by-package-name",
+          "description": "lookup_cve is called with package_name, not cve_id",
+          "type": "arg_set_any",
+          "tool": "lookup_cve",
+          "arg": "package_name"
+        },
+        {
+          "name": "cve-results-returned",
+          "description": "Response includes at least one CVE identifier",
+          "type": "contains",
+          "pattern": "CVE-"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "get-allowlist",
+      "prompt": "Which repos are you monitoring?",
+      "expected_tool_chain": ["get_allowlist"],
+      "expected_output": "get_allowlist called. Response lists the repos in the allowlist from secops.toml.",
+      "assertions": [
+        {
+          "name": "get-allowlist-called",
+          "description": "get_allowlist is called",
+          "type": "tool_called",
+          "tool": "get_allowlist"
+        },
+        {
+          "name": "no-scan-triggered",
+          "description": "fetch_security_alerts is NOT called just for listing repos",
+          "type": "tool_not_called",
+          "tool": "fetch_security_alerts"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "agent-status",
+      "prompt": "What's your current configuration — workspace path, SLIM endpoint, which agent ID are you running as?",
+      "expected_tool_chain": ["get_agent_status"],
+      "expected_output": "get_agent_status called. Response includes workspace path, slim_endpoint, slim_identity, and allowlist.",
+      "assertions": [
+        {
+          "name": "get-agent-status-called",
+          "description": "get_agent_status is called",
+          "type": "tool_called",
+          "tool": "get_agent_status"
+        },
+        {
+          "name": "workspace-or-endpoint-in-response",
+          "description": "Response mentions workspace path or SLIM endpoint",
+          "type": "contains_any",
+          "patterns": ["workspace", "slim", "endpoint", "identity"]
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "scan-then-enrich-cves",
+      "prompt": "Run a full security scan and then look up any CVEs you find in the NVD so I get the full picture.",
+      "expected_tool_chain": ["fetch_security_alerts", "generate_security_report", "lookup_cve"],
+      "expected_output": "fetch + generate called first, then lookup_cve called once per unique CVE ID found in alerts. Response integrates CVSS data into the summary.",
+      "assertions": [
+        {
+          "name": "fetch-before-lookup",
+          "description": "fetch_security_alerts is called before lookup_cve",
+          "type": "tool_order"
+        },
+        {
+          "name": "lookup-cve-called",
+          "description": "lookup_cve is called at least once",
+          "type": "tool_called",
+          "tool": "lookup_cve"
+        },
+        {
+          "name": "report-generated",
+          "description": "generate_security_report is called",
+          "type": "tool_called",
+          "tool": "generate_security_report"
+        }
+      ],
+      "files": []
+    }
+  ]
+}

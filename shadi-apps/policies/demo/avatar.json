@@ -1,0 +1,11 @@
+{
+  "allow": ["."],
+  "read": ["/"],
+  "net_block": false,
+  "net_allow": [
+    "litellm.prod.outshift.ai",
+    "localhost",
+    "127.0.0.1",
+    "::1"
+  ]
+}
