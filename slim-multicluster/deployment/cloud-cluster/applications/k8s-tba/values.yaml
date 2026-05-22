@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/agntcy/slim/multicluster-demo/k8s-troubleshooting-agent
+  pullPolicy: IfNotPresent
+  tag: "0.1.4"
+
+
+model: "azure/gpt-4o"
+
+slim:
+  url: "http://slim-dp-slim-root-mc-demo-dev-argoapp:46357"
+  namespace: "agntcy"
+  group: "aws-cluster"
+  name: "k8s_troubleshooting_agent"
+
+# SPIRE dynamic identity authentication.
+# When enabled, SPIRE takes precedence over the shared secret.
+spire:
+ enabled: true
+ # Path to the SPIRE agent socket mounted into the pod.
+ socketPath: "/tmp/spire-agent/public/spire-agent.sock"
+ jwtAudience: "slim"
+
+# Kubernetes MCP Server connection settings
+k8s_mcp_server:
+  namespace: "org"
+  group: "mcp"
+  name: "k8s-proxy"
+
+atlassian_mcp_server:
+  namespace: "org"
+  group: "mcp"
+  name: "atlassian-proxy"
+
+extraEnv:
+  - name: AZURE_API_KEY
+    value: "your-azure-openai-key"
+  - name: AZURE_API_BASE
+    value: "your-azure-openai-url"
+  - name: AZURE_API_VERSION
+    value: "your-azure-openai-api-version"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}

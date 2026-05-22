@@ -1,0 +1,81 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k8s-health-check
+spec:
+  # Run every 2 minutes
+  schedule: "*/2 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: k8s-health-check
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: a2acli
+            # the a2acli image is availabe at https://github.com/agntcy/slim/pkgs/container/slim%2Fmulticluster-demo%2Fa2acli
+            image: ghcr.io/agntcy/slim/multicluster-demo/a2acli:0.1.3 
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Wait for the volumes to be mounted
+              sleep 2
+
+              echo "Discovering k8s_troubleshooting_agent..."
+              AGENT_SHA=$(bin/a2acli list \
+                --slim-endpoint "$SLIM_ENDPOINT" \
+                | grep k8s_troubleshooting_agent \
+                | awk '{print $NF}' \
+                | sed 's/\.\.\.//g')
+
+              if [ -z "$AGENT_SHA" ]; then
+                echo "ERROR: k8s_troubleshooting_agent not found"
+                echo "Available agents:"
+                bin/a2acli list \
+                  --slim-endpoint "$SLIM_ENDPOINT" \
+                exit 1
+              fi
+
+              echo "Found agent: $AGENT_SHA"
+              echo ""
+              echo "Sending health check message..."
+              
+              # Define the health check message
+              MESSAGE="Check the health status of the pods in the cluster. "
+              MESSAGE="${MESSAGE}If you see any issue, create a Jira ticket to track it. The ticket must be a bug. "
+              MESSAGE="${MESSAGE}The Jira issue must contain all the relevant logs, the relevant k8s events and the "
+              MESSAGE="${MESSAGE}information of the faulty pod such as its name and the node where it runs. "
+              MESSAGE="${MESSAGE}If the log is too long add a file in the issue. The format must be markdown. "
+              MESSAGE="${MESSAGE}Before creating the ticket, check if a similar issue has already been reported to avoid duplicates."
+              
+              bin/a2acli send-message \
+                --agent "$AGENT_SHA" \
+                --slim-endpoint "$SLIM_ENDPOINT" \
+                --spire-socket-path /run/spire/agent-sockets/spire-agent.sock \
+                --spire-jwt-audience "slim" \
+                "$MESSAGE"
+
+              echo ""
+              echo "Health check completed successfully"
+            volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+            env:
+            - name: SLIM_ENDPOINT
+              # update the SLIM_ENDPOINT value with the actual endpoint of your cluster
+              value: "http://slim-dp-slim-root-mc-demo-dev-argoapp:46357"
+          volumes:
+          - name: spire-agent-socket
+            hostPath:
+              path: /run/spire/agent-sockets
+              type: DirectoryOrCreate
