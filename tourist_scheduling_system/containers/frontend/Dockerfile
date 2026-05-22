@@ -24,7 +24,7 @@ RUN flutter build web --release
 FROM nginx:alpine
 
 # Install gettext for envsubst
-RUN apk add --no-cache gettext
+RUN apk upgrade --no-cache && apk add --no-cache gettext
 
 # Copy the build output from the previous stage
 COPY --from=build /app/build/web /usr/share/nginx/html
