@@ -1,0 +1,27 @@
+dist:
+  name: slim-otelcol
+  description: OTel Collector with SLIM receiver and exporter components
+  output_path: ./slim-otelcol
+  otelcol_version: 0.145.0
+
+exporters:
+  - gomod: github.com/agntcy/slim-otel/exporter/slimexporter v0.3.1
+  - gomod:
+      go.opentelemetry.io/collector/exporter/debugexporter v0.145.0
+  - gomod:
+      github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.145.0
+
+processors:
+  - gomod:
+      go.opentelemetry.io/collector/processor/batchprocessor v0.145.0
+
+receivers:
+  - gomod: github.com/agntcy/slim-otel/receiver/slimreceiver v0.3.1
+
+
+providers:
+  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.48.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.48.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v1.48.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.48.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.48.0

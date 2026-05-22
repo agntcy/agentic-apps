@@ -1,0 +1,20 @@
+apiVersion: v2
+name: slim-multicluster-demo
+description: The SLIM multi-cluster architechture on-prem cluster deployment
+type: application
+version: "0.0.1"
+appVersion: "0.0.1"
+dependencies:
+  - name: kubernetes-mcp-server
+    version: "0.1.0"
+    repository: oci://ghcr.io/containers/charts
+  - name: mcp-proxy
+    version: "v0.1.4"
+    repository: oci://ghcr.io/agntcy/slim-mcp-rust/helm
+  - name: mcp-proxy
+    alias: mcp-proxy-atlassian
+    version: "v0.1.4"
+    repository: oci://ghcr.io/agntcy/slim-mcp-rust/helm
+  - name: slim
+    version: "v1.4.0-rc.0"
+    repository: oci://ghcr.io/agntcy/slim/helm

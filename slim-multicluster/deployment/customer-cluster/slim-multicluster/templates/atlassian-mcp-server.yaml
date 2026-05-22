@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multicluster-demo-atlassian-mcp-server
+  labels:
+    app.kubernetes.io/name: atlassian-mcp-server
+    app.kubernetes.io/instance: multicluster-demo
+spec:
+  replicas: {{ .Values.atlassianMcpServer.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: atlassian-mcp-server
+      app.kubernetes.io/instance: multicluster-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: atlassian-mcp-server
+        app.kubernetes.io/instance: multicluster-demo
+    spec:
+      containers:
+        - name: atlassian-mcp-server
+          image: "{{ .Values.atlassianMcpServer.image.repository }}:{{ .Values.atlassianMcpServer.image.tag }}"
+          imagePullPolicy: {{ .Values.atlassianMcpServer.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - --transport
+            - streamable-http
+            - --stateless
+            - --port
+            - "9000"
+          env:
+            - name: JIRA_URL
+              value: {{ .Values.atlassianMcpServer.jiraUrl | quote }}
+            - name: JIRA_USERNAME
+              value: {{ .Values.atlassianMcpServer.jiraUsername | quote }}
+            - name: JIRA_API_TOKEN
+              value: {{ .Values.atlassianMcpServer.jiraApiToken | quote }}
+            - name: JIRA_PROJECTS_FILTER
+              value: {{ .Values.atlassianMcpServer.jiraProjectsFilter | quote }}
+            - name: HTTP_PROXY
+              value: ""
+            - name: HTTPS_PROXY
+              value: ""
+            - name: http_proxy
+              value: ""
+            - name: https_proxy
+              value: ""
+            - name: no_proxy
+              value: ""
+            - name: NO_PROXY
+              value: ""
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.atlassianMcpServer.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: multicluster-demo-atlassian-mcp-server
+  labels:
+    app.kubernetes.io/name: atlassian-mcp-server
+    app.kubernetes.io/instance: multicluster-demo
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.atlassianMcpServer.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: atlassian-mcp-server
+    app.kubernetes.io/instance: multicluster-demo
