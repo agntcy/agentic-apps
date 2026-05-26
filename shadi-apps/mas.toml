@@ -1,0 +1,9 @@
+[mas]
+default_group = "secops-team"
+
+[groups.secops-team]
+moderator_did = "did:key:REPLACE_ME"
+members = [
+ls -la "$PWD/.tmp"  { did = "shadi://github/muscariello/did", role = "human" },
+  { did = "did:key:REPLACE_SECOPS", role = "agent" }
+]

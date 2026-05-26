@@ -1,0 +1,29 @@
+[secops]
+allowlist = [
+  "agntcy/dir",
+  "agntcy/slim",
+  "agntcy/oasf",
+  "agntcy/agentic-apps",
+]
+workspace_dir = "./.tmp/shadi-secops"
+token_key = "secops/github_token"
+workspace_key = "secops/workspace_dir"
+llm_key_prefix = "secops/llm"
+llm_provider = "anthropic"
+memory_key = "secops/memory_key"
+slim_identity = "agntcy/secops/agent"
+slim_endpoint = "http://localhost:47357"
+slim_shared_secret_key = "secops/slim_shared_secret"
+slim_local_did_key = "secops/slim_local_did"
+slim_remote_did_key = "secops/slim_remote_did"
+slim_tls_insecure = true
+
+[github]
+api_base = "https://api.github.com"
+auth_mode = "shadi"
+
+[adk]
+model = "gemini-3-flash-preview"
+
+[python]
+packages = ["openai", "slima2a", "slimrpc", "a2a"]
