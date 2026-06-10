@@ -39,7 +39,7 @@ dependencies = [
     "google-adk>=1.28.1,<2.0.0",
     "litellm>=1.83.0",
     # Configuration
-    "python-dotenv>=1.0.0",
+    "python-dotenv>=1.2.2",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.0.0",
     # OpenTelemetry for distributed tracing
