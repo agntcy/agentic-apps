@@ -1,0 +1,23 @@
+agent:
+  name: "Claude Agent"
+  description: "AI assistant powered by Claude Agent SDK, accessible via A2A protocol"
+  version: "1.0.0"
+  organization: "tehsmash"
+
+bindings:
+  jsonrpc:
+    enabled: true
+    host: "0.0.0.0"
+    port: 45000
+
+  slimrpc:
+    enabled: false
+    # When enabled, connection details (address, app name, auth) are loaded
+    # from slim.yaml — see https://github.com/agntcy/slim-bindings/pull/21
+    # Example slim.yaml:
+    #   node:
+    #     address: "http://localhost:46357"
+    #   app:
+    #     name: "agntcy/default/claude-agent"
+    #   identity:
+    #     shared_secret: "my-secret"
