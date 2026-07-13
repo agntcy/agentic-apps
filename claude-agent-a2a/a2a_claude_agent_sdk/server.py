@@ -78,10 +78,13 @@ async def _run_slimrpc(
     agent_card: AgentCard,
     slim_cfg: object,
 ) -> None:
+    import asyncio
+
     import slim_bindings
     from slima2a.handler import SRPCHandler
     from slima2a.types.v1.a2a_pb2_slimrpc import add_A2AServiceServicer_to_server
 
+    slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())
     slim_app = await slim_bindings.get_global_service().create_app_from_slim_config_async(slim_cfg)
     local_name = slim_bindings.Name.from_str(slim_cfg.app.name)
     conn_id = await slim_app.connect(slim_cfg.node.address)
