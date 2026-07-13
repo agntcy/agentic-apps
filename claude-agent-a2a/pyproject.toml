@@ -18,6 +18,7 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
+slima2a = { git = "https://github.com/agntcy/slim-a2a-python.git", branch = "main" }
 slim-bindings = { git = "https://github.com/agntcy/slim-bindings.git", branch = "feat/hierarchical-slim-config-loading", subdirectory = "python" }
 
 [build-system]

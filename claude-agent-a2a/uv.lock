@@ -37,7 +37,7 @@ requires-dist = [
     { name = "claude-agent-sdk", specifier = ">=0.1.0" },
     { name = "fastapi", specifier = ">=0.100.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "slima2a", specifier = ">=0.6.0" },
+    { name = "slima2a", git = "https://github.com/agntcy/slim-a2a-python.git?branch=main" },
     { name = "uvicorn", specifier = ">=0.30.0" },
 ]
 
@@ -72,9 +72,9 @@ name = "aiologic"
 version = "0.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "sniffio" },
+    { name = "sniffio", marker = "python_full_version < '3.13'" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
-    { name = "wrapt" },
+    { name = "wrapt", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f1/7a/d51f2fde1e8ae8a83431f8e97b7a71e9358cdb1d4d2ce6be387fa44d68de/aiologic-0.17.1.tar.gz", hash = "sha256:2e1b93b9e88ced318c2a63ad7b382688f40cbfe40e3d42258d49dc9c5aea179d", size = 252354, upload-time = "2026-06-27T20:41:33.25Z" }
 wheels = [
@@ -402,7 +402,7 @@ name = "culsans"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "aiologic" },
+    { name = "aiologic", marker = "python_full_version < '3.13'" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d9/e3/49afa1bc180e0d28008ec6bcdf82a4072d1c7a41032b5b759b60814ca4b0/culsans-0.11.0.tar.gz", hash = "sha256:0b43d0d05dce6106293d114c86e3fb4bfc63088cfe8ff08ed3fe36891447fe33", size = 107546, upload-time = "2025-12-31T23:15:38.196Z" }
@@ -1115,14 +1115,10 @@ wheels = [
 [[package]]
 name = "slima2a"
 version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/agntcy/slim-a2a-python.git?branch=main#c2ba5cb779bd009e9fc0c2a3ae6572935b5ea2f3" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "slim-bindings" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/2c/01d6885a123bf7db7aa2b455732fee610654165ca89b86c06ac73018c795/slima2a-0.6.0.tar.gz", hash = "sha256:5afc62ce9643417ed83e7e009d8a1f3eef5c5c8588cc4f8105603b132b989fb3", size = 170256, upload-time = "2026-06-15T14:34:21.151Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/65/2f512a8d83e9c23c94ab2fdbe01ac8ad2b7056fa9f68b1839457d19168ef/slima2a-0.6.0-py3-none-any.whl", hash = "sha256:e2a9753ffb482d650e05444c0ae93142b083b6056024fc1f896e1962f80608f6", size = 26119, upload-time = "2026-06-15T14:34:20.15Z" },
 ]
 
 [[package]]
