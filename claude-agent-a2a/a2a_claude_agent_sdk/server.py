@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
@@ -77,23 +76,19 @@ async def _run_http(
 async def _run_slimrpc(
     handler: DefaultRequestHandler,
     agent_card: AgentCard,
+    slim_cfg: object,
 ) -> None:
     import slim_bindings
     from slima2a.handler import SRPCHandler
     from slima2a.types.v1.a2a_pb2_slimrpc import add_A2AServiceServicer_to_server
 
-    slim_bindings.initialize_with_defaults()
-    slim_cfg = slim_bindings.load_slim_config()
-    app = await slim_bindings.get_global_service().create_app_from_slim_config_async(slim_cfg)
-
-    # app.name() returns the full "namespace/group/name" string used for routing
+    slim_app = await slim_bindings.get_global_service().create_app_from_slim_config_async(slim_cfg)
     local_name = slim_bindings.Name.from_str(slim_cfg.app.name)
-    conn_id = await app.connect(slim_cfg.node.address)
-    await app.subscribe(local_name, conn_id)
+    conn_id = await slim_app.connect(slim_cfg.node.address)
+    await slim_app.subscribe(local_name, conn_id)
 
-    server = slim_bindings.Server.new_with_connection(app, local_name, conn_id)
-    srpc_handler = SRPCHandler(agent_card, handler)
-    add_A2AServiceServicer_to_server(srpc_handler, server)
+    server = slim_bindings.Server.new_with_connection(slim_app, local_name, conn_id)
+    add_A2AServiceServicer_to_server(SRPCHandler(agent_card, handler), server)
 
     logger.info("Starting SLIM RPC server as %s", slim_cfg.app.name)
     await server.serve_async()
@@ -101,7 +96,7 @@ async def _run_slimrpc(
 
 async def _run(cfg: AgentConfig) -> None:
     interfaces: list[AgentInterface] = []
-    tasks: list[asyncio.coroutines] = []
+    coroutines = []
 
     http_cfg = cfg.bindings.jsonrpc
     if http_cfg.enabled:
@@ -119,8 +114,8 @@ async def _run(cfg: AgentConfig) -> None:
             ),
         ]
 
+    slim_cfg = None
     if cfg.bindings.slimrpc.enabled:
-        # Resolve the SLIM app name from slim.yaml for the agent card.
         try:
             import slim_bindings
 
@@ -136,6 +131,9 @@ async def _run(cfg: AgentConfig) -> None:
         except Exception as exc:
             logger.warning("Could not load slim.yaml for agent card interface: %s", exc)
 
+    if not http_cfg.enabled and slim_cfg is None:
+        raise RuntimeError("No bindings are enabled. Set at least one binding to enabled: true.")
+
     agent_card = _build_agent_card(cfg, interfaces)
     handler = DefaultRequestHandler(
         agent_executor=ClaudeAgentExecutor(),
@@ -144,14 +142,11 @@ async def _run(cfg: AgentConfig) -> None:
     )
 
     if http_cfg.enabled:
-        tasks.append(_run_http(handler, agent_card, cfg))
-    if cfg.bindings.slimrpc.enabled:
-        tasks.append(_run_slimrpc(handler, agent_card))
+        coroutines.append(_run_http(handler, agent_card, cfg))
+    if slim_cfg is not None:
+        coroutines.append(_run_slimrpc(handler, agent_card, slim_cfg))
 
-    if not tasks:
-        raise RuntimeError("No bindings are enabled. Set at least one binding to enabled: true.")
-
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*coroutines)
 
 
 def main() -> None:

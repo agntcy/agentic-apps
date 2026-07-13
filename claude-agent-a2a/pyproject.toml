@@ -15,6 +15,7 @@ dependencies = [
 [tool.uv]
 override-dependencies = [
     "a2a-sdk==1.1.0",
+    "slim-bindings==2.0.0a2",
 ]
 
 [tool.uv.sources]
