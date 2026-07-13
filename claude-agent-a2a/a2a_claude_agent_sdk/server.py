@@ -85,12 +85,11 @@ async def _run_slimrpc(
     from slima2a.types.v1.a2a_pb2_slimrpc import add_A2AServiceServicer_to_server
 
     slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())
-    slim_app = await slim_bindings.get_global_service().create_app_from_slim_config_async(slim_cfg)
-    local_name = slim_bindings.Name.from_str(slim_cfg.app.name)
-    conn_id = await slim_app.connect(slim_cfg.node.address)
-    await slim_app.subscribe(local_name, conn_id)
+    slim_service = slim_bindings.get_global_service()
+    slim_app = slim_service.create_app_from_slim_config(slim_cfg)
+    local_name = slim_bindings.Name.from_string(slim_cfg.app.name)
 
-    server = slim_bindings.Server.new_with_connection(slim_app, local_name, conn_id)
+    server = slim_bindings.Server.new_with_connection(slim_app, local_name, None)
     add_A2AServiceServicer_to_server(SRPCHandler(agent_card, handler), server)
 
     logger.info("Starting SLIM RPC server as %s", slim_cfg.app.name)
@@ -126,7 +125,7 @@ async def _run(cfg: AgentConfig) -> None:
             slim_cfg = slim_bindings.load_slim_config()
             interfaces.append(
                 AgentInterface(
-                    protocol_binding="slimrpc",
+                    protocol_binding="SLIMRPC",
                     protocol_version="1.0",
                     url=slim_cfg.app.name,
                 )
