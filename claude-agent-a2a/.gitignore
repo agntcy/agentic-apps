@@ -219,3 +219,4 @@ __marimo__/
 
 # SLIM config (may contain secrets)
 slim.yaml
+.slim-cache/
