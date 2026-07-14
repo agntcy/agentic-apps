@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "A2A protocol server wrapping Claude Agent SDK sessions"
 requires-python = ">=3.11"
 dependencies = [
+    "a2a-sdk>=1.1.0",
+    "fastapi>=0.100.0",
     "claude-agent-sdk>=0.1.0",
     "slima2a>=0.6.0",
     "uvicorn>=0.30.0",
