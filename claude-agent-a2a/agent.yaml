@@ -11,13 +11,9 @@ bindings:
     port: 45000
 
   slimrpc:
-    enabled: false
-    # When enabled, connection details (address, app name, auth) are loaded
-    # from slim.yaml — see https://github.com/agntcy/slim-bindings/pull/21
-    # Example slim.yaml:
-    #   node:
-    #     address: "http://localhost:46357"
-    #   app:
-    #     name: "agntcy/default/claude-agent"
-    #   identity:
-    #     shared_secret: "my-secret"
+    enabled: true
+    url: "http://localhost:46357"
+    namespace: "agntcy"
+    group: "default"
+    name: "claude-agent"
+    secret: "secretsecretsecretsecretsecretsecret"

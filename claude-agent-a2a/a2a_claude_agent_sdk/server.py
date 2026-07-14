@@ -25,7 +25,7 @@ from a2a.types import (
     AgentSkill,
 )
 
-from .config import AgentConfig, load_config
+from .config import AgentConfig, SlimRpcBindingConfig, load_config
 from .executor import ClaudeAgentExecutor
 
 logger = logging.getLogger(__name__)
@@ -76,23 +76,25 @@ async def _run_http(
 async def _run_slimrpc(
     handler: DefaultRequestHandler,
     agent_card: AgentCard,
-    slim_cfg: object,
+    slim_cfg: SlimRpcBindingConfig,
 ) -> None:
-    import asyncio
-
     import slim_bindings
     from slima2a.handler import SRPCHandler
+    from slima2a.slim_helper import initialize_slim_service, connect_and_subscribe
     from slima2a.types.v1.a2a_pb2_slimrpc import add_A2AServiceServicer_to_server
 
     slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())
-    slim_service = slim_bindings.get_global_service()
-    slim_app = slim_service.create_app_from_slim_config(slim_cfg)
-    local_name = slim_bindings.Name.from_string(slim_cfg.app.name)
+    service = await initialize_slim_service()
+    local_name = slim_bindings.Name(slim_cfg.namespace, slim_cfg.group, slim_cfg.name)
+    slim_app, conn_id = await connect_and_subscribe(service, local_name, slim_cfg.url, slim_cfg.secret)
 
-    server = slim_bindings.Server.new_with_connection(slim_app, local_name, None)
+    server = slim_bindings.Server(slim_app, local_name)
     add_A2AServiceServicer_to_server(SRPCHandler(agent_card, handler), server)
 
-    logger.info("Starting SLIM RPC server as %s", slim_cfg.app.name)
+    logger.info(
+        "Starting SLIM RPC server as %s/%s/%s",
+        slim_cfg.namespace, slim_cfg.group, slim_cfg.name,
+    )
     await server.serve_async()
 
 
@@ -116,24 +118,17 @@ async def _run(cfg: AgentConfig) -> None:
             ),
         ]
 
-    slim_cfg = None
-    if cfg.bindings.slimrpc.enabled:
-        try:
-            import slim_bindings
-
-            slim_bindings.initialize_with_defaults()
-            slim_cfg = slim_bindings.load_slim_config()
-            interfaces.append(
-                AgentInterface(
-                    protocol_binding="SLIMRPC",
-                    protocol_version="1.0",
-                    url=slim_cfg.app.name,
-                )
+    slim_cfg = cfg.bindings.slimrpc
+    if slim_cfg.enabled:
+        interfaces.append(
+            AgentInterface(
+                protocol_binding="SLIMRPC",
+                protocol_version="1.0",
+                url=f"{slim_cfg.namespace}/{slim_cfg.group}/{slim_cfg.name}",
             )
-        except Exception as exc:
-            logger.warning("Could not load slim.yaml for agent card interface: %s", exc)
+        )
 
-    if not http_cfg.enabled and slim_cfg is None:
+    if not http_cfg.enabled and not slim_cfg.enabled:
         raise RuntimeError("No bindings are enabled. Set at least one binding to enabled: true.")
 
     agent_card = _build_agent_card(cfg, interfaces)
@@ -145,7 +140,7 @@ async def _run(cfg: AgentConfig) -> None:
 
     if http_cfg.enabled:
         coroutines.append(_run_http(handler, agent_card, cfg))
-    if slim_cfg is not None:
+    if slim_cfg.enabled:
         coroutines.append(_run_slimrpc(handler, agent_card, slim_cfg))
 
     await asyncio.gather(*coroutines)

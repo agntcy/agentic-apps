@@ -20,6 +20,11 @@ class HttpBindingConfig:
 @dataclass
 class SlimRpcBindingConfig:
     enabled: bool = False
+    url: str = "http://localhost:46357"
+    namespace: str = "agntcy"
+    group: str = "default"
+    name: str = "claude-agent"
+    secret: str = "secretsecretsecretsecretsecretsecret"
 
 
 @dataclass
@@ -46,7 +51,14 @@ def _parse_http(raw: dict[str, Any]) -> HttpBindingConfig:
 
 
 def _parse_slimrpc(raw: dict[str, Any]) -> SlimRpcBindingConfig:
-    return SlimRpcBindingConfig(enabled=raw.get("enabled", False))
+    return SlimRpcBindingConfig(
+        enabled=raw.get("enabled", False),
+        url=raw.get("url", "http://localhost:46357"),
+        namespace=raw.get("namespace", "agntcy"),
+        group=raw.get("group", "default"),
+        name=raw.get("name", "claude-agent"),
+        secret=raw.get("secret", "secretsecretsecretsecretsecretsecret"),
+    )
 
 
 def load_config(path: str | Path | None = None) -> AgentConfig:
