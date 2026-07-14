@@ -7,13 +7,20 @@ dependencies = [
     "a2a-sdk>=1.1.0",
     "fastapi>=0.100.0",
     "claude-agent-sdk>=0.1.0",
+    "slim-bindings>=1.4",
     "slima2a>=0.6.0",
     "uvicorn>=0.30.0",
     "pyyaml>=6.0",
 ]
 
+[tool.uv]
+override-dependencies = [
+    "slim-bindings>=2",
+]
+
 [tool.uv.sources]
 slima2a = { git = "https://github.com/agntcy/slim-a2a-python.git", branch = "main" }
+slim-bindings = { git = "https://github.com/agntcy/slim-bindings.git", branch = "main", subdirectory = "python" }
 
 [build-system]
 requires = ["hatchling"]
