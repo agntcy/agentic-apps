@@ -12,8 +12,13 @@ bindings:
 
   slimrpc:
     enabled: true
+    # Set use_slim_config: true to load connection details (node address, app
+    # name, auth) from slim.yaml discovered via hierarchical walk-up from the
+    # current directory. The url/namespace/group/name/secret fields below are
+    # ignored when use_slim_config is true.
+    use_slim_config: false
     url: "http://localhost:46357"
     namespace: "agntcy"
     group: "default"
     name: "claude-agent"
-    secret: "secretsecretsecretsecretsecretsecret"
+    secret: "areallyreallyreallyreallylongsecret"

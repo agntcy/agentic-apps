@@ -20,6 +20,10 @@ class HttpBindingConfig:
 @dataclass
 class SlimRpcBindingConfig:
     enabled: bool = False
+    # When use_slim_config is True, connection details are loaded from slim.yaml
+    # (https://github.com/agntcy/slim-bindings/pull/21). The fields below are
+    # ignored in that case.
+    use_slim_config: bool = False
     url: str = "http://localhost:46357"
     namespace: str = "agntcy"
     group: str = "default"
@@ -53,6 +57,7 @@ def _parse_http(raw: dict[str, Any]) -> HttpBindingConfig:
 def _parse_slimrpc(raw: dict[str, Any]) -> SlimRpcBindingConfig:
     return SlimRpcBindingConfig(
         enabled=raw.get("enabled", False),
+        use_slim_config=raw.get("use_slim_config", False),
         url=raw.get("url", "http://localhost:46357"),
         namespace=raw.get("namespace", "agntcy"),
         group=raw.get("group", "default"),

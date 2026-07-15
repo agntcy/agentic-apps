@@ -84,17 +84,26 @@ async def _run_slimrpc(
     from slima2a.types.v1.a2a_pb2_slimrpc import add_A2AServiceServicer_to_server
 
     slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())
-    service = await initialize_slim_service()
-    local_name = slim_bindings.Name(slim_cfg.namespace, slim_cfg.group, slim_cfg.name)
-    slim_app, conn_id = await connect_and_subscribe(service, local_name, slim_cfg.url, slim_cfg.secret)
+
+    if slim_cfg.use_slim_config:
+        service = await initialize_slim_service()
+        file_cfg = slim_bindings.load_slim_config(None)
+        slim_app = service.create_app_from_slim_config(file_cfg)
+        local_name = slim_bindings.Name.from_string(file_cfg.app.name)
+        logger.info("Starting SLIM RPC server as %s (from slim.yaml)", file_cfg.app.name)
+    else:
+        service = await initialize_slim_service()
+        local_name = slim_bindings.Name(slim_cfg.namespace, slim_cfg.group, slim_cfg.name)
+        slim_app, _conn_id = await connect_and_subscribe(
+            service, local_name, slim_cfg.url, slim_cfg.secret
+        )
+        logger.info(
+            "Starting SLIM RPC server as %s/%s/%s",
+            slim_cfg.namespace, slim_cfg.group, slim_cfg.name,
+        )
 
     server = slim_bindings.Server(slim_app, local_name)
     add_A2AServiceServicer_to_server(SRPCHandler(agent_card, handler), server)
-
-    logger.info(
-        "Starting SLIM RPC server as %s/%s/%s",
-        slim_cfg.namespace, slim_cfg.group, slim_cfg.name,
-    )
     await server.serve_async()
 
 
@@ -120,11 +129,22 @@ async def _run(cfg: AgentConfig) -> None:
 
     slim_cfg = cfg.bindings.slimrpc
     if slim_cfg.enabled:
+        slim_url: str
+        if slim_cfg.use_slim_config:
+            try:
+                import slim_bindings
+                file_cfg = slim_bindings.load_slim_config(None)
+                slim_url = file_cfg.app.name
+            except Exception as exc:
+                logger.warning("Could not read app name from slim.yaml: %s", exc)
+                slim_url = "unknown"
+        else:
+            slim_url = f"{slim_cfg.namespace}/{slim_cfg.group}/{slim_cfg.name}"
         interfaces.append(
             AgentInterface(
                 protocol_binding="SLIMRPC",
                 protocol_version="1.0",
-                url=f"{slim_cfg.namespace}/{slim_cfg.group}/{slim_cfg.name}",
+                url=slim_url,
             )
         )
 
