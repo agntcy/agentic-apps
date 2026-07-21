@@ -88,8 +88,9 @@ async def _run_slimrpc(
     if slim_cfg.use_slim_config:
         service = await initialize_slim_service()
         file_cfg = slim_bindings.load_slim_config(None)
-        slim_app = service.create_app_from_slim_config(file_cfg)
-        local_name = slim_bindings.Name.from_string(file_cfg.app.name)
+        handle = service.create_app_from_slim_config(file_cfg)
+        local_name = handle.name
+        slim_app = handle.app
         logger.info("Starting SLIM RPC server as %s (from slim.yaml)", file_cfg.app.name)
     else:
         service = await initialize_slim_service()
