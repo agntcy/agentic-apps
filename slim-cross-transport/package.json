@@ -1,0 +1,19 @@
+{
+  "name": "slim-cross-transport",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@agntcy/slim-bindings-react-native": "file:../../slim-bindings/react-native"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1",
+    "typescript": "5.9.3",
+    "vite": "5.4.21"
+  }
+}

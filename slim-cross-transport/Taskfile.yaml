@@ -1,0 +1,111 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+version: "3"
+
+silent: true
+
+# Orchestrates the slim-cross-transport browser demo. Each long-running task is
+# meant to run in its own terminal (Task does not multiplex daemons cleanly).
+#
+# Layout assumptions (sibling checkouts next to agentic-apps):
+#   <root>/slim              - the SLIM core repo (provides `slim` and `client` bins)
+#   <root>/slim-bindings     - browser WASM + React Native bindings package
+#
+# {{.TASKFILE_DIR}} is this demo folder; {{.SLIM_DIR}} is the sibling slim repo
+# and {{.BINDINGS_DIR}} is the react-native bindings package root.
+
+vars:
+  SLIM_DIR: "{{.TASKFILE_DIR}}/../../slim"
+  BINDINGS_DIR: "{{.TASKFILE_DIR}}/../../slim-bindings/react-native"
+  SECRET: "test-shared-secret-value-0123456789abcdef"
+
+tasks:
+  default:
+    cmds:
+      - task -l
+
+  wasm:
+    desc: "Build the browser WASM bindings (one-time; regenerates generated/web)"
+    dir: "{{.BINDINGS_DIR}}"
+    cmds:
+      - npm install
+      - npm run build:web
+
+  node:
+    desc: "Run the dual-transport SLIM node (ws :46357 + grpc :46358)"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - cargo run --bin slim -- --config {{.TASKFILE_DIR}}/configs/server-config.yaml
+
+  native:ws-1:
+    desc: "Native WebSocket participant org/default/native-ws-1"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin client --
+        --config {{.TASKFILE_DIR}}/configs/native-ws-client.yaml
+        --local-name org/default/native-ws-1
+        --secret {{.SECRET}}
+        --message "hello from native-ws-1 (WebSocket)"
+
+  native:ws-2:
+    desc: "Native WebSocket participant org/default/native-ws-2"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin client --
+        --config {{.TASKFILE_DIR}}/configs/native-ws-client.yaml
+        --local-name org/default/native-ws-2
+        --secret {{.SECRET}}
+        --message "hello from native-ws-2 (WebSocket)"
+
+  native:grpc-1:
+    desc: "Native gRPC participant org/default/native-grpc-1"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin client --
+        --config {{.TASKFILE_DIR}}/configs/native-grpc-client.yaml
+        --local-name org/default/native-grpc-1
+        --secret {{.SECRET}}
+        --message "hello from native-grpc-1 (gRPC)"
+
+  native:grpc-2:
+    desc: "Native gRPC participant org/default/native-grpc-2"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin client --
+        --config {{.TASKFILE_DIR}}/configs/native-grpc-client.yaml
+        --local-name org/default/native-grpc-2
+        --secret {{.SECRET}}
+        --message "hello from native-grpc-2 (gRPC)"
+
+  ui:
+    desc: "Serve the browser demo UI (Vite at 127.0.0.1:5173)"
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - npm install
+      - npm run dev
+
+  native:chat-ws:
+    desc: "Interactive native WebSocket participant (org/default/native-ws/1)"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin chat --
+        --config {{.TASKFILE_DIR}}/configs/native-ws-client.yaml
+        --name org/default/native-ws/1
+        --channel org/default/room-1
+
+  native:chat-grpc:
+    desc: "Interactive native gRPC participant (org/default/native-grpc/2)"
+    dir: "{{.SLIM_DIR}}"
+    cmds:
+      - >-
+        cargo run -p slim-examples --bin chat --
+        --config {{.TASKFILE_DIR}}/configs/native-grpc-client.yaml
+        --name org/default/native-grpc/2
+        --channel org/default/room-1

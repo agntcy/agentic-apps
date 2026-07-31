@@ -1,0 +1,24 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Native client that connects to the demo node over the gRPC listener.
+# The http:// scheme (or a bare host:port) selects the gRPC transport.
+
+tracing:
+  log_level: info
+  display_thread_names: true
+  display_thread_ids: true
+
+runtime:
+  n_cores: 0
+  thread_name: "slim-data-plane"
+  drain_timeout: 10s
+
+services:
+  slim/0:
+    node_id: native-grpc-client
+    dataplane:
+      clients:
+        - endpoint: "http://127.0.0.1:46358"
+          tls:
+            insecure: true

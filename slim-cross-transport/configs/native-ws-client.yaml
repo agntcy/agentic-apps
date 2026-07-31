@@ -1,0 +1,24 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Native client that connects to the demo node over the WebSocket listener.
+# The ws:// scheme selects the WebSocket transport (same as the browser tabs).
+
+tracing:
+  log_level: info
+  display_thread_names: true
+  display_thread_ids: true
+
+runtime:
+  n_cores: 0
+  thread_name: "slim-data-plane"
+  drain_timeout: 10s
+
+services:
+  slim/0:
+    node_id: native-ws-client
+    dataplane:
+      clients:
+        - endpoint: "ws://127.0.0.1:46357"
+          tls:
+            insecure: true

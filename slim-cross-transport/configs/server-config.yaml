@@ -1,0 +1,33 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Dual-transport SLIM data-plane node for the slim-cross-transport demo.
+# A single node exposes two listeners on the same routing fabric:
+#   - ws://0.0.0.0:46357  -> browser (WASM) clients and native WebSocket clients
+#   - 0.0.0.0:46358       -> native gRPC clients (bare host:port = gRPC transport)
+# The transport is inferred from the endpoint scheme; there is no separate
+# transport field. insecure: true keeps the local demo simple - use wss:// + TLS
+# in production.
+
+tracing:
+  log_level: info
+  display_thread_names: true
+  display_thread_ids: true
+
+runtime:
+  n_cores: 0
+  thread_name: "slim-data-plane"
+  drain_timeout: 10s
+
+services:
+  slim/0:
+    node_id: slim-cross-transport
+    dataplane:
+      servers:
+        - endpoint: "ws://0.0.0.0:46357"
+          tls:
+            insecure: true
+        - endpoint: "0.0.0.0:46358"
+          tls:
+            insecure: true
+      clients: []
