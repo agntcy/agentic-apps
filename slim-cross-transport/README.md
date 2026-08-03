@@ -32,13 +32,9 @@ node config: WebSocket on `:46357` and gRPC on `:46358`.
 └───────────────────────────┘
 ```
 
-Browser bindings are installed from npm — no local `slim-bindings` checkout or WASM build required:
-
-```json
-"@agntcy/slim-bindings-react-native": "2.0.0-alpha.7"
-```
-
-The `/web` entry point and prebuilt `index_bg.wasm` ship inside that package.
+The browser UI depends on
+[`@agntcy/slim-bindings-react-native@2.0.0-alpha.7`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0-alpha.7).
+The `/web` entry point and prebuilt `index_bg.wasm` ship in that package.
 
 ---
 
