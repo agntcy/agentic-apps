@@ -32,125 +32,72 @@ node config: WebSocket on `:46357` and gRPC on `:46358`.
 └───────────────────────────┘
 ```
 
-> **Note:** The browser WASM bindings are **not published to npm yet**. This demo
-> installs `@agntcy/slim-bindings-react-native` from a local `slim-bindings`
-> checkout and expects you to **build the bindings manually** before running the
-> UI. Follow the steps below in order.
+Browser bindings are installed from npm — no local `slim-bindings` checkout or WASM build required:
+
+```json
+"@agntcy/slim-bindings-react-native": "2.0.0-alpha.7"
+```
+
+The `/web` entry point and prebuilt `index_bg.wasm` ship inside that package.
 
 ---
 
 ## Prerequisites
 
-Install these tools once on your machine:
-
 | Tool | Version / notes |
 | --- | --- |
 | [Node.js](https://nodejs.org/) | 18 or later |
-| [Rust](https://rustup.rs/) | 1.70 or later |
-| Rust `wasm32` target | `rustup target add wasm32-unknown-unknown` |
-| [Task](https://taskfile.dev/) | task runner used by this demo and slim-bindings |
-| `wasm-bindgen-cli` | exactly **0.2.106** — installed automatically by the bindings build, or manually: `cargo install wasm-bindgen-cli --version 0.2.106` |
+| [Rust](https://rustup.rs/) | 1.70 or later (for the SLIM node and native clients) |
+| [Task](https://taskfile.dev/) | task runner for orchestrating demo processes |
 
 ---
 
 ## Step 1 — Clone the repositories
 
-Create a workspace folder and clone all three repos as **siblings**:
+Create a workspace folder and clone **agentic-apps** and **slim** as siblings:
 
 ```bash
 mkdir -p ~/slim-workspace && cd ~/slim-workspace
 
 git clone https://github.com/agntcy/agentic-apps.git
 git clone https://github.com/agntcy/slim.git
-git clone https://github.com/agntcy/slim-bindings.git
 ```
 
-Your directory layout must look like this (paths are relative to `~/slim-workspace`):
+Layout:
 
 ```
 slim-workspace/
 ├── agentic-apps/
 │   └── slim-cross-transport/     ← this demo
-├── slim/                         ← SLIM node + native client examples
-└── slim-bindings/
-    └── react-native/             ← @agntcy/slim-bindings-react-native (built from source)
+└── slim/                         ← SLIM node + native client examples
 ```
-
-The demo's `package.json` links the bindings with:
-
-```json
-"@agntcy/slim-bindings-react-native": "file:../../slim-bindings/react-native"
-```
-
-That path resolves from `agentic-apps/slim-cross-transport/` up to `slim-workspace/`, then into `slim-bindings/react-native`. If your clones are not siblings, update that path or recreate the layout above.
-
-Use a **wasm-clean branch** of `slim` (typically `main`). The WASM build compiles SLIM crates for `wasm32`; branches that pull full `tonic` transport for all targets will fail (see [Troubleshooting](#troubleshooting)).
 
 ---
 
-## Step 2 — Build the React Native bindings (browser WASM)
-
-The browser UI imports from `@agntcy/slim-bindings-react-native/web`. That entry point and the `index_bg.wasm` binary are **generated locally** — they are not shipped in the current npm release.
-
-From the bindings package:
-
-```bash
-cd ~/slim-workspace/slim-bindings/react-native
-
-# Install JS tooling (uniffi-bindgen-react-native, TypeScript, etc.)
-npm install
-
-# Generate browser TypeScript + WebAssembly (one-time, or after bindings changes)
-npm run build:web
-```
-
-Under the hood, `npm run build:web` runs `task generate:web`, which:
-
-1. Installs `wasm-bindgen-cli` 0.2.106 if missing
-2. Runs `ubrn build web` to compile the Rust WASM crate and emit TypeScript
-3. Writes output to `generated/web/` (including `generated/web/wasm-bindgen/index_bg.wasm`)
-
-**Verify the build succeeded:**
-
-```bash
-test -f generated/web/wasm-bindgen/index_bg.wasm && echo "WASM OK"
-test -f web.ts && echo "web entry OK"
-```
-
-If either check fails, see [Troubleshooting](#troubleshooting) before continuing.
-
-> **iOS / Android only:** Native React Native bindings use `task generate` (not needed for this browser demo). This demo only requires the **web** build above.
-
----
-
-## Step 3 — Install the demo app
-
-With the bindings built, install the demo's npm dependencies (this creates the symlink into `slim-bindings/react-native`):
+## Step 2 — Install the demo app
 
 ```bash
 cd ~/slim-workspace/agentic-apps/slim-cross-transport
-
 npm install
 ```
 
-**Optional — confirm the link:**
+This pulls [`@agntcy/slim-bindings-react-native@2.0.0-alpha.7`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0-alpha.7) from npm, including the browser WASM binary.
+
+**Optional — confirm WASM is present:**
 
 ```bash
-ls node_modules/@agntcy/slim-bindings-react-native/generated/web/wasm-bindgen/index_bg.wasm
+test -f node_modules/@agntcy/slim-bindings-react-native/generated/web/wasm-bindgen/index_bg.wasm && echo "WASM OK"
 ```
-
-You should see the WASM file from your Step 2 build.
 
 ---
 
-## Step 4 — Run the demo
+## Step 3 — Run the demo
 
-Each long-running process needs its **own terminal**. All commands below assume you are in `agentic-apps/slim-cross-transport` unless noted.
+Each long-running process needs its **own terminal**. All commands below run from `agentic-apps/slim-cross-transport`.
 
 ### Terminal 1 — SLIM node (dual transport)
 
 ```bash
-cd ~/slim-workspace/agentic-apps/slim-cross-transport
 task node
 ```
 
@@ -159,15 +106,9 @@ Starts the SLIM data-plane node with:
 - WebSocket on `ws://0.0.0.0:46357` (browser + native WebSocket clients)
 - gRPC on `0.0.0.0:46358` (native gRPC clients)
 
-Leave this running.
-
 ### Terminals 2–5 — Native participants
 
-Start all four native clients. Each waits for a browser invite:
-
 ```bash
-cd ~/slim-workspace/agentic-apps/slim-cross-transport
-
 task native:grpc-1   # terminal 2
 task native:grpc-2   # terminal 3
 task native:ws-1     # terminal 4
@@ -186,7 +127,6 @@ before creating a session in the browser.
 ### Terminal 6 — Browser UI
 
 ```bash
-cd ~/slim-workspace/agentic-apps/slim-cross-transport
 task ui
 ```
 
@@ -194,7 +134,7 @@ Serves the Vite dev server at **http://127.0.0.1:5173**.
 
 ---
 
-## Step 5 — Use the browser UI
+## Step 4 — Use the browser UI
 
 Open **three tabs** at http://127.0.0.1:5173.
 
@@ -202,8 +142,8 @@ In every tab:
 
 | Field | Value |
 | --- | --- |
-| **WebSocket endpoint** | `ws://127.0.0.1:46357` (prefilled — do not change unless you changed the node port) |
-| **Shared secret** | `test-shared-secret-value-0123456789abcdef` (prefilled — all participants must match) |
+| **WebSocket endpoint** | `ws://127.0.0.1:46357` (prefilled) |
+| **Shared secret** | `test-shared-secret-value-0123456789abcdef` (prefilled) |
 
 Set **Mode** and **Local name** per tab:
 
@@ -226,11 +166,8 @@ To run a cross-transport multicast session from the moderator tab:
 
 ## Quick reference — Task commands
 
-Run from `agentic-apps/slim-cross-transport`:
-
 | Task | Purpose |
 | --- | --- |
-| `task wasm` | Rebuild browser WASM bindings (runs `npm run build:web` in `slim-bindings/react-native`) |
 | `task node` | Start dual-transport SLIM node |
 | `task native:ws-1` / `native:ws-2` | Native WebSocket participants |
 | `task native:grpc-1` / `native:grpc-2` | Native gRPC participants |
@@ -247,7 +184,7 @@ Run from `agentic-apps/slim-cross-transport`:
 | `configs/server-config.yaml` | Dual-transport node (`:46357` ws + `:46358` gRPC) |
 | `configs/native-ws-client.yaml` | Native WebSocket client transport |
 | `configs/native-grpc-client.yaml` | Native gRPC client transport |
-| `Taskfile.yaml` | Orchestration tasks for node, clients, wasm, UI |
+| `Taskfile.yaml` | Orchestration tasks for node, clients, UI |
 | `src/main.ts` | Connect / create+invite / listen flow |
 | `src/session-card.ts` | Per-session UI (send, roster, close) |
 | `index.html` | Multi-session browser shell |
@@ -317,21 +254,8 @@ Run from `agentic-apps/slim-cross-transport`:
 
 ## Troubleshooting
 
-### Bindings build
-
-- **`task wasm` / `npm run build:web` fails compiling `mio` for `wasm32`**
-  Your `slim` / `slim-bindings` checkout may not be wasm-clean. Use `main` (or another branch known to build for `wasm32`) and rebuild.
-- **`wasm-bindgen` version mismatch**
-  Install exactly 0.2.106: `cargo install wasm-bindgen-cli --version 0.2.106`
-- **`ubrn: command not found`**
-  Run `npm install` inside `slim-bindings/react-native` first; the build uses `npx ubrn`.
-
-### Demo runtime
-
-- **`403 Forbidden` for `index_bg.wasm`**
-  Run the UI via `task ui` (not by opening `index.html` directly). Vite must serve the WASM from the linked bindings package. Re-run Step 2 if the file is missing.
-- **`Cannot find module '@agntcy/slim-bindings-react-native/web'`**
-  Complete Step 2 (`npm run build:web`) and Step 3 (`npm install` in this folder).
+- **`403 Forbidden` for `index_bg.wasm`** — run via `task ui` at http://127.0.0.1:5173/, not by opening `index.html` directly. Re-run `npm install` if the WASM file is missing from `node_modules`.
+- **`Cannot find module '@agntcy/slim-bindings-react-native/web'`** — run `npm install` in this folder.
 - **Invite times out / participant never joins** — check in order:
   1. **Endpoint** — every browser tab uses `ws://127.0.0.1:46357`
   2. **Names** — invited names match each participant's Local name exactly (e.g. `org/default/native-ws-1`)
@@ -345,25 +269,19 @@ Run from `agentic-apps/slim-cross-transport`:
 
 ## End-to-end checklist
 
-Use this if something is not working:
-
 ```bash
 # 1. Layout
 ls ~/slim-workspace/agentic-apps/slim-cross-transport
 ls ~/slim-workspace/slim
-ls ~/slim-workspace/slim-bindings/react-native
 
-# 2. WASM built
-test -f ~/slim-workspace/slim-bindings/react-native/generated/web/wasm-bindgen/index_bg.wasm
-
-# 3. Demo deps linked
+# 2. Demo deps (includes npm WASM bindings)
 cd ~/slim-workspace/agentic-apps/slim-cross-transport && npm install
 test -f node_modules/@agntcy/slim-bindings-react-native/generated/web/wasm-bindgen/index_bg.wasm
 
-# 4. Run (separate terminals)
+# 3. Run (separate terminals)
 task node
 task native:grpc-1 && task native:grpc-2 && task native:ws-1 && task native:ws-2
 task ui
 ```
 
-Then open http://127.0.0.1:5173 and connect three browser tabs as described in Step 5.
+Then open http://127.0.0.1:5173 and connect three browser tabs as described in Step 4.
