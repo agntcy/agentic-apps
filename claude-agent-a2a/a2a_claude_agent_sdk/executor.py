@@ -1,5 +1,6 @@
 """AgentExecutor implementation bridging A2A requests to Claude Agent SDK sessions."""
 
+import logging
 from typing import Any
 
 from a2a.server.agent_execution.agent_executor import AgentExecutor
@@ -14,10 +15,13 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ResultMessage,
     TextBlock,
+    ThinkingBlock,
     list_sessions,
 )
 
 from .tools import create_artifact_mcp_server
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeAgentExecutor(AgentExecutor):
@@ -49,8 +53,14 @@ class ClaudeAgentExecutor(AgentExecutor):
         )
         await updater.start_work()
 
-        artifact_collector: list[dict[str, Any]] = []
-        artifact_server = create_artifact_mcp_server(artifact_collector)
+        async def publish_artifact(artifact: dict[str, Any]) -> None:
+            await updater.add_artifact(
+                parts=[Part(text=artifact["content"])],
+                name=artifact["name"],
+                last_chunk=True,
+            )
+
+        artifact_server = create_artifact_mcp_server(publish_artifact)
 
         # Determine whether to resume an existing Claude session or start a new one
         # with the A2A context_id as the session UUID.
@@ -73,18 +83,21 @@ class ClaudeAgentExecutor(AgentExecutor):
                 await client.query(user_input)
                 async for message in client.receive_response():
                     if isinstance(message, AssistantMessage):
-                        # Stream partial text back as a working-state status message.
+                        logger.debug("AssistantMessage received: %s", message)
+                        for block in message.content:
+                            if isinstance(block, ThinkingBlock) and block.thinking:
+                                logger.debug("Agent thinking: %s", block.thinking)
                         text_parts = [
                             b.text
                             for b in message.content
                             if isinstance(b, TextBlock)
                         ]
                         if text_parts:
-                            status_msg = updater.new_agent_message(
-                                parts=[Part(text="\n".join(text_parts))]
-                            )
-                            await updater.update_status(
-                                TaskState.TASK_STATE_WORKING, message=status_msg
+                            logger.debug("Agent text response: %s", text_parts)
+                            await updater.add_artifact(
+                                parts=[Part(text=t) for t in text_parts],
+                                name="response",
+                                last_chunk=True,
                             )
                     elif isinstance(message, ResultMessage):
                         break
@@ -97,14 +110,6 @@ class ClaudeAgentExecutor(AgentExecutor):
                 ),
             )
             return
-
-        # Publish any artifacts Claude attached via add_artifact.
-        for artifact in artifact_collector:
-            await updater.add_artifact(
-                parts=[Part(text=artifact["content"])],
-                name=artifact["name"],
-                last_chunk=True,
-            )
 
         await updater.complete()
 
