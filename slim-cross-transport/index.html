@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SLIM Cross-Transport — WebSocket + gRPC demo</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SLIM</span>
+          <div class="brand-text">
+            <h1>SLIM cross-transport</h1>
+            <p>WebSocket + gRPC · one participant, many sessions, mixed transports</p>
+          </div>
+        </div>
+        <div class="badges">
+          <span id="wasm-status" class="badge badge-wait">WASM loading</span>
+          <span id="conn-status" class="badge badge-idle">Disconnected</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <div class="col">
+          <section class="panel">
+            <h2><span class="step">1</span> Connect</h2>
+            <div class="field">
+              <label for="mode">Mode</label>
+              <select id="mode">
+                <option value="moderator">Moderator — create &amp; invite</option>
+                <option value="participant">Participant — auto-accept invites</option>
+              </select>
+            </div>
+            <p id="mode-hint" class="hint"></p>
+            <div class="field">
+              <label for="endpoint">WebSocket endpoint</label>
+              <input id="endpoint" type="text" value="ws://127.0.0.1:46357" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="local-name">Local name (org/namespace/name)</label>
+              <input id="local-name" type="text" value="org/default/browser-a" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="secret">Shared secret</label>
+              <input id="secret" type="text" value="test-shared-secret-value-0123456789abcdef" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="token">Auth token (optional)</label>
+              <input id="token" type="text" placeholder="only for auth-enabled servers" autocomplete="off" />
+            </div>
+            <div class="row">
+              <button id="connect" type="button" disabled>Connect</button>
+              <button id="disconnect" type="button" class="ghost" disabled>Disconnect</button>
+            </div>
+            <label class="toggle">
+              <input id="auto-accept" type="checkbox" disabled />
+              <span>Auto-accept incoming sessions</span>
+            </label>
+          </section>
+
+          <section class="panel">
+            <h2><span class="step">2</span> Create a session</h2>
+            <p class="hint">
+              Each session becomes its own card, so one participant can hold
+              several at once (multicast or unicast, MLS or plaintext).
+            </p>
+            <div class="field">
+              <label for="session-type">Delivery</label>
+              <select id="session-type">
+                <option value="group">Multicast (group)</option>
+                <option value="point-to-point">Unicast (point-to-point)</option>
+              </select>
+            </div>
+            <label class="toggle">
+              <input id="mls-enabled" type="checkbox" />
+              <span>Enable MLS (end-to-end encryption)</span>
+            </label>
+            <div class="field" id="channel-field">
+              <label for="channel">Channel</label>
+              <input id="channel" type="text" value="org/default/room-1" autocomplete="off" />
+            </div>
+            <div class="field" id="invitees-field">
+              <label for="invitees">Participants to invite (one per line)</label>
+              <textarea id="invitees" rows="3">org/default/browser-b
+org/default/native-ws-1
+org/default/native-grpc-1</textarea>
+            </div>
+            <div class="field" id="destination-field" hidden>
+              <label for="destination">Remote participant</label>
+              <input id="destination" type="text" value="org/default/browser-b" autocomplete="off" />
+            </div>
+            <button id="create-session" type="button" disabled>Create session</button>
+          </section>
+        </div>
+
+        <div class="col col-wide">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Active sessions</h2>
+              <span id="session-count" class="pill">0</span>
+            </div>
+            <div id="sessions" class="sessions-grid">
+              <div class="empty-state" id="sessions-empty">
+                No active sessions yet. Connect, then create or accept a session.
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Event log</h2>
+              <button id="clear-log" type="button" class="ghost small">Clear</button>
+            </div>
+            <pre id="log" class="log"></pre>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
