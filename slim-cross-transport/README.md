@@ -33,7 +33,7 @@ node config: WebSocket on `:46357` and gRPC on `:46358`.
 ```
 
 The browser UI depends on
-[`@agntcy/slim-bindings-react-native@2.0.0-alpha.7`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0-alpha.7).
+[`@agntcy/slim-bindings-react-native@2.0.0`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0).
 The `/web` entry point and prebuilt `index_bg.wasm` ship in that package.
 
 ---
@@ -77,7 +77,7 @@ cd ~/slim-workspace/agentic-apps/slim-cross-transport
 npm install
 ```
 
-This pulls [`@agntcy/slim-bindings-react-native@2.0.0-alpha.7`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0-alpha.7) from npm, including the browser WASM binary.
+This pulls [`@agntcy/slim-bindings-react-native@2.0.0`](https://www.npmjs.com/package/@agntcy/slim-bindings-react-native/v/2.0.0) from npm, including the browser WASM binary.
 
 **Optional — confirm WASM is present:**
 
