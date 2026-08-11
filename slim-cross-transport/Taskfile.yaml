@@ -13,7 +13,7 @@ silent: true
 #   <root>/slim  - the SLIM core repo (provides `slim` and `client` bins)
 #
 # Browser WASM bindings come from npm:
-#   @agntcy/slim-bindings-react-native@2.0.0-alpha.7
+#   @agntcy/slim-bindings-react-native@2.0.0
 
 vars:
   SLIM_DIR: "{{.TASKFILE_DIR}}/../../slim"
