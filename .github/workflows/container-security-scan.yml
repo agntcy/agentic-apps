@@ -120,16 +120,22 @@ jobs:
           chmod +x .github/workflows/scripts/security/generate_trivy_summary.sh
           .github/workflows/scripts/security/generate_trivy_summary.sh
 
-      - name: Fail if critical vulns found (optional gate)
+      - name: Fail if high or critical vulnerabilities are found
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          set -e
-          found=$(grep -R "CRITICAL" -c trivy-artifacts || true)
-          if [ "${found}" != "0" ]; then
-            echo "Critical vulnerabilities detected. (Gate currently informational.)" >&2
+          set -euo pipefail
+          found=0
+          while IFS= read -r sarif; do
+            if jq -e '[.runs[] as $run | $run.results[] | ($run.tool.driver.rules[.ruleIndex].properties.tags // [])[] | select(. == "HIGH" or . == "CRITICAL")] | length > 0' "$sarif" >/dev/null; then
+              found=1
+            fi
+          done < <(find trivy-artifacts -type f -name '*.sarif' -print)
+          if [ "$found" -eq 1 ]; then
+            echo "High or critical vulnerabilities detected." >&2
+            exit 1
           fi
       - name: Create GitHub issues for critical CVEs
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ always() && github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}

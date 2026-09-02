@@ -49,17 +49,16 @@ function main() {
       console.error(`Failed to parse ${file}:`, e);
     }
   }
-  if (criticalFindings.length === 0) {
-    console.log('No critical CVEs detected');
-    return;
-  }
   const unique = Object.values(criticalFindings.reduce((acc, f) => { acc[f.cve] = acc[f.cve] || f; return acc; }, {}));
-  console.log(`Unique critical CVEs: ${unique.map(u => u.cve).join(', ')}`);
+  console.log(unique.length === 0
+    ? 'No critical CVEs detected'
+    : `Unique critical CVEs: ${unique.map(u => u.cve).join(', ')}`);
 
   octokit.paginate(octokit.issues.listForRepo, { owner, repo, state: 'open', per_page: 100 })
     .then(existing => {
       const existingTitles = new Set(existing.map(i => i.title));
-      return Promise.all(unique.map(finding => {
+      const currentTitles = new Set(unique.map(finding => `CRITICAL CVE ${finding.cve} in image scan`));
+      const createPromises = unique.map(finding => {
         const title = `CRITICAL CVE ${finding.cve} in image scan`;
         if (existingTitles.has(title)) {
           console.log(`Issue already exists for ${finding.cve}`);
@@ -84,7 +83,21 @@ function main() {
         ].join('\n');
         return octokit.issues.create({ owner, repo, title, body, labels: ['security', 'critical', 'cve'] })
           .then(r => console.log(`Created issue: ${r.data.html_url}`));
-      }));
+      });
+      const closePromises = existing
+        .filter(issue => /^CRITICAL CVE .+ in image scan$/.test(issue.title) && !currentTitles.has(issue.title))
+        .map(issue => octokit.issues.createComment({
+          owner,
+          repo,
+          issue_number: issue.number,
+          body: 'Closed automatically because the latest container security scan no longer reports this CVE.'
+        }).then(() => octokit.issues.update({
+          owner,
+          repo,
+          issue_number: issue.number,
+          state: 'closed'
+        })).then(() => console.log(`Closed resolved issue: ${issue.html_url}`)));
+      return Promise.all([...createPromises, ...closePromises]);
     })
     .catch(err => {
       console.error('Failed to list existing issues:', err);

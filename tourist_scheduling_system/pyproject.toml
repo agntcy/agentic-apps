@@ -32,7 +32,7 @@ dependencies = [
     "httpx>=0.28.1",
     # Web framework
     "uvicorn>=0.40.0",
-    "fastapi>=0.124.1,<0.126.0",
+    "fastapi>=0.141.1,<1.0.0",
     "websockets>=11.0.0",
     # AI/LLM
     "openai>=2.15.0",
@@ -50,6 +50,11 @@ dependencies = [
     "slima2a==0.2.2",
     "agntcy-dir>=0.6.0",
 ]
+
+# agntcy-dir 1.4.0 ships protobuf code generated with protoc 7.35+.
+# Keep the runtime at the same generation level to avoid import-time failures.
+[tool.uv]
+override-dependencies = ["protobuf>=7.35.0,<8"]
 
 [project.optional-dependencies]
 dev = [

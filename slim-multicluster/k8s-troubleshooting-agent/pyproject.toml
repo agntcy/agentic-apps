@@ -17,3 +17,8 @@ dependencies = [
     "idna>=3.15",
     "authlib>=1.6.12",
 ]
+
+# slim-mcp 0.2.x pins mcp==1.26.0, which has active security advisories.
+# The MCP client API used by this agent is compatible with the patched release.
+[tool.uv]
+override-dependencies = ["mcp>=1.29.1,<2"]
