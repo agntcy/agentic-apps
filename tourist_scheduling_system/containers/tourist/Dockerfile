@@ -19,13 +19,23 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install uv for fast dependency installation
-RUN pip install --no-cache-dir uv
+RUN apt-get update && apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install current pip and uv for the build, then remove pip from the runtime image.
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.2.0" uv
 
 # Copy pyproject.toml first for better layer caching
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv
-RUN uv pip install --system --no-cache -r pyproject.toml
+# Install the exact, audited dependency set from uv.lock
+RUN uv export --frozen --no-dev --no-editable --no-emit-project --no-emit-workspace \
+        > /tmp/requirements.txt && \
+    uv pip install --system --no-cache -r /tmp/requirements.txt && \
+    rm -f /tmp/requirements.txt && \
+    rm -rf /usr/local/lib/python3.12/site-packages/pip \
+           /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12
 
 # Create non-root user
 RUN adduser --disabled-password --gecos "" agentuser && \

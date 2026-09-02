@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
         "slim",
-        "autogen==0.9.6", # needed to get tool spans
         "autogen-ext==0.6.1", # needed to get tool spans
         "autogen-agentchat==0.6.1", # needed to get tool spans
         "openai",
