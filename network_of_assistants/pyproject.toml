@@ -10,3 +10,10 @@ members = ["noa-file-assistant", "noa-slim", "noa-user-proxy", "noa-moderator", 
 
 [dependency-groups]
 dev = ["ruff<1.0.0,>=0.9.3"]
+
+# NLTK has no released fix yet for GHSA-8mgp-746c-j5xp. Use the upstream
+# develop commit containing the pathsec fixes until the patched release ships.
+[tool.uv]
+override-dependencies = [
+    "nltk @ git+https://github.com/nltk/nltk.git@c06cd2645e3116156466bece11a9eb989c04afae",
+]
