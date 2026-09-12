@@ -1,0 +1,19 @@
+[project]
+name = "shadi-secops"
+version = "0.1.0"
+description = "SecOps tooling for SHADI"
+requires-python = ">=3.12"
+dependencies = [
+  "openai",
+  "maturin",
+  "slima2a",
+  "slimrpc",
+  "a2a",
+  "opentelemetry-api>=1.20.0",
+  "opentelemetry-sdk>=1.20.0",
+  "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+]
+
+[build-system]
+requires = ["maturin>=1.0"]
+build-backend = "maturin"
