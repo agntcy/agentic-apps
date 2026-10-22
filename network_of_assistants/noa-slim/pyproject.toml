@@ -13,3 +13,6 @@ build-backend = "pdm.backend"
 
 [tool.pdm.build]
 includes = ["slim/"]
+
+[tool.uv]
+exclude-newer = "7 days"

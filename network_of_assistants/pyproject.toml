@@ -10,3 +10,6 @@ members = ["noa-file-assistant", "noa-slim", "noa-user-proxy", "noa-moderator", 
 
 [dependency-groups]
 dev = ["ruff<1.0.0,>=0.9.3"]
+
+[tool.uv]
+exclude-newer = "7 days"

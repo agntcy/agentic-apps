@@ -37,7 +37,7 @@ dependencies = [
     # AI/LLM
     "openai>=2.54.0",
     "google-adk>=1.39.1,<2.0.0",
-    "litellm>=1.106.2",
+    "litellm>=1.99.0",
     # Configuration
     "python-dotenv>=1.2.4",
     "pydantic>=2.14.1",
@@ -54,6 +54,8 @@ dependencies = [
 # agntcy-dir 1.4.0 ships protobuf code generated with protoc 7.35+.
 # Keep the runtime at the same generation level to avoid import-time failures.
 [tool.uv]
+exclude-newer = "7 days"
+exclude-newer-package = { agntcy-dir = false, certifi = false }
 override-dependencies = ["protobuf>=7.35.0,<8"]
 
 [project.optional-dependencies]
