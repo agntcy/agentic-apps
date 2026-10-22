@@ -28,27 +28,27 @@ dependencies = [
     # A2A SDK with HTTP server support
     "a2a-sdk[http-server]>=0.3.20",
     # CLI and HTTP
-    "click>=8.0.0",
+    "click>=8.5.0",
     "httpx>=0.28.1",
     # Web framework
-    "uvicorn>=0.40.0",
+    "uvicorn>=0.54.0",
     "fastapi>=0.141.1,<1.0.0",
-    "websockets>=11.0.0",
+    "websockets>=15.0.1",
     # AI/LLM
-    "openai>=2.15.0",
-    "google-adk>=1.28.1,<2.0.0",
-    "litellm>=1.83.0",
+    "openai>=2.54.0",
+    "google-adk>=1.39.1,<2.0.0",
+    "litellm>=1.106.2",
     # Configuration
-    "python-dotenv>=1.2.2",
-    "pydantic>=2.12.5",
-    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.2.4",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.15.0",
     # OpenTelemetry for distributed tracing
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "opentelemetry-api>=1.41.1",
+    "opentelemetry-sdk>=1.41.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.41.1",
     "slimrpc==0.2.1",
     "slima2a==0.2.2",
-    "agntcy-dir>=0.6.0",
+    "agntcy-dir>=1.8.1",
 ]
 
 # agntcy-dir 1.4.0 ships protobuf code generated with protoc 7.35+.
@@ -58,12 +58,12 @@ override-dependencies = ["protobuf>=7.35.0,<8"]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.21.0",
-    "black>=26.3.1",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "mypy>=1.0.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "black>=26.10.1",
+    "isort>=9.0.2",
+    "flake8>=7.4.1",
+    "mypy>=2.4.0",
 ]
 
 [project.scripts]
