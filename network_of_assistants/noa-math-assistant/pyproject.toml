@@ -24,3 +24,6 @@ build-backend = "pdm.backend"
 
 [project.scripts]
 noa-math-assistant = "main:run"
+
+[tool.uv]
+exclude-newer = "7 days"

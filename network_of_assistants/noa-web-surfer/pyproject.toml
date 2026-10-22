@@ -28,3 +28,6 @@ build-backend = "pdm.backend"
 
 [project.scripts]
 noa-web-surfer = "main:run"
+
+[tool.uv]
+exclude-newer = "7 days"

@@ -19,3 +19,6 @@ build-backend = "pdm.backend"
 
 [project.scripts]
 noa-user-proxy = "main:run"
+
+[tool.uv]
+exclude-newer = "7 days"
