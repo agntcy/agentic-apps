@@ -24,3 +24,6 @@ build-backend = "pdm.backend"
 
 [project.scripts]
 noa-moderator = "main:run"
+
+[tool.uv]
+exclude-newer = "7 days"
