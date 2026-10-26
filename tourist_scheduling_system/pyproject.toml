@@ -56,7 +56,8 @@ dependencies = [
 [tool.uv]
 exclude-newer = "7 days"
 exclude-newer-package = { agntcy-dir = false, certifi = false }
-override-dependencies = ["protobuf>=7.35.0,<8"]
+# filelock<4.2.1 has CVE-2026-112940; litellm still caps filelock<4.0, so override it.
+override-dependencies = ["protobuf>=7.35.0,<8", "filelock>=4.2.1,<5; python_full_version >= '3.11'"]
 
 [project.optional-dependencies]
 dev = [
