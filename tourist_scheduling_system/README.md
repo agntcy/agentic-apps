@@ -48,7 +48,7 @@ This application leverages several key integrations to provide a robust, product
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.11+
 - [UV](https://github.com/astral-sh/uv) package manager
 - Docker (for SLIM transport and tracing)
 - Azure OpenAI API key or Google Gemini API key
