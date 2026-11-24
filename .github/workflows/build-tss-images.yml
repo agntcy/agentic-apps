@@ -140,7 +140,7 @@ jobs:
           pull: ${{ matrix.refresh-system-packages }}
           no-cache: ${{ matrix.refresh-system-packages }}
           cache-from: ${{ matrix.refresh-system-packages == false && 'type=gha' || '' }}
-          cache-to: ${{ matrix.refresh-system-packages == false && 'type=gha,mode=max' || '' }}
+          cache-to: ${{ github.event_name != 'pull_request' && matrix.refresh-system-packages == false && 'type=gha,mode=max' || '' }}
           platforms: linux/amd64,linux/arm64
 
       - name: Output image info
