@@ -31,7 +31,7 @@ COPY pyproject.toml uv.lock ./
 # Install the exact, audited dependency set from uv.lock
 RUN uv export --frozen --no-dev --no-editable --no-emit-project --no-emit-workspace \
         > /tmp/requirements.txt && \
-    uv pip install --system --no-cache -r /tmp/requirements.txt && \
+    UV_HTTP_RETRIES=10 uv pip install --system --no-cache -r /tmp/requirements.txt && \
     rm -f /tmp/requirements.txt && \
     rm -rf /usr/local/lib/python3.12/site-packages/pip \
            /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
