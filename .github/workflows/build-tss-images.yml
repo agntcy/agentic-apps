@@ -139,8 +139,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           pull: ${{ matrix.refresh-system-packages }}
           no-cache: ${{ matrix.refresh-system-packages }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: ${{ matrix.refresh-system-packages == false && 'type=gha' || '' }}
+          cache-to: ${{ matrix.refresh-system-packages == false && 'type=gha,mode=max' || '' }}
           platforms: linux/amd64,linux/arm64
 
       - name: Output image info
