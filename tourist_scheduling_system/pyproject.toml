@@ -17,13 +17,12 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.10, <3.14"
+requires-python = ">=3.11, <3.14"
 dependencies = [
     # A2A SDK with HTTP server support
     "a2a-sdk[http-server]>=0.3.20",
@@ -57,7 +56,7 @@ dependencies = [
 exclude-newer = "7 days"
 exclude-newer-package = { agntcy-dir = false, certifi = false }
 # filelock<4.2.1 has CVE-2026-112940; litellm still caps filelock<4.0, so override it.
-override-dependencies = ["protobuf>=7.35.0,<8", "filelock>=4.2.1,<5; python_full_version >= '3.11'"]
+override-dependencies = ["protobuf>=7.35.0,<8", "filelock>=4.2.1,<5"]
 
 [project.optional-dependencies]
 dev = [
@@ -91,7 +90,7 @@ packages = ["src/agents", "src/core"]
 
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -110,7 +109,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

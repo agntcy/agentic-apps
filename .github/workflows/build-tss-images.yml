@@ -54,7 +54,7 @@ jobs:
           version: "0.11.21"
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install 3.11
 
       - name: Install dependencies
         working-directory: tourist_scheduling_system
@@ -77,18 +77,23 @@ jobs:
           - name: scheduler-agent
             dockerfile: containers/scheduler/Dockerfile
             context: tourist_scheduling_system
+            refresh-system-packages: true
           - name: ui-agent
             dockerfile: containers/ui/Dockerfile
             context: tourist_scheduling_system
+            refresh-system-packages: true
           - name: frontend
             dockerfile: containers/frontend/Dockerfile
             context: tourist_scheduling_system
+            refresh-system-packages: false
           - name: guide-agent
             dockerfile: containers/guide/Dockerfile
             context: tourist_scheduling_system
+            refresh-system-packages: false
           - name: tourist-agent
             dockerfile: containers/tourist/Dockerfile
             context: tourist_scheduling_system
+            refresh-system-packages: false
 
     steps:
       - name: Checkout repository
@@ -132,6 +137,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          pull: ${{ matrix.refresh-system-packages }}
+          no-cache: ${{ matrix.refresh-system-packages }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
